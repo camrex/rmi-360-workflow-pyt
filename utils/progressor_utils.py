@@ -1,3 +1,30 @@
+# =============================================================================
+# 📊 ArcGIS + CLI Progress Tracker (utils/progressor_utils.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Provides unified progress tracking for ArcGIS Pro and CLI contexts
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Defines a context-managed Progressor class that attempts to initialize ArcGIS Pro's progressor
+#   UI when available, falling back to console output otherwise. Supports updating the progress label
+#   and position and gracefully degrades if ArcPy is unavailable or fails.
+#
+# File Location:        /utils/progressor_utils.py
+# Called By:            enhance_images.py, copy_to_aws.py, orchestrator tools
+# Int. Dependencies:    arcpy_utils
+# Ext. Dependencies:    arcpy, sys, typing
+#
+# Documentation:
+#   See: docs/UTILITIES.md
+#
+# Notes:
+#   - Resets ArcGIS progressor on exit if used
+#   - Compatible with both Toolbox and script execution modes
+# =============================================================================
+
 import arcpy
 import sys
 from typing import Optional

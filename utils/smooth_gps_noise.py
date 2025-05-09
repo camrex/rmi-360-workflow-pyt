@@ -1,3 +1,30 @@
+# =============================================================================
+# 🛰️ GPS Noise Smoothing Logic (utils/smooth_gps_noise.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Detects and flags suspect GPS points in an OID using spatial + geometric checks
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Analyzes GPS tracks in an OID feature class to identify potential outlier points based on
+#   spatial deviation, angle, spacing, and proximity to a centerline (if provided). Flags points
+#   by updating a QCFlag field and optionally logs debug metrics to CSV for inspection.
+#
+# File Location:        /utils/smooth_gps_noise.py
+# Called By:            tools/smooth_gps_noise_tool.py, orchestrator
+# Int. Dependencies:    config_loader, arcpy_utils, path_utils
+# Ext. Dependencies:    arcpy, csv, math, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/smooth_gps_noise.md
+#
+# Notes:
+#   - Flags GPS outliers using configurable multi-criteria scoring
+#   - Optionally integrates centerline route distance checks if provided
+# =============================================================================
+
 __all__ = ["smooth_gps_noise"]
 
 import arcpy

@@ -1,3 +1,30 @@
+# =============================================================================
+# 🗂️ Log Path Builder (utils/path_utils.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Resolves and constructs log file paths based on config expressions and filename keys
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Dynamically constructs full file paths for log files using `logs.path`, `logs.prefix`, and log keys
+#   from the configuration. Supports expression-based prefixes, auto-directory creation, and error handling
+#   for malformed log configuration or path resolution.
+#
+# File Location:        /utils/path_utils.py
+# Called By:            multiple tools and log-writing utilities
+# Int. Dependencies:    expression_utils
+# Ext. Dependencies:    os, typing
+#
+# Documentation:
+#   See: docs/UTILITIES.md
+#
+# Notes:
+#   - Automatically inserts dynamic prefix (if defined) before filename
+#   - Ensures log directory exists or raises descriptive error
+# =============================================================================
+
 import os
 from typing import Optional
 from utils.expression_utils import resolve_expression

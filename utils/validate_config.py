@@ -1,4 +1,32 @@
-import os
+# =============================================================================
+# ✅ Config Validator & Tool Schema Enforcer (utils/validate_config.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates the entire YAML configuration against expected structure, types, and tool-specific rules
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Performs comprehensive validation of the pipeline’s configuration, including schema version checks,
+#   required section enforcement, and dynamic expression resolution. Registers tool-specific validators
+#   for all supported workflow steps (e.g., enhance_images, copy_to_aws, deploy_lambda_monitor).
+#   Raises `ConfigValidationError` for invalid structures, missing fields, or improper expressions.
+#
+# File Location:        /utils/validate_config.py
+# Called By:            config_loader.py, orchestrator, CLI validation entrypoint
+# Int. Dependencies:    arcpy_utils, expression_utils, path_resolver, config_loader, schema_paths
+# Ext. Dependencies:    shutil, string, typing, pathlib
+#
+# Documentation:
+#   See: docs/CONFIG_GUIDE.md and docs/config_schema_reference.md
+#
+# Notes:
+#   - Uses per-tool validator dispatch via `TOOL_VALIDATORS` registry
+#   - Supports `DISABLED` flags and external command validation (e.g., exiftool path)
+#   - Designed to be run both via `__main__` and programmatically from tool execution
+# =============================================================================
+
 import shutil
 import string
 from typing import Union, Type, Tuple, Optional

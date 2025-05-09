@@ -1,3 +1,34 @@
+# =============================================================================
+# 🧬 Create OID Schema Template (tools/create_oid_template_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          CreateOIDTemplateTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class that creates a reusable schema table for Oriented Imagery Datasets (OIDs),
+#   based on the structure defined in the project configuration file. This schema is used during feature class
+#   creation to ensure consistent field definitions.
+#
+# File Location:      /tools/create_oid_template_tool.py
+# Uses:
+#   - utils/build_oid_schema.py
+#   - utils/config_loader.py
+#   - utils/arcpy_utils.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/create_oid_and_schema.md
+#
+# Parameters:
+#   - Config File {config_file} (File): Path to the project-specific YAML configuration file defining schema and paths.
+#
+# Notes:
+#   - Generates a geodatabase table named in config["oid_schema_template"]["template"]["template_name"]
+#   - Falls back to default config path if no parameter is provided
+# =============================================================================
+
 import arcpy
 from utils.build_oid_schema import create_oid_schema_template
 from utils.config_loader import get_default_config_path

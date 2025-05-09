@@ -1,3 +1,35 @@
+# =============================================================================
+# 📝 Generate Report from JSON (tools/generate_report_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          GenerateReportFromJSONTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class for generating an HTML (and optionally PDF) report based on
+#   a saved report JSON file. Optionally reattaches a configuration file for template path
+#   resolution and branding. Output folder can be overridden or defaults to path from JSON.
+#
+# File Location:      /tools/generate_report_tool.py
+# Uses:
+#   - utils/generate_report.py
+#   - utils/config_loader.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/generate_report.md
+#
+# Parameters:
+#   - Report JSON File {report_json} (File): Path to the saved report_data_<slug>.json file containing report input and stats.
+#   - Output Folder (Optional) {output_dir} (Folder): Folder to save the HTML and PDF output. Defaults to path from report JSON.
+#   - Config File (Optional) {config_file} (File): Optional YAML config file to reattach template, logo, and slug context.
+#
+# Notes:
+#   - Generates HTML report from Jinja2 templates; PDF export is optional
+#   - Can be re-run at any time using archived JSON data
+# =============================================================================
+
 import arcpy
 from utils.generate_report import generate_report_from_json
 from utils.config_loader import get_default_config_path

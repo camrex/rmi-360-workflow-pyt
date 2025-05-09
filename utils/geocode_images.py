@@ -1,3 +1,31 @@
+# =============================================================================
+# 🌍 Reverse Geocoding via ExifTool (utils/geocode_images.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Adds XMP geolocation tags to images in an OID using ExifTool and GPSPosition metadata
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Iterates through images referenced in an OID feature class and uses ExifTool to copy GPSPosition into the
+#   XMP geolocate field. Supports alternate geolocation DBs by referencing external config files. Generates
+#   argument and log files and performs in-place metadata updates using ExifTool’s batch mode.
+#
+# File Location:        /utils/geocode_images.py
+# Called By:            tools/geocode_images_tool.py, process_360_orchestrator.py
+# Int. Dependencies:    config_loader, arcpy_utils, path_utils
+# Ext. Dependencies:    arcpy, subprocess, os, typing
+# External Tools:       ExifTool (must be installed and available via PATH or config path)
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/geocode_images.md
+#
+# Notes:
+#   - Skips images without GPS or valid path
+#   - Uses ExifTool’s -execute mode for efficient batch tagging
+# =============================================================================
+
 ___all___ = ["geocode_images"]
 
 import os

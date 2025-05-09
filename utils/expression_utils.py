@@ -1,14 +1,29 @@
-"""
-RMI Mosaic 360 Tools: expression_utils.py
-
-This module provides expression evaluation utilities used for resolving
-config-based expressions and loading the OID field registry from YAML.
-
-It is used by:
-  - validate_config.py
-  - config_loader.py
-  - utility scripts
-"""
+# =============================================================================
+# 🧠 Expression & Field Resolver (utils/expression_utils.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Resolves dynamic expressions from config and row data into final values
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Provides utility functions to resolve expressions defined in YAML config or field registry.
+#   Supports nested dot-path lookups, type conversion, formatting modifiers, concatenation,
+#   and special keywords like `now.year`. Also loads and validates OID field registry schemas.
+#
+# File Location:        /utils/expression_utils.py
+# Called By:            config_loader.py, validate_config.py, most workflow steps
+# Int. Dependencies:    path_resolver
+# Ext. Dependencies:    os, yaml, datetime, typing, contextlib
+#
+# Documentation:
+#   See: docs/UTILITIES.md and docs/config_schema_reference.md
+#
+# Notes:
+#   - Supports modifiers: strip(), float(), int, date(), upper, lower
+#   - Resolves both row-based and config-based expressions recursively
+# =============================================================================
 
 import os
 import yaml

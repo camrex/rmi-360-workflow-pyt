@@ -1,3 +1,37 @@
+# =============================================================================
+# 🧭 Update Linear and Custom Attributes (tools/update_linear_and_custom_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          UpdateLinearAndCustomTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class to assign Milepost (MP) values and route identifiers via linear referencing
+#   against an M-enabled centerline. Also supports applying user-defined attribute fields based on config
+#   expressions. Can selectively enable or skip linear referencing while always applying custom fields.
+#
+# File Location:      /tools/update_linear_and_custom_tool.py
+# Uses:
+#   - utils/update_linear_and_custom.py
+#   - utils/config_loader.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/update_linear_and_custom.md
+#
+# Parameters:
+#   - Oriented Imagery Dataset (OID) {oid_fc} (Feature Class): OID feature class containing image points to enrich.
+#   - M-Enabled Centerline {centerline_fc} (Feature Class): Line feature class with calibrated M-values for referencing.
+#   - Route ID Field {route_id_field} (Field): Field in the centerline that uniquely identifies each route.
+#   - Enable Linear Referencing {enable_linear_ref} (Boolean): If checked, computes MP_Pre and MP_Num via Locate Features Along Routes.
+#   - Config File {config_file} (File): Path to the project config.yaml file with custom field logic.
+#
+# Notes:
+#   - Linear referencing can be toggled independently of custom attribute updates
+#   - Supports complex config-driven field population with modifiers and formatting
+# =============================================================================
+
 import arcpy
 from utils.update_linear_and_custom import update_linear_and_custom
 from utils.config_loader import get_default_config_path

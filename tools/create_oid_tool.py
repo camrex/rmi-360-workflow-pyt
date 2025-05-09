@@ -1,3 +1,36 @@
+# =============================================================================
+# 🏗️ Create Oriented Imagery Dataset (tools/create_oid_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          CreateOrientedImageryDatasetTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class that creates a new Oriented Imagery Dataset (OID) feature class
+#   using a validated schema template and optional custom spatial reference. Delegates to utility
+#   function for spatial reference, config resolution, and field population.
+#
+# File Location:      /tools/create_oid_tool.py
+# Uses:
+#   - utils/create_oid_feature_class.py
+#   - utils/config_loader.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/create_oid_and_schema.md
+#
+# Parameters:
+#   - Config File {config_file} (File): Optional path to a YAML config file
+#   - Output Oriented Imagery Dataset {output_fc} (Feature Class): Output OID feature class to create
+#   - Spatial Reference {spatial_ref} (Spatial Reference): Optional custom spatial reference
+#   - Project Folder {project_folder} (Folder): Root folder for this project
+#
+# Notes:
+#   - Defaults to vertical WKID 5703 (Ellipsoidal) if none is specified
+#   - Supports both interactive ArcGIS use and automated orchestration
+# =============================================================================
+
 import arcpy
 from utils.create_oid_feature_class import create_oriented_imagery_dataset
 from utils.config_loader import get_default_config_path

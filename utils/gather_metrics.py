@@ -1,3 +1,30 @@
+# =============================================================================
+# 📊 OID Metrics & Summary Generator (utils/gather_metrics.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Collects and summarizes key statistics from an Oriented Imagery Dataset
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Extracts MP numbers, acquisition timestamps, and frame data by reel from an OID feature class.
+#   Produces summary stats such as image count, MP ranges, and per-reel frame/acquisition metadata.
+#   Designed to support HTML/PDF report generation and workflow diagnostics.
+#
+# File Location:        /utils/gather_metrics.py
+# Called By:            reporting utilities, orchestrator, report generator
+# Int. Dependencies:    None
+# Ext. Dependencies:    arcpy, typing, collections
+#
+# Documentation:
+#   See: docs/UTILITIES.md
+#
+# Notes:
+#   - Gracefully handles empty or incomplete datasets
+#   - Rounds MP values to 3 decimal places and formats timestamps as strings
+# =============================================================================
+
 import arcpy
 from collections import defaultdict
 from typing import Tuple, Dict, Any, List

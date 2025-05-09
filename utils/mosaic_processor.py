@@ -1,3 +1,31 @@
+# =============================================================================
+# 🖥️ Mosaic Processor Wrapper (utils/mosaic_processor.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Executes Mosaic Processor CLI to render, fix reels, and integrate GPS metadata
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Invokes the Mosaic Processor executable in two passes: one for rendering and reel fixing, and one for GPX
+#   integration. Constructs shell-safe command lines, manages output folders, detects reel numbers, logs output,
+#   and writes reel metadata. Uses subprocess for shell execution and logs all results for diagnostics.
+#
+# File Location:        /utils/mosaic_processor.py
+# Called By:            tools/run_mosaic_processor_tool.py, tools/process_360_orchestrator.py
+# Int. Dependencies:    config_loader, arcpy_utils, pad_mosaic_frame_numbers, path_utils
+# Ext. Dependencies:    subprocess, json, re, os, typing, pathlib
+# External Tools:       Mosaic Processor CLI, MistikaVR (external dependency)
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/run_mosaic_processor.md
+#
+# Notes:
+#   - .cfg path is reserved for future functionality
+#   - Fails fast on missing .grp or invalid input folder
+# =============================================================================
+
 __all__ = ["run_mosaic_processor"]
 
 import os

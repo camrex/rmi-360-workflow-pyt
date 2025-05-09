@@ -1,3 +1,30 @@
+# =============================================================================
+# 🏗️ OID Feature Class Creator (utils/create_oid_feature_class.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Creates a new Oriented Imagery Dataset (OID) feature class using a validated schema template
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Constructs a new OID feature class using ArcGIS Pro’s CreateOrientedImageryDataset tool. Validates schema
+#   compatibility via registered field templates and ensures spatial reference compatibility. Supports config-driven
+#   defaults for both horizontal and vertical coordinate systems and performs creation only if the OID does not exist.
+#
+# File Location:        /utils/create_oid_feature_class.py
+# Called By:            tools/create_oid_tool.py, orchestrator pipeline
+# Int. Dependencies:    config_loader, arcpy_utils, schema_paths, schema_validator
+# Ext. Dependencies:    arcpy, os, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/create_oid_and_schema.md
+#
+# Notes:
+#   - Applies vertical WKID if defined in spatial_ref block of config
+#   - Uses Terrain3D as default DEM for elevation reference
+# =============================================================================
+
 __all__ = ["create_oriented_imagery_dataset"]
 
 import os

@@ -1,3 +1,30 @@
+# =============================================================================
+# 📦 Report Data Builder (utils/report_data_builder.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Initializes, loads, and saves report data structures for the 360° workflow
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Builds a structured JSON-compatible dictionary to track workflow progress, AWS info, camera metadata,
+#   image paths, and summary metrics. Includes logic for resolving dynamic config expressions and provides
+#   helper functions to persist and reload report data from disk.
+#
+# File Location:        /utils/report_data_builder.py
+# Called By:            orchestrator, generate_report.py, progress dashboard
+# Int. Dependencies:    expression_utils, arcpy_utils
+# Ext. Dependencies:    os, json, pathlib, typing
+#
+# Documentation:
+#   See: docs/UTILITIES.md and docs/tools/process_360_orchestrator.md
+#
+# Notes:
+#   - Supports fallback-safe resolution of config.project.* expressions
+#   - Creates report folder if it doesn’t exist
+# =============================================================================
+
 import os
 import json
 from pathlib import Path

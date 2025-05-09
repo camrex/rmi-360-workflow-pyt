@@ -1,3 +1,30 @@
+# =============================================================================
+# 📝 HTML Report Generator (utils/generate_report.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Generates an HTML report with charts and branding from pipeline run data
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Loads report data from JSON, attaches config if needed, and uses Jinja2 templates to render
+#   a project summary report in HTML format. Also creates bar charts visualizing image counts
+#   per reel and execution times per step. Designed for use after a full pipeline run.
+#
+# File Location:        /utils/generate_report.py
+# Called By:            tools/generate_report_tool.py, process_360_orchestrator.py
+# Int. Dependencies:    arcpy_utils, schema_paths
+# Ext. Dependencies:    jinja2, matplotlib, json, os, re, pathlib, datetime, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/generate_report.md
+#
+# Notes:
+#   - Automatically locates and injects logo and templates from the config directory
+#   - Skips chart generation if no steps or reels data are present
+# =============================================================================
+
 import os
 import re
 from pathlib import Path

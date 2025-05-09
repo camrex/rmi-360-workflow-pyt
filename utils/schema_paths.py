@@ -1,3 +1,29 @@
+# =============================================================================
+# 🗂️ OID Schema Path Resolver (utils/schema_paths.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Resolves paths related to the OID schema template from configuration
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Extracts the template directory, geodatabase path, schema table name, and output path
+#   from the YAML config. Returns a dataclass (`SchemaTemplatePaths`) with resolved fields.
+#   Ensures OS-independent path handling using pathlib and config-relative resolution logic.
+#
+# File Location:        /utils/schema_paths.py
+# Called By:            build_oid_schema.py, create_oid_feature_class.py
+# Int. Dependencies:    config_loader, path_resolver
+# Ext. Dependencies:    pathlib, dataclasses
+#
+# Documentation:
+#   See: docs/UTILITIES.md and docs/config_schema_reference.md
+#
+# Notes:
+#   - Refactor planned: convert all path-like fields to pathlib.Path objects
+# =============================================================================
+
 from dataclasses import dataclass
 from utils.config_loader import load_config
 from utils.path_resolver import resolve_relative_to_pyt
