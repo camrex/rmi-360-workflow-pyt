@@ -1,0 +1,425 @@
+# esri_oid_fields_registry.yaml
+# ------------------------------
+# Master field registry for ESRI Oriented Imagery Datasets (OIDs).
+# This file defines:
+#   - Field name, type, alias, and length (for schema creation)
+#   - category:
+#       - 'standard' — required or used in 360 imagery
+#       - 'not_applicable' — valid in ESRI spec but not used in 360 workflows
+#   - oid_default: (optional) default value for use in metadata or population
+#   - expr: (optional) string-based expression for derived fields, evaluated using config and field values
+#
+# Notes:
+# - Do NOT use 'default' to create the field itself — it is used only to populate attribute values if missing.
+# - 'expr' overrides 'default' and is evaluated using the config_loader expression engine.
+# - Only fields with category == 'standard' will be created in the schema unless explicitly overridden.
+#
+# ESRI Documentation:
+#   - https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/oriented-imagery-dataset.htm
+#   - https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/oriented-imagery-table.htm
+#   - https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/camera-orientation.htm
+
+# An alias name that identifies the image.
+Name:
+  name: "Name"
+  type: "TEXT"
+  length: 255
+  alias: "Name"
+  category: "standard"
+  required: false
+
+# The path to the image file. This can be a local path or a web-accessible URL.
+# Images can be in JPEG, JPG, TIF, or MRF format.
+ImagePath:
+  name: "ImagePath"
+  type: "TEXT"
+  length: 4096
+  alias: "Image Path"
+  category: "standard"
+  required: true
+
+# The x-coordinate of the camera location in the ground coordinate system. The units are the same as the coordinate
+# system units defined in the SRS field. (e.g., easting or longitude)
+X:
+  name: "X"
+  type: "DOUBLE"
+  length: null
+  alias: "X Coordinate"
+  category: "standard"
+  required: true
+
+# The y-coordinate of the camera location in the ground coordinate system. The units are the same as the coordinate
+# system units defined in the SRS field. (e.g., northing or latitude)
+Y:
+  name: "Y"
+  type: "DOUBLE"
+  length: null
+  alias: "Y Coordinate"
+  category: "standard"
+  required: true
+
+# The z-coordinate of the camera location in the ground coordinate system. The z-coordinate units must be consistent
+# with the x- and y-coordinate units and can be defined by the vertical coordinate system.
+# The z-coordinate is typically expressed as orthometric heights (elevation above sea level). This is appropriate when
+# the input digital elevation model (DEM ) is also using orthometric heights.
+Z:
+  name: "Z"
+  type: "DOUBLE"
+  length: null
+  alias: "Elevation"
+  category: "standard"
+  required: false
+
+# The coordinate system of the camera location as a well-known ID (WKID) or a definition string (well-known text [WKT]).
+# If a value for SRS is not explicitly defined, the spatial reference of the input oriented imagery dataset is assigned.
+#
+# The WKIDs of the spatial reference systems used to interpret X, Y, and Z.
+# Stored as a comma-separated string in the format: "HorizontalWKID,VerticalWKID".
+# This field is referenced by ArcGIS Pro to interpret the coordinate values and
+# to properly parse the CameraOrientation string (especially for ESRI Type 1).
+#
+# The expr constructs this string dynamically using default WKIDs from config.yaml.
+# These are expected to be set as:
+#   config.default_horizontal_wkid
+#   config.default_vertical_wkid
+SRS:
+  name: "SRS"
+  type: "TEXT"
+  length: 20
+  alias: "Spatial Reference System"
+  category: "standard"
+  required: false
+  expr: "config.default_horizontal_wkid + ',' + config.default_vertical_wkid"
+
+# The date when the image was collected. The time of the image collection can also be included.
+AcquisitionDate:
+  name: "AcquisitionDate"
+  type: "DATE"
+  length: null
+  alias: "Acquisition Date"
+  category: "standard"
+  required: false
+
+# The camera orientation of the first rotation around the z-axis of the camera. The value is in  (azimuth) degrees.
+# The direction of measurement for heading is in positive clockwise direction, where north is defined as zero degrees.
+# When the image orientation is unknown, -999 is used.
+CameraHeading:
+  name: "CameraHeading"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Heading"
+  category: "standard"
+  required: false
+
+# The camera orientation of the second rotation around the x-axis of the camera. The value is in degrees. The direction
+# of measurement for heading is in positive counterclockwise direction. The CameraPitch is zero degrees when the camera
+# is facing straight down to the ground. The valid range of CameraPitch values is from 0 through 180 degrees.
+# CameraPitch is 180 degrees for a camera facing straight up, and 90 degrees for a camera facing horizontally.
+CameraPitch:
+  name: "CameraPitch"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Pitch"
+  category: "standard"
+  required: false
+  oid_default: 90
+
+# The camera orientation of the final rotation around the z-axis of the camera in the positive clockwise direction.
+# The unit is degrees. Valid values range from -90 to 90.
+CameraRoll:
+  name: "CameraRoll"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Roll"
+  category: "standard"
+  required: false
+  oid_default: 0
+
+# The height of the camera above the ground (elevation source). It is used to determine the visible extent of the image
+# in which large values result in a greater view extent. The unit is meters. Values assigned must be greater than zero.
+CameraHeight:
+  name: "CameraHeight"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Height"
+  category: "standard"
+  required: false
+
+# The camera’s field-of-view in a horizontal direction. The unit is degrees. The valid values range from 0 through 360.
+HFOV:
+  name: "HorizontalFieldOfView"
+  type: "DOUBLE"
+  length: null
+  alias: "HFOV"
+  category: "standard"
+  required: false
+  oid_default: 360
+
+# The camera’s field-of-view in the vertical direction. The unit is degrees. The valid values range from 0 through 180.
+VFOV:
+  name: "VerticalFieldOfView"
+  type: "DOUBLE"
+  length: null
+  alias: "VFOV"
+  category: "standard"
+  required: false
+  oid_default: 180
+
+# The nearest usable distance of the imagery from the camera position. This value determines the near plane of the
+# visible frustum in a 3D scene. The unit is meters.
+NearDistance:
+  name: "NearDistance"
+  type: "DOUBLE"
+  length: null
+  alias: "Near Distance"
+  category: "standard"
+  required: false
+  oid_default: 2
+
+# The farthest usable distance of the imagery from the camera position. This value determines the far plane of the
+# visible frustum. The intersection of the frustum far plane with the ground defines the footprint, which is used to
+# determine whether an image is returned when you click the map. The unit is meters. Values must be greater than zero.
+FarDistance:
+  name: "FarDistance"
+  type: "DOUBLE"
+  length: null
+  alias: "Far Distance"
+  category: "standard"
+  required: false
+  oid_default: 50
+
+# Stores detailed camera orientation parameters as a pipe-separated string. This field provides support for more
+# accurate image-to-ground and ground-to-image transformations. For 360-imagery Type 1 (short) is used.
+# See https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/camera-orientation.htm for more information.
+#
+# The ESRI Camera Orientation string, formatted according to Type 1 (short).
+# This string defines the camera's pose in 3D space and is required for rendering
+# 360 or oriented images in ArcGIS Pro.
+#
+# Format: 1|<HorizontalWKID>|<VerticalWKID>|X|Y|Z|Heading|Pitch|Roll
+#
+# - The prefix '1' identifies the orientation type (Type 1: camera-based).
+# - Horizontal and Vertical WKIDs come from config.yaml.
+# - X, Y, Z are spatial coordinates of the camera.
+# - Heading is the azimuth (0–360), Pitch is the vertical angle, and Roll is image tilt.
+#
+# This expr dynamically assembles the string from field values and config.
+CameraOrientation:
+  name: "CameraOrientation"
+  type: "TEXT"
+  length: 255
+  alias: "Camera Orientation"
+  category: "standard"
+  required: false
+  orientation_format: "type1_short"  # "1|{h_wkid}|{v_wkid}|{x:.6f}|{y:.6f}|{adjusted_z:.3f}|{heading:.1f}|{pitch:.1f}|{roll:.1f}"
+
+# The imagery type is specified from the following:
+# Horizontal—Images where the exposure is approximately parallel to the ground and pointed to the horizon.
+# Oblique—Images where the exposure is at an angle (at about 45 degrees) to the ground so the sides of objects can be
+# seen.
+# Nadir—Images where the exposure is nearly perpendicular to the ground and looking straight down. Only the top of
+# objects can be seen.
+# 360—Images taken using specialized cameras that provide 360-degree spherical surround views. [DEFAULT]
+# Inspection—Close-up images of assets (less than 5 meters from the camera).
+OrientedImageryType:
+  name: "OrientedImageryType"
+  type: "TEXT"
+  length: 255
+  alias: "OI Type"
+  category: "standard"
+  required: false
+  oid_default: "360"
+
+# The orientation of the camera in degrees relative to the scene when the image was captured. The valid values range
+# from -360 through 360. The value is used to rotate the view of the image in the oriented imagery viewer to ensure the
+# top of the image is up.
+ImageRotation:
+  name: "ImageRotation"
+  type: "DOUBLE"
+  length: null
+  alias: "Image Rotation"
+  category: "standard"
+  required: false
+  oid_default: 0
+
+# The row-wise sorted rotation matrix that defines the transformation from image space to map space, specified as nine
+# floating-point values, delimited by semicolons. Period or full-stop must be the decimal separator for all the values.
+# NOT USED FOR 360 IMAGERY
+Matrix:
+  name: "Matrix"
+  type: "TEXT"
+  length: 255
+  alias: "Orientation Matrix"
+  category: "not_applicable"
+  required: false
+
+# The rotational angle of the camera's x-axis. The unit is decimal degrees.
+# NOT USED FOR 360 IMAGERY
+Omega:
+  name: "Omega"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Omega (X rotation)"
+  category: "not_applicable"
+  required: false
+
+# The rotational angle of the camera's y-axis. The unit is decimal degrees.
+# NOT USED FOR 360 IMAGERY
+Phi:
+  name: "Phi"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Phi (Y rotation)"
+  category: "not_applicable"
+  required: false
+
+# The rotational angle of the camera's z-axis. The unit is decimal degrees.
+# NOT USED FOR 360 IMAGERY
+Kappa:
+  name: "Kappa"
+  type: "DOUBLE"
+  length: null
+  alias: "Camera Kappa (Z rotation)"
+  category: "not_applicable"
+  required: false
+
+# The focal length of the camera lens. The unit can be microns, millimeters, or pixels.
+# NOT USED FOR 360 IMAGERY
+FocalLength:
+  name: "FocalLength"
+  type: "DOUBLE"
+  length: null
+  alias: "Focal Length"
+  category: "not_applicable"
+  required: false
+
+# The x-coordinate of the principal point of the autocollimation. The unit must be the same as the unit used for
+# FocalLength. By default, the value is zero.
+# NOT USED FOR 360 IMAGERY
+PrincipalX:
+  name: "PrincipalX"
+  type: "DOUBLE"
+  length: null
+  alias: "Principal Point X"
+  category: "not_applicable"
+  required: false
+
+# The y-coordinate of the principal point of the autocollimation. The unit must be the same as the unit used for
+# FocalLength. By default, the value is zero.
+# NOT USED FOR 360 IMAGERY
+PrincipalY:
+  name: "PrincipalY"
+  type: "DOUBLE"
+  length: null
+  alias: "Principal Point Y"
+  category: "not_applicable"
+  required: false
+
+# The radial distortion is specified as a set of three semicolon-delimited coefficients, such as 0;0;0 for K1;K2;K3.
+# The coupling unit is the same as the unit specified for FocalLength. A common approach in computer vision applications
+# is to provide coefficients without mentioning the coupling unit. In such cases, use the equations below to convert
+# the coefficients. f is the FocalLength value and K1_cv, K2_cv, and K3_cv are the computer vision parameters:
+# K1 = K1_cv/(f * f)
+# K2 = K2_cv/(f * f * f* f)
+# K3 = K3_cv/(f * f * f * f * f * f)
+# NOT USED FOR 360 IMAGERY
+Radial:
+  name: "Radial"
+  type: "TEXT"
+  length: 255
+  alias: "Radial Distortion"
+  category: "not_applicable"
+  required: false
+
+# The tangential distortion is specified as a set of two semicolon-delimited coefficients, such as 0;0 for P1;P2. The
+# coupling unit is the same as the unit used for FocalLength. A common approach in computer vision applications is to
+# provide coefficients without mentioning the coupling unit. In such cases, use the following equations to convert the
+# coefficients. f is the FocalLength value and P1_cv and P2_cv are the computer vision parameters:
+# P1 = P2_cv/f
+# P2 = -P1_cv/f
+# NOT USED FOR 360 IMAGERY
+Tangential:
+  name: "Tangential"
+  type: "TEXT"
+  length: 255
+  alias: "Tangential Distortion"
+  category: "not_applicable"
+  required: false
+
+# The coefficient of the affine transformation that establishes a relationship between the sensor space and image space.
+# The direction is from ground to image. A0, A1, and A2 represent the translation in x direction.
+# If the values are not provided, use the following equation to compute the values :
+# A0 = Width of the Image/2-0.5
+# NOT USED FOR 360 IMAGERY
+A0:
+  name: "A0"
+  type: "DOUBLE"
+  length: null
+  alias: "Affine Transform A0"
+  category: "not_applicable"
+  required: false
+
+# The coefficient of the affine transformation that establishes a relationship between the sensor space and image space.
+# The direction is from ground to image. A0, A1, and A2 represent the translation in x direction.
+# If the values are not provided, use the following equation to compute the values :
+# A1 = 1
+# NOT USED FOR 360 IMAGERY
+A1:
+  name: "A1"
+  type: "DOUBLE"
+  length: null
+  alias: "Affine Transform A1"
+  category: "not_applicable"
+  required: false
+
+# The coefficient of the affine transformation that establishes a relationship between the sensor space and image space.
+# The direction is from ground to image. A0, A1, and A2 represent the translation in x direction.
+# If the values are not provided, use the following equation to compute the values :
+# A2 = 0
+# NOT USED FOR 360 IMAGERY
+A2:
+  name: "A2"
+  type: "DOUBLE"
+  length: null
+  alias: "Affine Transform A2"
+  category: "not_applicable"
+  required: false
+
+# The coefficient of the affine transformation that establishes a relationship between the sensor space and image space.
+# The direction is from ground to image. B0, B1, and B2 represent the translation in y direction.
+# If the values are not provided, use the following equation to compute the values :
+# B0 = Height of the Image/2-0.5
+# NOT USED FOR 360 IMAGERY
+B0:
+  name: "B0"
+  type: "DOUBLE"
+  length: null
+  alias: "Affine Transform B0"
+  category: "not_applicable"
+  required: false
+
+# The coefficient of the affine transformation that establishes a relationship between the sensor space and image space.
+# The direction is from ground to image. B0, B1, and B2 represent the translation in y direction.
+# If the values are not provided, use the following equation to compute the values :
+# B1 = 0
+# NOT USED FOR 360 IMAGERY
+B1:
+  name: "B1"
+  type: "DOUBLE"
+  length: null
+  alias: "Affine Transform B1"
+  category: "not_applicable"
+  required: false
+
+# The coefficient of the affine transformation that establishes a relationship between the sensor space and image space.
+# The direction is from ground to image. B0, B1, and B2 represent the translation in y direction.
+# If the values are not provided, use the following equations to compute the values :
+# B2 = -1
+# NOT USED FOR 360 IMAGERY
+B2:
+  name: "B2"
+  type: "DOUBLE"
+  length: null
+  alias: "Affine Transform B2"
+  category: "not_applicable"
+  required: false

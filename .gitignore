@@ -1,0 +1,70 @@
+# ────────────────────────────────────────────────────────────────
+# 📦 RMI Mosaic 360 Toolbox – Git Ignore Rules
+# These patterns exclude:
+# - Temporary files, logs, and artifacts
+# - Python cache and virtual environments
+# - Local ArcGIS or image outputs not meant for version control
+# - Tool configs and secrets that should remain local
+# ────────────────────────────────────────────────────────────────
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+
+# ArcGIS + Toolbox Artifacts
+*.gdb/
+*.aprx
+*.tbx
+*.lyrx
+
+# Logs, Reports, and Temp Files
+logs/
+logs/*.args
+logs/*.json
+logs/*.csv
+logs/*.log
+report/
+report/*.html
+report/*.pdf
+report/*.json
+*.tmp
+*.zip
+
+# Backups
+*.bak
+*.swp
+
+# Configs
+configs/config.yaml
+/templates/exiftool/geolocation500.config
+
+# IDE & OS
+.vscode/
+.DS_Store
+.ipynb_checkpoints/
+Thumbs.db
+.idea/
+*.code-workspace
+
+# Python environment files
+.env
+.venv/
+env/
+*.egg-info/
+
+# ArcGIS Pro Toolbox metadata files (auto-generated)
+*.pyt.xml
+*.pyt.*.xml
+
+# Other excluded directories/files
+dev_docs/misc/
+templates/templates.gdb/
+templates/exiftool/Geolocation500/
+/templates/assets/rmi_logo.png
+
+# Binaries
+dist/
+build/
+*.exe
+

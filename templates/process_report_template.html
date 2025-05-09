@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mosaic 360 Report – {{ project.number }}</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 2em;
+      line-height: 1.6;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+
+    h1, h2, h3 {
+      color: #003366;
+      margin-bottom: 0.5em;
+    }
+
+    img.logo {
+      height: 60px;
+      margin-bottom: 10px;
+    }
+
+    ul {
+      margin-top: 0;
+      padding-left: 1.2em;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+      font-size: 0.95em;
+    }
+
+    th, td {
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    th {
+      background-color: #003366;
+      color: #fff;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    .status-ok { color: green; font-weight: bold; }
+    .status-warn { color: orange; font-weight: bold; }
+    .status-error { color: red; font-weight: bold; }
+
+    code {
+      background: #eee;
+      padding: 2px 4px;
+      font-size: 90%;
+    }
+
+    .chart {
+      margin: 2em 0;
+      text-align: center;
+    }
+
+    .chart img {
+      max-width: 100%;
+      border: 1px solid #ccc;
+      box-shadow: 2px 2px 4px #aaa;
+    }
+
+    .footer {
+      margin-top: 3em;
+      font-size: 0.85em;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+
+<img src="{{ logo_path }}" class="logo" alt="RMI Valuation">
+
+<h1>📸 Mosaic 360 Processing Report</h1>
+<p><strong>Generated:</strong> {{ generated_on }}</p>
+
+<h2>🗂️ Project Info</h2>
+<ul>
+  <li><strong>Project:</strong> {{ project.number }} ({{ project.slug }})</li>
+  <li><strong>Description:</strong> {{ project.description }}</li>
+  <li><strong>Client:</strong> {{ project.client }}</li>
+  <li><strong>Railroad:</strong> {{ project.rr_name }} ({{ project.rr_mark }})</li>
+  <li><strong>Local WKID:</strong> {{ project.local_proj_wkid }}</li>
+  <li><strong>Milepost Range:</strong>
+    MP {{ metrics.mp_min }} – {{ metrics.mp_max }}
+  </li>
+  <li><strong>Total Coverage:</strong> {{ metrics.mp_delta }} miles</li>
+
+</ul>
+
+<h2>📷 Camera Information</h2>
+<ul>
+  <li><strong>Make:</strong> {{ camera.make }}</li>
+  <li><strong>Model:</strong> {{ camera.model }}</li>
+  <li><strong>Serial Number:</strong> {{ camera.sn }}</li>
+  <li><strong>Firmware Version:</strong> {{ camera.firmware }}</li>
+  <li><strong>Software Used:</strong> {{ camera.software }}</li>
+</ul>
+
+<h2>🗃️ Dataset & Folder Paths</h2>
+<ul>
+  <li><strong>OID Feature Class:</strong> {{ paths.oid_fc }}</li>
+  <li><strong>GDB Path:</strong> {{ paths.oid_gdb }}</li>
+  <li><strong>Reels Folder:</strong> {{ paths.reels_input }} ({{ metrics.reel_count }} reels)</li>
+  <li><strong>Original Images:</strong> {{ paths.original_images }} — {{ metrics.original_count }} images ({{ metrics.original_size }})</li>
+  <li><strong>Enhanced Images:</strong> {{ paths.enhanced_images }} — {{ metrics.enhanced_count }} images ({{ metrics.enhanced_size }})</li>
+  <li><strong>Renamed Images:</strong> {{ paths.renamed_images }} — {{ metrics.renamed_count }} images ({{ metrics.renamed_size }})</li>
+</ul>
+
+<h2>🕓 Timeline Summary</h2>
+<ul>
+  <li><strong>Acquisition Start:</strong> {{ metrics.acq_start }}</li>
+  <li><strong>Acquisition End:</strong> {{ metrics.acq_end }}</li>
+  <li><strong>Total Elapsed Time:</strong> {{ metrics.elapsed }}</li>
+  <li><strong>Time per Image:</strong> {{ metrics.time_per_image }}</li>
+</ul>
+
+<h2>⚙️ Workflow Summary</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Step</th>
+      <th>Status</th>
+      <th>Time</th>
+      <th>Backup</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for step in steps %}
+    <tr>
+      <td>{{ step.name }}</td>
+      <td>
+        {% if step.status == "✅" %}
+          <span class="status-ok">{{ step.status }}</span>
+        {% elif step.status in ["⚠️", "⏭️"] %}
+          <span class="status-warn">{{ step.status }}</span>
+        {% else %}
+          <span class="status-error">{{ step.status }}</span>
+        {% endif %}
+      </td>
+      <td>{{ step.time }}</td>
+      <td>
+        {% if step.backup_created %}
+          💾
+        {% else %}
+          —
+        {% endif %}
+      </td>
+      <td>{{ step.notes }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>📁 Reels Overview</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Reel</th>
+      <th>Total Images</th>
+      <th>Acquisition Start</th>
+      <th>Acquisition End</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for reel in reels %}
+    <tr>
+      <td>RL{{ reel.reel }}</td>
+      <td>{{ reel.image_count }}</td>
+      <td>{{ reel.acq_start }}</td>
+      <td>{{ reel.acq_end }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>📊 Summary Charts</h2>
+
+<div class="chart">
+  <h3>🧮 Image Count per Reel</h3>
+  <img src="chart_images_per_reel.png" alt="Chart: Images per Reel">
+</div>
+
+<div class="chart">
+  <h3>⏱️ Time per Workflow Step</h3>
+  <img src="chart_step_times.png" alt="Chart: Time per Step">
+</div>
+
+<h2>☁️ Cloud Export</h2>
+<ul>
+  <li><strong>AWS Bucket:</strong> {{ aws.bucket }}</li>
+  <li><strong>Export Folder:</strong> {{ aws.folder }}</li>
+  {% if upload is defined %}
+    <li>
+    <strong>Status:</strong>
+    {% if upload.status == "canceled" %}
+      <span class="status-warn">Upload was canceled before completion</span>
+    {% elif upload.status == "completed_after_cancel" %}
+      <span class="status-ok">Upload completed successfully after previous cancellation</span>
+    {% else %}
+      <span class="status-ok">Upload completed successfully</span>
+    {% endif %}
+    </li>
+  {% endif %}
+</ul>
+
+<div class="footer">
+  Mosaic 360 Tools &copy; {{ project.company }} – Processed by RMI Mosaic Toolbox<br>
+  Report generated using <code>generate_full_process_report()</code><br>
+  To export as PDF: open in browser and <strong>Print → Save as PDF</strong>.
+</div>
+
+</body>
+</html>
