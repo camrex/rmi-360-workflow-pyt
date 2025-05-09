@@ -19,3 +19,17 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+**Disclaimer**:
+This software depends on external proprietary software and services not included in this repository,
+including but not limited to:
+
+- Esri ArcGIS Pro
+- Mosaic Processor (from Mosaic)
+- MistikaVR (from SGO)
+
+This license does not convey any rights to those products. Users are responsible for obtaining appropriate
+licenses from their respective vendors. This project provides tools that integrate with those products
+but does not include or redistribute any of their proprietary code.
