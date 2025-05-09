@@ -1,3 +1,39 @@
+# =============================================================================
+# 🧭 Add Images to OID (tools/add_images_to_oid_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          AddImagesToOIDTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class for adding 360° images to an existing Oriented Imagery Dataset (OID).
+#   Also assigns group indices and enriches OID attributes after insertion. Uses project config
+#   settings for source folders, schema enforcement, and vertical offset control.
+#
+# File Location:      /tools/add_images_to_oid_tool.py
+# Uses:
+#   - utils/add_images_to_oid_fc.py
+#   - utils/assign_group_index.py
+#   - utils/calculate_oid_attributes.py
+#   - utils/config_loader.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/add_images_to_oid.md
+#
+# Parameters:
+#   - Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project.
+#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Existing OID feature class to which images will be added.
+#   - Adjust Z (Apply Offset) {adjust_z} (Boolean): Whether to apply vertical offset to GPS elevation using config.
+#   - Config File {config_file} (File): Path to YAML config file. Optional; uses default if not provided.
+#
+# Notes:
+#   - Conditionally applies GroupIndex and orientation enrichment
+#   - Overwrites output feature class if it exists (arcpy.env.overwriteOutput = True)
+#   - Designed to work with pre-built schema templates
+# =============================================================================
+
 import arcpy
 from utils.add_images_to_oid_fc import add_images_to_oid
 from utils.calculate_oid_attributes import enrich_oid_attributes

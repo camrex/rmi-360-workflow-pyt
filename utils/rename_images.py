@@ -1,3 +1,30 @@
+# =============================================================================
+# 🗂️ Image Renaming Utility (utils/rename_images.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Renames and organizes OID images using config-based filename expressions
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Resolves dynamic filename parts from config expressions (e.g., reel, MP, timestamp),
+#   renames/copies each image to a flat output folder, updates the OID’s ImagePath and Name
+#   fields, and logs all rename operations. Optionally deletes originals after copy.
+#
+# File Location:        /utils/rename_images.py
+# Called By:            tools/rename_and_tag_tool.py, tools/process_360_orchestrator.py
+# Int. Dependencies:    config_loader, arcpy_utils, expression_utils, check_disk_space, path_utils
+# Ext. Dependencies:    arcpy, os, shutil, csv, pathlib, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/rename_images.md
+#
+# Notes:
+#   - Auto-detects duplicate filenames and applies numeric suffix (e.g., _v2)
+#   - Ensures output directory is writable and validated before execution
+# =============================================================================
+
 __all__ = ["rename_images"]
 
 import arcpy

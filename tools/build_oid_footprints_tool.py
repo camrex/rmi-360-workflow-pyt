@@ -1,3 +1,34 @@
+# =============================================================================
+# 📐 Build OID Footprints (tools/build_oid_footprints_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          BuildOIDFootprints
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class for generating a BUFFER-style footprint feature class from
+#   an Oriented Imagery Dataset (OID). Uses ArcGIS’s BuildOrientedImageryFootprint and supports
+#   optional config input for custom spatial reference or transformation logic.
+#
+# File Location:      /tools/build_oid_footprints_tool.py
+# Uses:
+#   - utils/build_oid_footprints.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/build_oid_footprints.md
+#
+# Parameters:
+#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Path to an existing OID feature class.
+#   - Config File {config_file} (File): Path to the project config.yaml containing spatial reference settings (optional).
+#
+# Notes:
+#   - Can run standalone or as part of the orchestrator workflow
+#   - Respects config overrides for spatial reference and geographic transformation
+#   - Sets canRunInBackground = False due to ArcPy environment handling
+# =============================================================================
+
 import arcpy
 from utils.build_oid_footprints import build_oid_footprints
 

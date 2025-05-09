@@ -1,3 +1,31 @@
+# =============================================================================
+# 🔁 Step Runner Orchestration Logic (utils/step_runner.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Executes a sequence of configured workflow steps with progress logging
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Iterates through workflow step functions, checking for skip conditions, handling wait intervals,
+#   and optionally backing up the OID feature class between steps. Tracks progress, captures run timing,
+#   appends results to a shared report object, and saves state to JSON after each step. Designed for use
+#   by the orchestrator tool and developer automation.
+#
+# File Location:        /utils/step_runner.py
+# Called By:            tools/process_360_orchestrator.py
+# Int. Dependencies:    arcpy_utils, report_data_builder
+# Ext. Dependencies:    time, datetime, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/process_360_orchestrator.md
+#
+# Notes:
+#   - Logs each step with emoji-coded status (✅, ❌, ⏭️)
+#   - Stops execution on first failure by default (can be customized)
+# =============================================================================
+
 import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone

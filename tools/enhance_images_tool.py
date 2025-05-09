@@ -1,3 +1,35 @@
+# =============================================================================
+# 🖼️ Enhance Images (tools/enhance_images_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          EnhanceImagesTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class for enhancing 360° images referenced in an OID feature class.
+#   Applies image processing operations including white balance, contrast, saturation boost,
+#   and sharpening. Supports batch multiprocessing and writes results to a configurable output mode.
+#
+# File Location:      /tools/enhance_images_tool.py
+# Uses:
+#   - utils/enhance_images.py
+#   - utils/config_loader.py
+#   - utils/arcpy_utils.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/enhance_images.md
+#
+# Parameters:
+#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Input OID feature class containing images to enhance.
+#   - Config File (optional) {config_file} (File): Path to YAML config file. Defaults to /configs/config.yaml if omitted.
+#
+# Notes:
+#   - Performs enhancement using OpenCV with multiprocessing support
+#   - Writes detailed logs and enhancement stats to project log folder
+# =============================================================================
+
 import arcpy
 from utils.enhance_images import enhance_images_in_oid
 from utils.config_loader import get_default_config_path

@@ -1,3 +1,30 @@
+# =============================================================================
+# 🧭 Path Resolution Helpers (utils/path_resolver.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Resolves relative paths against the config file or toolbox root
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Provides utility functions to resolve relative file paths in a consistent and portable way.
+#   Supports resolution relative to the source configuration file (`__source__`) or to the
+#   toolbox’s root directory for bundled deployment. Ensures platform-independent path handling.
+#
+# File Location:        /utils/path_resolver.py
+# Called By:            config_loader.py, expression_utils.py, deploy_lambda_monitor.py
+# Int. Dependencies:    None
+# Ext. Dependencies:    pathlib, typing
+#
+# Documentation:
+#   See: docs/UTILITIES.md
+#
+# Notes:
+#   - Uses pathlib for robust cross-platform path operations
+#   - Designed to work both in development and inside ArcGIS Pro deployments
+# =============================================================================
+
 from pathlib import Path
 from typing import Union
 

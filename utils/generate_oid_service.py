@@ -1,3 +1,31 @@
+# =============================================================================
+# 🌐 OID Service Publisher (utils/generate_oid_service.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Publishes an OID as a hosted Oriented Imagery Service on ArcGIS Online
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Duplicates an existing OID feature class and updates its ImagePath values to point to
+#   published S3 URLs. Validates AWS configuration, generates service metadata from config
+#   expressions, and creates a portal folder if needed before publishing the OID using
+#   ArcGIS Pro’s `GenerateServiceFromOrientedImageryDataset` tool.
+#
+# File Location:        /utils/generate_oid_service.py
+# Called By:            tools/generate_oid_service_tool.py, tools/process_360_orchestrator.py
+# Int. Dependencies:    config_loader, arcpy_utils, expression_utils
+# Ext. Dependencies:    arcpy, arcgis.gis, os, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/generate_oid_service.md
+#
+# Notes:
+#   - Automatically checks/creates portal folder prior to publishing
+#   - Logs full service parameters for debugging and transparency
+# =============================================================================
+
 __all__ = ["generate_oid_service"]
 
 import arcpy

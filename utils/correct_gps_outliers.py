@@ -1,3 +1,30 @@
+# =============================================================================
+# 📍 GPS Outlier Correction Logic (utils/correct_gps_outliers.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Interpolates and corrects GPS outlier points in an OID feature class
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Identifies sequences of features flagged as GPS outliers (`QCFlag = GPS_OUTLIER`) in an
+#   Oriented Imagery Dataset and interpolates new XY coordinates between valid anchor points.
+#   Updates geometry and CameraOrientation fields in-place using ArcPy cursors.
+#
+# File Location:        /utils/correct_gps_outliers.py
+# Called By:            tools/smooth_gps_noise_tool.py
+# Int. Dependencies:    config_loader, arcpy_utils
+# Ext. Dependencies:    arcpy, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/smooth_gps_noise.md
+#
+# Notes:
+#   - Skips outliers at the beginning or end of the dataset (no anchors available)
+#   - Orientation string is recomputed using default WKIDs from config
+# =============================================================================
+
 __all__ = ["correct_gps_outliers"]
 
 import arcpy

@@ -1,3 +1,36 @@
+# =============================================================================
+# 🌐 Generate OID Service (tools/generate_oid_service_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          GenerateOIDService
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class that publishes an Oriented Imagery Dataset (OID) as a hosted
+#   feature service on ArcGIS Online. Duplicates the OID with updated S3-based ImagePaths and
+#   invokes ArcGIS's GenerateServiceFromOrientedImageryDataset tool. Optionally creates a portal
+#   folder if it does not exist.
+#
+# File Location:      /tools/generate_oid_service_tool.py
+# Uses:
+#   - utils/generate_oid_service.py
+#   - utils/config_loader.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/generate_oid_service.md
+#
+# Parameters:
+#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Existing OID feature class to be duplicated and published.
+#   - Config File {config_file} (File): YAML config file containing AWS bucket, portal, and S3 path details.
+#
+# Notes:
+#   - Automatically updates ImagePaths to public S3 URLs
+#   - Attempts to create portal folder if it does not exist
+#   - Requires authenticated ArcGIS Pro session with sharing privileges
+# =============================================================================
+
 import arcpy
 from utils.generate_oid_service import generate_oid_service
 from utils.config_loader import get_default_config_path

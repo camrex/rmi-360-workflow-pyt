@@ -1,3 +1,30 @@
+# =============================================================================
+# 🔢 Frame Number Padding Utility (utils/pad_mosaic_frame_numbers.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Renames image files to use zero-padded 6-digit frame numbers for consistency
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Recursively walks a folder structure and renames all `.jpg` files that match a frame
+#   naming pattern ending in `_###.jpg`, padding each frame number to 6 digits. Used to
+#   normalize Mosaic Processor outputs prior to enhancement and OID population.
+#
+# File Location:        /utils/pad_mosaic_frame_numbers.py
+# Called By:            utils/mosaic_processor.py
+# Int. Dependencies:    arcpy_utils
+# Ext. Dependencies:    os, re
+#
+# Documentation:
+#   See: docs/UTILITIES.md
+#
+# Notes:
+#   - Skips files already correctly padded
+#   - Logs renaming steps and count via `log_message`
+# =============================================================================
+
 __all__ = ["pad_frame_numbers"]
 
 import os

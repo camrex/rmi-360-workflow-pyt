@@ -1,3 +1,37 @@
+# =============================================================================
+# 🏷️ Rename and Tag Images (tools/rename_and_tag_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          RenameAndTagImagesTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class to rename images based on project metadata and EXIF/XMP tagging rules
+#   defined in a YAML configuration file. Updates both filenames and embedded metadata, and optionally
+#   deletes original images post-renaming.
+#
+# File Location:      /tools/rename_and_tag_tool.py
+# Uses:
+#   - utils/rename_images.py
+#   - utils/apply_exif_metadata.py
+#   - utils/config_loader.py
+#   - utils/arcpy_utils.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/rename_and_tag.md
+#
+# Parameters:
+#   - Oriented Imagery Dataset (OID) {oid_fc} (Feature Class): The Oriented Imagery Dataset to process.
+#   - Delete Original Files After Rename? {delete_originals} (Boolean): If checked, deletes the original image files after renaming.
+#   - Config File {config_file} (File): Optional YAML config file defining metadata tags and naming convention.
+#
+# Notes:
+#   - Renaming logic supports dynamic filename expression resolution
+#   - EXIF metadata updates are performed using ExifTool via batch mode
+# =============================================================================
+
 import arcpy
 from utils.rename_images import rename_images
 from utils.apply_exif_metadata import update_metadata_from_config

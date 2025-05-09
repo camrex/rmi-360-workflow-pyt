@@ -1,3 +1,35 @@
+# =============================================================================
+# 🔐 Set AWS Keyring Credentials (tools/set_aws_keyring_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          SetAWSKeyringCredentialsTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   ArcPy Tool class for securely storing AWS credentials in the system keyring. These credentials
+#   can be retrieved by other tools such as CopyToAwsTool to authenticate S3 or Lambda operations.
+#   The credentials are stored under a configurable service name defined in the YAML config.
+#
+# File Location:      /tools/set_aws_keyring_tool.py
+# Uses:
+#   - utils/config_loader.py
+#   - utils/arcpy_utils.py
+#   - keyring
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/copy_to_aws.md
+#
+# Parameters:
+#   - AWS Access Key ID {access_key_id} (String): Your AWS access key. Will be stored securely in the keyring.
+#   - AWS Secret Access Key {secret_access_key} (String): Your AWS secret key. Will be stored securely in the keyring.
+#
+# Notes:
+#   - Stores both key and secret under the service name in config["copy_to_aws"]["keychain_service_name"]
+#   - Raises runtime error if parameters are missing or storage fails
+# =============================================================================
+
 import arcpy
 import keyring
 from utils.config_loader import load_config

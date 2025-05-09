@@ -1,3 +1,39 @@
+# =============================================================================
+# 🎞️ Run Mosaic Processor (tools/run_mosaic_processor_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          RunMosaicProcessorTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   ArcPy Tool class that wraps the Mosaic Processor command-line tool to render 360° video imagery
+#   and apply GPX integration. Requires a GRP file from Mosaic and proper installation of Mosaic Stitcher
+#   or MistikaVR. Can render full reels or specified frame ranges and supports config override.
+#
+# File Location:      /tools/run_mosaic_processor_tool.py
+# Uses:
+#   - utils/mosaic_processor.py
+#   - utils/config_loader.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/run_mosaic_processor.md
+#
+# Parameters:
+#   - Project Folder {project_folder} (Folder): Root folder for the Mosaic 360 project. Logs and imagery will be saved here.
+#   - Input Reels Folder {input_dir} (Folder): Directory containing raw `.mp4` video folders from the Mosaic 360 camera.
+#   - Config File {config_file} (File): Optional path to a YAML config file. If omitted, uses the default.
+#   - Mosaic GRP Template Path (optional) {grp_path} (File): GRP calibration file for stitching, typically provided by Mosaic.
+#   - Start Frame (optional) {start_frame} (Long): First frame to render. Leave blank to start from beginning.
+#   - End Frame (optional) {end_frame} (Long): Last frame to render. Leave blank to render until end.
+#
+# Notes:
+#   - Requires Mosaic Processor and GRP calibration files installed separately
+#   - Supports partial reel rendering via start/end frame range
+#   - Logs command and reel metadata to project output directory
+# =============================================================================
+
 import arcpy
 from utils.mosaic_processor import run_mosaic_processor
 from utils.config_loader import get_default_config_path

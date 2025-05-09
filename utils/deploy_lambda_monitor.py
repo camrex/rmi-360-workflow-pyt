@@ -1,3 +1,30 @@
+# =============================================================================
+# 📡 AWS Lambda Deployment Logic (utils/deploy_lambda_monitor.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Deploys Lambda functions and schedules upload monitor for 360° image tracking
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Deploys and configures AWS Lambda functions for monitoring upload progress to S3. Sets up a CloudWatch
+#   Events schedule to invoke the monitoring Lambda every 5 minutes. Initializes a project-specific progress
+#   JSON file and verifies credentials via boto3. Uses keyring or fallback credentials defined in the config.
+#
+# File Location:        /utils/deploy_lambda_monitor.py
+# Called By:            tools/copy_to_aws_tool.py, tools/process_360_orchestrator.py
+# Int. Dependencies:    config_loader, expression_utils, arcpy_utils, aws_utils, path_resolver
+# Ext. Dependencies:    boto3, botocore, json, zipfile, io, contextlib, datetime, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md, docs/tools/copy_to_aws.md, and AWS_SETUP_GUIDE.md
+#
+# Notes:
+#   - Deploys both progress monitor and auto-disable Lambda functions
+#   - Configurable via standalone call or ArcGIS Python Toolbox wrapper
+# =============================================================================
+
 __all__ = ["deploy_lambda_monitor"]
 
 import json

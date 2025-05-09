@@ -16,6 +16,7 @@
 # Called By:            tools/rename_and_tag_tool.py
 # Int. Dependencies:    config_loader, arcpy_utils, path_utils, expression_utils, executable_utils
 # Ext. Dependencies:    arcpy, os, subprocess, typing
+# External Tools:       ExifTool (must be installed and available via PATH or config path)
 #
 # Documentation:
 #   See: docs/TOOL_GUIDES.md and docs/tools/rename_and_tag.md

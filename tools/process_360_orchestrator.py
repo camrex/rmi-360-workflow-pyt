@@ -1,3 +1,52 @@
+# =============================================================================
+# 🧰 Process Full Mosaic 360 Workflow (tools/process_360_orchestrator.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          Process360Workflow
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Orchestrates the full end-to-end Mosaic 360 image processing pipeline within ArcGIS Pro.
+#   Executes a configurable series of steps, including image rendering, OID creation, image
+#   enrichment, geolocation, cloud upload, and service publishing. Tracks progress and logs
+#   results to a persistent report JSON for dashboard and reporting use.
+#
+# File Location:      /tools/process_360_orchestrator.py
+# Uses:
+#   - utils/build_step_funcs.py
+#   - utils/step_runner.py
+#   - utils/config_loader.py
+#   - utils/report_data_builder.py
+#   - utils/folder_utils.py
+#   - utils/gather_metrics.py
+#   - utils/arcpy_utils.py
+#   - utils/generate_report.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/process_360_orchestrator.md
+#
+# Parameters:
+#   - Start From Step (Optional) {start_step} (String): Step label to start from. Skips earlier steps if selected.
+#   - Project Folder {project_folder} (Folder): Root folder for the current 360 image processing project.
+#   - Input Reels Folder {input_reels_folder} (Folder): Directory containing raw .mp4 reel folders from Mosaic camera.
+#   - OID Dataset - Input {oid_fc_input} (Feature Class): Existing OID to update (used in most steps).
+#   - OID Dataset - Output {oid_fc_output} (Feature Class): Output feature class (used only when creating a new OID).
+#   - Centerline (M-enabled) {centerline_fc} (Feature Class): Required polyline for GPS smoothing and referencing.
+#   - Route ID Field {route_id_field} (Field): Field in centerline used to identify routes for linear referencing.
+#   - Enable Linear Referencing {enable_linear_ref} (Boolean): Whether to compute MP and Route ID values per image.
+#   - Skip Enhance Images? {skip_enhance_images} (Boolean): If true, skips image enhancement even if config is enabled.
+#   - Copy Processed Images to AWS S3? {copy_to_aws} (Boolean): Whether to trigger the AWS upload step.
+#   - Custom Config File {config_file} (File): Optional override for default config.yaml path.
+#   - Generate HTML Summary Report? {generate_report} (Boolean): Whether to generate a visual summary at the end.
+#
+# Notes:
+#   - Uses a step dispatcher to execute ordered functions defined in build_step_funcs
+#   - Skipped steps are safely logged and retained in the report JSON
+#   - Can resume from an existing report if rerun on the same project
+# =============================================================================
+
 import arcpy
 import time
 import os

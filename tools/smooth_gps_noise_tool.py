@@ -1,3 +1,38 @@
+# =============================================================================
+# 🛰️ Smooth GPS Noise (tools/smooth_gps_noise_tool.py)
+# -----------------------------------------------------------------------------
+# Tool Name:          SmoothGPSNoiseTool
+# Toolbox Context:    rmi_360_workflow.pyt
+# Version:            1.0.0
+# Author:             RMI Valuation, LLC
+# Created:            2025-05-08
+#
+# Description:
+#   Implements ArcPy Tool class that detects and flags suspect GPS points in an Oriented Imagery Dataset
+#   (OID) using geometric deviation and optional centerline validation. Optionally applies corrections
+#   based on detected outliers unless run in flag-only mode.
+#
+# File Location:      /tools/smooth_gps_noise_tool.py
+# Uses:
+#   - utils/smooth_gps_noise.py
+#   - utils/correct_gps_outliers.py
+#   - utils/arcpy_utils.py
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/smooth_gps_noise.md
+#
+# Parameters:
+#   - Oriented Imagery Dataset {oid_fc} (Feature Class): The OID feature class to analyze for GPS noise.
+#   - Reference Centerline (optional) {centerline_fc} (Feature Class): Optional M-aware line to validate GPS position against.
+#   - Flag Only (No Geometry Updates) {flag_only} (Boolean): If checked, flags outliers but does not correct geometry.
+#   - Config File {config_file} (File): Path to the project configuration YAML file.
+#
+# Notes:
+#   - Flag-only mode skips the coordinate update pass
+#   - Requires centerline to be in projected coordinate system if used
+#   - Updates QCFlag and optionally overwrites geometry of suspect features
+# =============================================================================
+
 import arcpy
 from utils.config_loader import get_default_config_path
 from utils.smooth_gps_noise import smooth_gps_noise

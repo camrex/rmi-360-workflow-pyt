@@ -1,3 +1,30 @@
+# =============================================================================
+# 🧭 Linear Referencing + Custom Attribute Updater (utils/update_linear_and_custom.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Assigns route ID, milepost, and custom fields to OID features using config-driven expressions
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Performs linear referencing of image points against an M-enabled centerline using LocateFeaturesAlongRoutes.
+#   Updates route and MP fields as well as user-defined custom fields from config expressions.
+#   Supports dynamic expression evaluation and field type coercion with warning messaging on failure.
+#
+# File Location:        /utils/update_linear_and_custom.py
+# Called By:            tools/update_linear_and_custom_tool.py, orchestrator
+# Int. Dependencies:    config_loader, arcpy_utils, expression_utils
+# Ext. Dependencies:    arcpy, typing
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/update_linear_and_custom.md
+#
+# Notes:
+#   - Automatically projects OID to match centerline SR for referencing
+#   - Supports optional disabling of linear referencing via config/tool parameter
+# =============================================================================
+
 __all__ = ["update_linear_and_custom"]
 
 import arcpy

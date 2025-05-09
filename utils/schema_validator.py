@@ -1,3 +1,31 @@
+# =============================================================================
+# ✅ OID Schema Validator (utils/schema_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates the presence and completeness of the OID schema template
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Checks the existence and field completeness of the configured OID schema template feature class.
+#   If auto-creation is enabled and the schema is missing or invalid, attempts to regenerate it
+#   using build_oid_schema.py and revalidate. Verifies registry-defined fields, custom schema blocks,
+#   and standard categories. Logs descriptive errors and raises on failure.
+#
+# File Location:        /utils/schema_validator.py
+# Called By:            create_oid_feature_class.py, orchestrator, config_loader
+# Int. Dependencies:    schema_paths, expression_utils, validate_config, build_oid_schema
+# Ext. Dependencies:    arcpy
+#
+# Documentation:
+#   See: docs/UTILITIES.md and docs/tools/create_oid_and_schema.md
+#
+# Notes:
+#   - Supports auto-creation via config["oid_schema_template"]["template"]["auto_create_oid_template"]
+#   - Detects and logs any missing required fields based on the registry and schema config
+# =============================================================================
+
 import arcpy
 from utils.schema_paths import resolve_schema_template_paths
 from utils.expression_utils import load_field_registry

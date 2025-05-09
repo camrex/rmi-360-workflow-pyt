@@ -1,3 +1,31 @@
+# =============================================================================
+# 🖼️ Image Enhancement Pipeline (utils/enhance_images.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Enhances 360° images using white balance, contrast, saturation, and sharpening
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+#
+# Description:
+#   Loads enhancement configuration, checks disk space, and processes all images in an OID
+#   feature class using OpenCV-based image enhancement operations. Enhancements include
+#   white balance correction, CLAHE contrast, saturation boost, sharpening, and brightness recovery.
+#   Supports batch multiprocessing, progress tracking, EXIF metadata preservation, and logging.
+#
+# File Location:        /utils/enhance_images.py
+# Called By:            tools/enhance_images_tool.py, tools/process_360_orchestrator.py
+# Int. Dependencies:    config_loader, arcpy_utils, check_disk_space, path_utils
+# Ext. Dependencies:    cv2, numpy, arcpy, csv, os, pathlib, typing, subprocess, concurrent.futures
+#
+# Documentation:
+#   See: docs/TOOL_GUIDES.md and docs/tools/enhance_images.md
+#
+# Notes:
+#   - Automatically determines parallelism via available CPU cores unless overridden
+#   - Recovers EXIF metadata after enhancement using ExifTool
+# =============================================================================
+
 import os
 import csv
 import cv2
