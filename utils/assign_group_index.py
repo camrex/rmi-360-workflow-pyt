@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/assign_group_index.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/assign_group_index.md
 #
 # Notes:
 #   - Raises if GroupIndex field is missing or AcquisitionDate is null

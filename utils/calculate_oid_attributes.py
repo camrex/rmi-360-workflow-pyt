@@ -19,7 +19,7 @@
 # Ext. Dependencies:    arcpy, os, json, re, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/add_images_to_oid.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/add_images_to_oid.md
 #
 # Notes:
 #   - Integrates reel_info.json if present to supplement reel assignment
@@ -33,9 +33,16 @@ import re
 import os
 import json
 from typing import Optional, Tuple, List
-from utils.config_loader import get_camera_offset_values, resolve_config
+from utils.config_loader import resolve_config
 from utils.arcpy_utils import log_message
 from utils.expression_utils import load_field_registry
+
+
+def _safe_float(value, default=0.0) -> float:
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
 
 
 def check_oid_fov_defaults(oid_fc_path: str, registry: dict, messages=None):
@@ -155,7 +162,20 @@ def enrich_oid_attributes(
         tool_name="calculate_oid_attributes"
     )
 
-    z_offset, camera_height = get_camera_offset_values(config)
+    # Compute Z offset and camera height
+    try:
+        z_cm = sum(_safe_float(v) for v in config["camera_offset"]["z"].values())
+        height_cm = sum(_safe_float(v) for v in config["camera_offset"]["camera_height"].values())
+        z_offset = z_cm / 100.0
+        camera_height = height_cm / 100.0
+    except KeyError as e:
+        log_message(f"Missing camera_offset key: {e}", messages, level="error", error_type=ValueError, config=config)
+        raise
+    except Exception as e:
+        log_message(f"Failed to compute camera offset or height: {e}", messages, level="error", error_type=ValueError,
+                    config=config)
+        raise
+
     sr_cfg = config.get("spatial_ref", {})
     h_wkid = sr_cfg.get("gcs_horizontal_wkid", 4326)
     v_wkid = sr_cfg.get("vcs_vertical_wkid", 5703)

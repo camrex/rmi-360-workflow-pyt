@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, os, pathlib, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/add_images_to_oid.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/add_images_to_oid.md
 #
 # Notes:
 #   - Supports recursive reel folder discovery and duplicate prevention

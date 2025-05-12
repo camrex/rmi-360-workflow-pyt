@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, csv, math, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/smooth_gps_noise.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/smooth_gps_noise.md
 #
 # Notes:
 #   - Flags GPS outliers using configurable multi-criteria scoring

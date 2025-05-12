@@ -20,7 +20,7 @@
 #   - utils/arcpy_utils.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/rename_and_tag.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_and_tag.md
 #
 # Parameters:
 #   - Oriented Imagery Dataset (OID) {oid_fc} (Feature Class): The Oriented Imagery Dataset to process.

@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, os, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/build_oid_footprints.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/build_oid_footprints.md
 #
 # Notes:
 #   - Restores env settings after footprint creation

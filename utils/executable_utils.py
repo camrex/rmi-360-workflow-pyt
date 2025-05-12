@@ -18,11 +18,13 @@
 # Ext. Dependencies:    subprocess, typing
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Handles FileNotFoundError, PermissionError, and general OS errors gracefully
 # =============================================================================
+
+# TODO: Now superceded by path_manager.py, consider removing this file altogether.
 
 import subprocess
 from typing import Optional

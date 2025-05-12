@@ -18,7 +18,7 @@
 # Ext. Dependencies:    os, yaml, datetime, typing, contextlib
 #
 # Documentation:
-#   See: docs/UTILITIES.md and docs/config_schema_reference.md
+#   See: docs_legacy/UTILITIES.md and docs_legacy/config_schema_reference.md
 #
 # Notes:
 #   - Supports modifiers: strip(), float(), int, date(), upper, lower
@@ -30,13 +30,13 @@ import yaml
 import contextlib
 from datetime import datetime
 from typing import Union, Optional, Any
-from utils.path_resolver import resolve_relative_to_pyt
+from utils.manager.path_manager import PathManager
 
 
 REQUIRED_REGISTRY_KEYS = {"name", "type", "length", "alias", "category", "expr", "oid_default", "orientation_format"}
 
 
-def load_field_registry(registry_path: str, config: Optional[dict] = None, category_filter: Optional[str] = None) \
+def load_field_registry(category_filter: Optional[str] = None) \
         -> dict:
     """
     Loads and validates a field registry from a YAML file.
@@ -45,8 +45,6 @@ def load_field_registry(registry_path: str, config: Optional[dict] = None, categ
     if the file is missing, cannot be parsed as a dictionary, or if required keys are absent.
 
     Args:
-        registry_path: Path to the registry YAML file.
-        config: Optional configuration dictionary, used for message logging or contextual validation.
         category_filter: If provided, only fields matching this category are included.
 
     Returns:
@@ -56,8 +54,9 @@ def load_field_registry(registry_path: str, config: Optional[dict] = None, categ
         FileNotFoundError: If the registry file does not exist.
         ValueError: If the file cannot be parsed as a dictionary or required keys are missing.
     """
-    if config is not None:
-        registry_path = resolve_relative_to_pyt(registry_path)
+    paths = PathManager()
+
+    registry_path = paths.oid_field_registry
 
     if not os.path.exists(registry_path):
         raise FileNotFoundError(f"Field registry file not found: {registry_path}")

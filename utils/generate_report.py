@@ -18,7 +18,7 @@
 # Ext. Dependencies:    jinja2, matplotlib, json, os, re, pathlib, datetime, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/generate_report.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/generate_report.md
 #
 # Notes:
 #   - Automatically locates and injects logo and templates from the config directory

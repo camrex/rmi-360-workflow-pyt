@@ -19,7 +19,7 @@
 #   - utils/arcpy_utils.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/create_oid_and_schema.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md
 #
 # Parameters:
 #   - Config File {config_file} (File): Path to the project-specific YAML configuration file defining schema and paths.

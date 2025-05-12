@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/smooth_gps_noise.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/smooth_gps_noise.md
 #
 # Notes:
 #   - Skips outliers at the beginning or end of the dataset (no anchors available)

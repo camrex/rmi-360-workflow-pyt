@@ -94,15 +94,15 @@ python -m utils.validate_config --file configs/config.yaml
 
 ## 📖 Documentation Index
 
-- 📘 [Toolbox Overview](./docs/TOOL_OVERVIEW.md)
-- 🔧 [Tool Guides](./docs/TOOL_GUIDES.md)
-- ⚙️ [Configuration Guide](./docs/CONFIG_GUIDE.md)
-- 🧰 [Shared Utilities](./docs/UTILITIES.md)
-- ☁️ [AWS Setup Guide](./docs/AWS_SETUP_GUIDE.md)
-- 📋 [Schema Changelog](./docs/SCHEMA_CHANGELOG.md)
+- 📘 [Toolbox Overview](docs_legacy/TOOL_OVERVIEW.md)
+- 🔧 [Tool Guides](docs_legacy/TOOL_GUIDES.md)
+- ⚙️ [Configuration Guide](docs_legacy/CONFIG_GUIDE.md)
+- 🧰 [Shared Utilities](docs_legacy/UTILITIES.md)
+- ☁️ [AWS Setup Guide](docs_legacy/AWS_SETUP_GUIDE.md)
+- 📋 [Schema Changelog](docs_legacy/SCHEMA_CHANGELOG.md)
 - 📄 [TODO (Developer Tasks)](./TODO.md)
 - 📝 [Changelog](./CHANGELOG.md)
-- 🛣 [Roadmap](./docs/ROADMAP.md)
+- 🛣 [Roadmap](docs_legacy/ROADMAP.md)
 
 ---
 

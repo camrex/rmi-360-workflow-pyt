@@ -19,7 +19,7 @@
 # External Tools:       Mosaic Processor CLI, MistikaVR (external dependency)
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/run_mosaic_processor.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/run_mosaic_processor.md
 #
 # Notes:
 #   - .cfg path is reserved for future functionality

@@ -18,7 +18,7 @@
 # Ext. Dependencies:    os, re
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Skips files already correctly padded

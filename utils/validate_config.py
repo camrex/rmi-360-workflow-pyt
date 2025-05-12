@@ -19,7 +19,7 @@
 # Ext. Dependencies:    shutil, string, typing, pathlib
 #
 # Documentation:
-#   See: docs/CONFIG_GUIDE.md and docs/config_schema_reference.md
+#   See: docs_legacy/CONFIG_GUIDE.md and docs_legacy/config_schema_reference.md
 #
 # Notes:
 #   - Uses per-tool validator dispatch via `TOOL_VALIDATORS` registry
@@ -35,7 +35,7 @@ from utils.arcpy_utils import log_message
 from utils.expression_utils import load_field_registry, resolve_expression
 from utils.path_resolver import resolve_relative_to_pyt
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.0.0"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.0.1"}
 
 
 class ConfigValidationError(Exception):

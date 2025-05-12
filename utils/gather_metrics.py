@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, typing, collections
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Gracefully handles empty or incomplete datasets

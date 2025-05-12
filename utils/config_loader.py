@@ -18,15 +18,17 @@
 # Ext. Dependencies:    os, yaml, typing
 #
 # Documentation:
-#   See: docs/UTILITIES.md and docs/config_schema_reference.md
+#   See: docs_legacy/UTILITIES.md and docs_legacy/config_schema_reference.md
 #
 # Notes:
 #   - Automatically infers __project_root__ from OID if not explicitly set
 #   - Enforces top-level schema version compatibility and deprecation warnings
 # =============================================================================
 
-__all__ = ["load_config", "prepare_config", "load_and_validate_config", "get_camera_offset_values",
+__all__ = ["load_config", "prepare_config", "load_and_validate_config",
            "get_default_config_path", "resolve_config"]
+
+# TODO: Superceded by config_manager.py, consider removing?
 
 import os
 import yaml
@@ -34,7 +36,7 @@ from typing import Any, Optional, NoReturn
 from utils.validate_config import validate_full_config, validate_tool_config
 from utils.arcpy_utils import log_message, infer_project_root_from_oid
 
-EXPECTED_SCHEMA_VERSION = "1.0.0"  # Update this when schema changes significantly
+EXPECTED_SCHEMA_VERSION = "1.0.1"  # Update this when schema changes significantly
 CONFIG_CACHE: Optional[dict[str, Any]] = None
 
 
@@ -180,33 +182,6 @@ def load_and_validate_config(
         validate_full_config(config, messages=messages)
 
     return config
-
-
-def get_camera_offset_values(config: Optional[dict[str, Any]] = None, messages=None) -> tuple[float, float]:
-    """
-    Calculates the vertical offset and total camera height in meters from the config.
-    
-    If the config is not provided, it is loaded automatically. Returns zeros if the
-    required fields are missing or invalid.
-    
-    Returns:
-        A tuple containing (z_offset_meters, camera_height_meters).
-    """
-    if config is None:
-        config = load_config()
-
-    try:
-        z_cm = sum(_safe_float(v) for v in config["camera_offset"]["z"].values())
-        height_cm = sum(_safe_float(v) for v in config["camera_offset"]["camera_height"].values())
-    except KeyError as e:
-        log_message(f"Missing camera_offset key: {e}", messages, level="error", error_type=ValueError, config=config)
-        raise
-    except Exception as e:
-        log_message(f"Failed to compute camera offset or height: {e}", level="error", error_type=ValueError,
-                    config=config)
-        raise
-
-    return z_cm / 100.0, height_cm / 100.0
 
 
 def resolve_config(

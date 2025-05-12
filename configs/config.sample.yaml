@@ -5,7 +5,7 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.0.0  # Pre-release schema version (non-enforced)
+schema_version: 1.0.1  # Pre-release schema version (non-enforced)
 debug_messages: false
 
 # ------------------------------------------------------------------------------
@@ -305,7 +305,7 @@ oid_schema_template:
   template:
     auto_create_oid_template: true
     templates_dir: "templates"
-    gdb_path: "templates.gdb"
+    gdb_path: "templates.gdb"  # located in "templates_dir"
     template_name: "oid_schema_template"
   esri_default:
     field_registry: "configs/esri_oid_fields_registry.yaml"
@@ -780,4 +780,5 @@ orchestrator:
 
   # Location of the shared backup geodatabase where OID snapshots will be stored.
   # Backups are named like: OID_before_{step}_{timestamp}
-  oid_backup_fgdb: "backups/oid_snapshots.gdb"
+  backup_folder: "backups"
+  oid_backup_fgdb: "oid_snapshots.gdb"

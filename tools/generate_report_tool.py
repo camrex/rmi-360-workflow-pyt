@@ -18,7 +18,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/generate_report.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/generate_report.md
 #
 # Parameters:
 #   - Report JSON File {report_json} (File): Path to the saved report_data_<slug>.json file containing report input and stats.

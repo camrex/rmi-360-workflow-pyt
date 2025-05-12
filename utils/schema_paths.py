@@ -18,11 +18,14 @@
 # Ext. Dependencies:    pathlib, dataclasses
 #
 # Documentation:
-#   See: docs/UTILITIES.md and docs/config_schema_reference.md
+#   See: docs_legacy/UTILITIES.md and docs_legacy/config_schema_reference.md
 #
 # Notes:
 #   - Refactor planned: convert all path-like fields to pathlib.Path objects
 # =============================================================================
+
+# TODO: Now superceded by path_manager.py, consider removing this file altogether.
+# TODO: Need to add template table name to path_manager.py
 
 from dataclasses import dataclass
 from utils.config_loader import load_config

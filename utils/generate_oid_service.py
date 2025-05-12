@@ -19,7 +19,7 @@
 # Ext. Dependencies:    arcpy, arcgis.gis, os, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/generate_oid_service.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/generate_oid_service.md
 #
 # Notes:
 #   - Automatically checks/creates portal folder prior to publishing

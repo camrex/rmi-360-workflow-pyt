@@ -19,7 +19,7 @@
 #   - utils/arcpy_utils.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/smooth_gps_noise.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/smooth_gps_noise.md
 #
 # Parameters:
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): The OID feature class to analyze for GPS noise.

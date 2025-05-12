@@ -19,7 +19,7 @@
 # Ext. Dependencies:    cv2, numpy, arcpy, csv, os, pathlib, typing, subprocess, concurrent.futures
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/enhance_images.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md
 #
 # Notes:
 #   - Automatically determines parallelism via available CPU cores unless overridden
