@@ -31,6 +31,7 @@ import yaml
 from typing import Any, List, Optional
 
 from utils.expression_utils import resolve_expression
+from utils.manager.config_manager import ConfigManager
 
 __all__ = ["PathManager"]
 
@@ -141,12 +142,6 @@ class PathManager:
         return self.panos / folder
 
     @property
-    def oid_schema_gdb(self):
-        """Path to the OID schema GDB (inside templates dir, resolved from config)."""
-        gdb_name = self._get_config_value("oid_schema_template.template.gdb_path", default="templates.gdb")
-        return self.templates / gdb_name
-
-    @property
     def oid_field_registry(self):
         """Path to the ESRI OID field registry YAML (from oid_schema_template.esri_default.field_registry)."""
         rel_path = self._get_config_value(
@@ -155,9 +150,20 @@ class PathManager:
         return (self.script_base / rel_path).resolve()
 
     @property
+    def oid_schema_gdb(self):
+        """Path to the OID schema GDB (inside templates dir, resolved from config)."""
+        gdb_name = self._get_config_value("oid_schema_template.template.gdb_path", default="templates.gdb")
+        return self.templates / gdb_name
+
+    @property
     def oid_schema_template_name(self) -> str:
         """Returns the configured name of the OID schema template table/feature class."""
         return self._get_config_value("oid_schema_template.template.template_name", default="oid_schema_template")
+
+    @property
+    def oid_schema_template_path(self) -> str:
+        """Returns the configured path of the OID schema template table/feature class."""
+        return self.oid_schema_gdb / self.oid_schema_template_name
 
     @property
     def geoloc500_config_path(self):
@@ -199,7 +205,7 @@ class PathManager:
             return Path(val).resolve()
         return None
 
-    def get_log_file_path(self, log_key: str) -> Path:
+    def get_log_file_path(self, log_key: str, cfg: Optional["ConfigManager"] = None) -> Path:
         """
         Constructs the full path for a log file with optional prefix.
 
@@ -212,6 +218,7 @@ class PathManager:
 
         Args:
             log_key (str): The name of the log config key (e.g., 'process_log', 'enhance_log').
+            cfg:
 
         Returns:
             Path: A fully resolved Path object pointing to the log file.
@@ -240,7 +247,7 @@ class PathManager:
         prefix = ""
         if prefix_expr:
             try:
-                resolved = resolve_expression(prefix_expr, config=self.config)
+                resolved = resolve_expression(prefix_expr, cfg=cfg)
                 if not isinstance(resolved, (str, int, float)):
                     raise ValueError(f"logs.prefix must resolve to a string/int/float, got {type(resolved).__name__}")
                 prefix = str(resolved).strip()

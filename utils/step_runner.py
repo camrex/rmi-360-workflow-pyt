@@ -40,9 +40,7 @@ def run_steps(
     start_index: int,
     param_values: Dict[str, Any],
     report_data: Dict[str, Any],
-    project_folder: str,
     cfg: ConfigManager,
-    messages,
     wait_config: Optional[dict] = None
 ) -> List[Dict[str, Any]]:
     """
@@ -59,9 +57,7 @@ def run_steps(
         start_index: Index in step_order to begin execution.
         param_values: Dictionary of parameters, including ArcPy parameters.
         report_data: Dictionary representing the report, updated incrementally with step results.
-        project_folder: Path to the root project folder.
-        cfg: Configuration dictionary.
-        messages: ArcGIS messages interface for logging.
+        cfg (ConfigManager): Active configuration object with access to logging and paths.
         wait_config: Optional dictionary controlling waiting and OID backup behavior.
     
     Returns:
@@ -94,7 +90,7 @@ def run_steps(
             }
             results.append(step_result)
             report_data["steps"].append(step_result)
-            save_report_json(report_data, project_folder, cfg, messages)
+            save_report_json(report_data, cfg)
             continue
 
         # Optional OID backup before this step
@@ -119,17 +115,16 @@ def run_steps(
                 logger.info(f"⏳ Waiting {wait_seconds} seconds before running step: {label}")
                 time.sleep(wait_seconds)
 
-        logger.info(f"▶️ {label}")  # TODO logger.step needs to be implemented
         step_start = datetime.now(timezone.utc)
 
         try:
-            func()
+            with logger.step(label):
+                func()
             status = "✅"
             notes = "Success"
         except Exception as e:
             status = "❌"
             notes = f"{e}"
-            logger.error(f"{label} failed: {e}")
 
         step_end = datetime.now(timezone.utc)
         elapsed = f"{(step_end - step_start).total_seconds():.1f} sec"
@@ -150,7 +145,7 @@ def run_steps(
         report_data["steps"].append(step_result)
 
         # ✅ Save current state to JSON after each step
-        save_report_json(report_data, project_folder, cfg, messages)
+        save_report_json(report_data, cfg)
 
         # If the step failed, stop execution (optional; remove if continuing is preferred)
         if status == "❌":

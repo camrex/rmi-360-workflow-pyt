@@ -25,7 +25,6 @@
 #   - Skips invalid or missing folders gracefully (returns 0 count and "0 B")
 # =============================================================================
 
-# TODO: Consider renaming this file to folder_stats.py after path-related cleanup is complete
 
 import os
 import humanize

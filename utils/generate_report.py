@@ -27,22 +27,20 @@
 
 import os
 import re
+import json
+import matplotlib.pyplot as plt
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
-
+from typing import Dict, Any
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-import matplotlib.pyplot as plt
 
-from utils.arcpy_utils import log_message
-from utils.schema_paths import resolve_schema_template_paths
+from utils.manager.config_manager import ConfigManager
 
 
 def generate_full_process_report(
     report_data: Dict[str, Any],
-    output_dir: str,
-    output_basename: str = "report",
-    messages=None
+    cfg: ConfigManager,
+    output_basename: str = "report"
 ):
     """
     Generates a process report in HTML format, including charts and branding.
@@ -53,13 +51,15 @@ def generate_full_process_report(
     
     Args:
         report_data: Dictionary containing report content, including reels, steps, and configuration.
-        output_dir: Directory where the report files will be saved.
+        cfg (ConfigManager): Active configuration context, used for logging and path resolution.
         output_basename: Base filename for the output report files (default is "report").
-        messages: Optional message collector for logging.
     
     Returns:
         A dictionary with key "html_path" indicating the location of the generated file.
     """
+    logger = cfg.get_logger()
+    paths = cfg.paths
+    output_dir = paths.report
     os.makedirs(output_dir, exist_ok=True)
     report_data["generated_on"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -75,35 +75,34 @@ def generate_full_process_report(
                 f.write('test')
             os.remove(test_file)
         except (PermissionError, OSError) as e:
-            log_message(f"[WARNING] Chart output directory not writable: {e}", messages, level="warning")
+            logger.warning(f"Chart output directory not writable: {e}")
             raise
 
         plot_images_per_reel(report_data.get("reels", []), chart_path_images)
-        plot_time_per_step(report_data.get("steps", []), chart_path_steps)
+        plot_time_per_step(report_data.get("steps", []), chart_path_steps, logger)
     except Exception as e:
-        log_message(f"[WARNING] Failed to generate charts: {e}", messages, level="warning")
+        logger.warning(f"Failed to generate charts: {e}")
 
     try:
-        resolved_paths = resolve_schema_template_paths(report_data.get("config", {}))
-        template_dir_resolved = resolved_paths.templates_dir
+        template_dir = paths.templates
 
         # Resolve absolute path to the logo file so it works in browser view
-        logo_path = Path(template_dir_resolved) / "assets" / "rmi_logo.png"
+        logo = cfg.get("logs.logo_filename")
+        logo_path = Path(template_dir) / "assets" / logo
         report_data["logo_path"] = logo_path.resolve().as_uri()
 
-        log_message(f"[DEBUG] Resolved template dir: {template_dir_resolved}", messages, level="debug")
-        template_path = os.path.join(template_dir_resolved, "process_report_template.html")
-        log_message(f"[DEBUG] Checking for template file: {template_path}", messages, level="debug")
+        logger.debug(f"Template dir: {template_dir}")
+        template_path = os.path.join(template_dir, "process_report_template.html")
+        logger.debug(f"Checking for template file: {template_path}")
 
         if not os.path.exists(template_path):
-            raise FileNotFoundError(
-                f"Template file not found at: {template_path}. "
-                f"Please ensure the template exists in the {template_dir_resolved} directory "
-                f"or check the 'template.templates_dir' setting in your configuration."
-            )
+            logger.error(f"Template file not found at: {template_path}."
+                         f"Please ensure the template exists in the {template_dir} directory "
+                         f"or check the 'template.templates_dir' setting in your configuration.",
+                         error_type=FileNotFoundError)
 
         env = Environment(
-            loader=FileSystemLoader(template_dir_resolved),
+            loader=FileSystemLoader(template_dir),
             autoescape=select_autoescape(['html'])
         )
 
@@ -114,14 +113,14 @@ def generate_full_process_report(
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_out)
 
-        log_message(f"✅ HTML report written to: {html_path}", messages)
+        logger.info(f"✅ HTML report written to: {html_path}")
 
         return {
-            "html_path": html_path
+            "html_path": str(html_path)
         }
 
     except Exception as e:
-        log_message(f"[ERROR] Report generation failed: {type(e).__name__}: {e}", messages, level="error")
+        logger.error(f"Report generation failed: {type(e).__name__}: {e}")
         raise  # Re-raise if you want upstream logic to catch this
 
 
@@ -157,7 +156,7 @@ def extract_time_seconds(time_str: str) -> float:
     return float(m.group(1)) if m else 0.0
 
 
-def plot_time_per_step(steps, output_path, messages=None):
+def plot_time_per_step(steps, output_path, logger):
     """
     Generates a horizontal bar chart of execution times for completed workflow steps.
     
@@ -174,7 +173,7 @@ def plot_time_per_step(steps, output_path, messages=None):
             times_sec.append(extract_time_seconds(s["time"]))  # Use the new time extraction function
         except Exception as e:
             # Log any errors, though the function itself ensures 0.0 is returned for invalid times
-            log_message(f"Error processing time for step {s['name']}: {e}", messages, level="warning")
+            logger.warning(f"Error processing time for step {s['name']}: {e}")
             times_sec.append(0.0)
 
     # Generate the bar chart
@@ -189,10 +188,7 @@ def plot_time_per_step(steps, output_path, messages=None):
 
 def generate_report_from_json(
     json_path: str,
-    output_dir: str = None,
-    messages=None,
-    config: Optional[dict] = None,
-    config_file: Optional[str] = None
+    cfg: ConfigManager,
 ):
     """
     Generates a process report from a JSON file.
@@ -200,35 +196,25 @@ def generate_report_from_json(
     Loads report data from the specified JSON file, attaches configuration data if provided or available, determines
     the output directory, and generates an HTML report. Raises an exception if report generation fails.
     """
-    import json
+    logger = cfg.get_logger()
 
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             report_data = json.load(f)
 
-        log_message(f"📄 Loaded report data from: {json_path}", messages, config=config)
+        logger.info(f"📄 Loaded report data from: {json_path}")
 
         # Reattach config if missing or externally supplied
-        if config:
-            report_data["config"] = config
-        elif config_file:
-            from utils.config_loader import resolve_config
-            resolved = resolve_config(config_file=config_file, messages=messages)
-            report_data["config"] = resolved
-        elif "config" not in report_data:
-            log_message("[WARNING] Config not found in report JSON — some paths or logos may not resolve", messages,
-                        config=config)
-
-        # Derive output_dir if not supplied
-        if not output_dir:
-            output_dir = report_data.get("paths", {}).get("report_dir", os.path.dirname(json_path))
+        if cfg:
+            report_data["config"] = cfg
+        else:
+            logger.warning("Config not found in report JSON — some paths or logos may not resolve")
 
         return generate_full_process_report(
             report_data=report_data,
-            output_dir=output_dir,
-            messages=messages
+            cfg=cfg
         )
 
     except Exception as e:
-        log_message(f"[ERROR] Failed to generate report from JSON: {e}", messages, level="error", config=config)
+        logger.error(f"Failed to generate report from JSON: {e}")
         raise

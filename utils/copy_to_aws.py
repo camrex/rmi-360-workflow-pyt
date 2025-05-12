@@ -40,10 +40,9 @@ from botocore.config import Config
 from pathlib import Path
 
 from utils.config_loader import resolve_config
-from utils.arcpy_utils import log_message
 from utils.path_utils import get_log_path
 from utils.expression_utils import resolve_expression
-from utils.progressor_utils import Progressor
+from utils.manager.progressor_manager import ProgressorManager
 from utils.aws_utils import get_aws_credentials
 
 
@@ -204,7 +203,7 @@ def upload_directory_with_transfer_manager(
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow([timestamp_str, file_path, s3_tgt_key, status, error, file_size, duration])
 
-    with Progressor(total=total, label="Uploading images to AWS...", messages=messages) as progress:
+    with ProgressorManager(total=total, label="Uploading images to AWS...", messages=messages) as progress:
         last = 0
 
         for i in range(0, len(upload_tasks), upload_batch_size):

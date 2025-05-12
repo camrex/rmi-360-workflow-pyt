@@ -26,7 +26,7 @@
 # =============================================================================
 
 import json
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from utils.manager.config_manager import ConfigManager
 
 
@@ -37,7 +37,9 @@ def resolve_if_expression(val, cfg:ConfigManager):
     If the input is a string beginning with 'config.', evaluates it as an expression
     against the provided config dictionary. Otherwise, returns the value unchanged.
     """
-    return cfg.resolve(val) if isinstance(val, str) and val.startswith("config.") else val
+    if isinstance(val, str) and val.startswith('config.'):
+        return cfg.resolve(val)
+    return val
 
 
 def initialize_report_data(p, cfg: ConfigManager) -> Dict:
@@ -112,7 +114,7 @@ def save_report_json(report_data, cfg: ConfigManager):
         return None
 
 
-def load_report_json_if_exists(cfg:ConfigManager) -> Optional[Dict[str, any]]:
+def load_report_json_if_exists(cfg:ConfigManager) -> Optional[Dict[str, Any]]:
     """
     Attempts to load an existing report JSON file for the project.
     

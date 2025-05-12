@@ -45,7 +45,7 @@ from utils.generate_oid_service import generate_oid_service
 from utils.arcpy_utils import str_to_bool
 
 
-def build_step_funcs(p, config, messages):
+def build_step_funcs(p, cfg):
     """
     Builds a dictionary of processing step descriptors for an oriented imagery workflow.
     
@@ -59,16 +59,14 @@ def build_step_funcs(p, config, messages):
             "func": lambda: run_mosaic_processor(
                 project_folder=p["project_folder"],
                 input_dir=p["input_reels_folder"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "create_oid": {
             "label": "Create Oriented Imagery Dataset",
             "func": lambda: create_oriented_imagery_dataset(
                 output_fc_path=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "add_images": {
@@ -76,24 +74,21 @@ def build_step_funcs(p, config, messages):
             "func": lambda: add_images_to_oid(
                 project_folder=p["project_folder"],
                 oid_fc_path=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "assign_group_index": {
             "label": "Assign Group Index",
             "func": lambda: assign_group_index(
                 oid_fc_path=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "enrich_oid": {
             "label": "Calculate OID Attributes",
             "func": lambda: enrich_oid_attributes(
                 oid_fc_path=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "smooth_gps": {
@@ -101,16 +96,14 @@ def build_step_funcs(p, config, messages):
             "func": lambda: smooth_gps_noise(
                 oid_fc=p["oid_fc"],
                 centerline_fc=p["centerline_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "correct_gps": {
             "label": "Correct Flagged GPS Points",
             "func": lambda: correct_gps_outliers(
                 oid_fc=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "update_linear_custom": {
@@ -120,16 +113,14 @@ def build_step_funcs(p, config, messages):
                 centerline_fc=p["centerline_fc"],
                 route_id_field=p["route_id_field"],
                 enable_linear_ref=str_to_bool(p["enable_linear_ref"]),
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "enhance_images": {
             "label": "Enhance Images",
             "func": lambda: enhance_images_in_oid(
                 oid_fc_path=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             ),
             "skip": lambda params: "Skipped (enhancement disabled)" if params.get("skip_enhance_images") == "true" else None
         },
@@ -137,47 +128,41 @@ def build_step_funcs(p, config, messages):
             "label": "Rename Images",
             "func": lambda: rename_images(
                 oid_fc=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "update_metadata": {
             "label": "Update EXIF Metadata",
             "func": lambda: update_metadata_from_config(
                 oid_fc=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "geocode": {
             "label": "Geocode Images",
             "func": lambda: geocode_images(
                 oid_fc=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "build_footprints": {
             "label": "Build OID Footprints",
             "func": lambda: build_oid_footprints(
                 oid_fc=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             )
         },
         "deploy_lambda_monitor": {
             "label": "Deploy Lambda AWS Monitor",
             "func": lambda: deploy_lambda_monitor(
-                config=config,
-                messages=messages
+                cfg=cfg
             ),
             "skip": lambda params: "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
         },
         "copy_to_aws": {
             "label": "Upload to AWS S3",
             "func": lambda: copy_to_aws(
-                config=config,
-                messages=messages
+                cfg=cfg
             ),
             "skip": lambda params: "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
         },
@@ -185,8 +170,7 @@ def build_step_funcs(p, config, messages):
             "label": "Generate OID Service",
             "func": lambda: generate_oid_service(
                 oid_fc=p["oid_fc"],
-                config=config,
-                messages=messages
+                cfg=cfg
             ),
             "skip": lambda params: "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
         }

@@ -32,6 +32,7 @@ from utils.validate_config import validate_full_config, validate_tool_config
 from utils.expression_utils import resolve_expression
 from utils.manager.path_manager import PathManager
 from utils.manager.log_manager import LogManager
+from utils.manager.progressor_manager import ProgressorManager
 
 EXPECTED_SCHEMA_VERSION = "1.0.1"
 
@@ -144,7 +145,7 @@ class ConfigManager:
         """
         Resolve default config path using PathManager.
 
-        Checks for 'config.yaml' or falls back to 'config.sample.yaml' in the configs directory.
+        Checks for 'config.yaml' or falls back to 'config.sample.yaml' in the config's directory.
         Uses a temporary PathManager to locate the config files.
 
         Args:
@@ -261,7 +262,7 @@ class ConfigManager:
         Returns:
             Any: Resolved expression value.
         """
-        return resolve_expression(expr, config=self._config, row=row)
+        return resolve_expression(expr, cfg=self, row=row)
 
     @property
     def raw(self) -> dict:
@@ -320,3 +321,17 @@ class ConfigManager:
         if not self._lm:
             raise RuntimeError("LogManager was not initialized — project_base is missing.")
         return self._lm
+
+    def get_progressor(self, total: int, label: str = "Processing...", step: int = 1) -> ProgressorManager:
+        """
+        Returns a ProgressorManager initialized with the active LogManager.
+
+        Args:
+            total (int): Total steps for the progressor
+            label (str): Label to show for progress bar
+            step (int): Step increment
+
+        Returns:
+            ProgressorManager: Progress tracker instance
+        """
+        return ProgressorManager(total=total, label=label, step=step, log_manager=self.get_logger())

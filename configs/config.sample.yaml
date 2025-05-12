@@ -43,6 +43,7 @@ debug_messages: false
 logs:
   path: "logs"
   report_path: "report"
+  logo_filename: "rmi_logo.png"  # Logo should be located in templates/assets
   prefix: "config.project.slug"
   mosaic_processor_log: "mosaic_processor_output.log"
   exiftool_logs: "exiftool_log.txt"
