@@ -19,7 +19,7 @@
 # Ext. Dependencies:    arcpy
 #
 # Documentation:
-#   See: docs/UTILITIES.md and docs/tools/create_oid_and_schema.md
+#   See: docs_legacy/UTILITIES.md and docs_legacy/tools/create_oid_and_schema.md
 #
 # Notes:
 #   - Supports auto-creation via config["oid_schema_template"]["template"]["auto_create_oid_template"]

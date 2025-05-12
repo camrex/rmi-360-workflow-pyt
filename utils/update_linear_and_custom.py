@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/update_linear_and_custom.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/update_linear_and_custom.md
 #
 # Notes:
 #   - Automatically projects OID to match centerline SR for referencing

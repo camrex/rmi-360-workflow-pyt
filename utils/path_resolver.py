@@ -18,12 +18,14 @@
 # Ext. Dependencies:    pathlib, typing
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Uses pathlib for robust cross-platform path operations
 #   - Designed to work both in development and inside ArcGIS Pro deployments
 # =============================================================================
+
+# TODO: Now superceded by path_manager.py, consider removing this file altogether.
 
 from pathlib import Path
 from typing import Union

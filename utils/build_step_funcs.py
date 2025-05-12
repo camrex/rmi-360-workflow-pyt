@@ -18,7 +18,7 @@
 # Ext. Dependencies:    None
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/TOOL_OVERVIEW.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/TOOL_OVERVIEW.md
 #
 # Notes:
 #   - Controls step label mapping, execution logic, and skip conditions

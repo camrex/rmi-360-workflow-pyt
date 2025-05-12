@@ -20,7 +20,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/add_images_to_oid.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/add_images_to_oid.md
 #
 # Parameters:
 #   - Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project.

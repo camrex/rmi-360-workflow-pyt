@@ -1,5 +1,5 @@
 # =============================================================================
-# 📁 Folder Statistics Utility (utils/folder_utils.py)
+# 📁 Folder Statistics Utility (utils/folder_stats.py)
 # -----------------------------------------------------------------------------
 # Purpose:             Calculates file counts and total size of image directories for reporting
 # Project:             RMI 360 Imaging Workflow Python Toolbox
@@ -12,18 +12,20 @@
 #   cumulative size. Formats byte totals into human-readable strings using `humanize`. Used for
 #   reporting logs and disk space estimation in enhancement and renaming steps.
 #
-# File Location:        /utils/folder_utils.py
+# File Location:        /utils/folder_stats.py
 # Called By:            utils/check_disk_space.py, reporting
 # Int. Dependencies:    None
 # Ext. Dependencies:    os, humanize, pathlib
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Recursively matches any extensions provided via argument (default: ['.jpg'])
 #   - Skips invalid or missing folders gracefully (returns 0 count and "0 B")
 # =============================================================================
+
+# TODO: Consider renaming this file to folder_stats.py after path-related cleanup is complete
 
 import os
 import humanize

@@ -20,7 +20,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/copy_to_aws.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/copy_to_aws.md
 #
 # Parameters:
 #   - Input Folder for Images to be Uploaded {input_image_folder} (Folder): Directory containing images to upload to AWS S3.

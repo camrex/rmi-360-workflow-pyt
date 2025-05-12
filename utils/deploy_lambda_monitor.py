@@ -18,7 +18,7 @@
 # Ext. Dependencies:    boto3, botocore, json, zipfile, io, contextlib, datetime, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md, docs/tools/copy_to_aws.md, and AWS_SETUP_GUIDE.md
+#   See: docs_legacy/TOOL_GUIDES.md, docs_legacy/tools/copy_to_aws.md, and AWS_SETUP_GUIDE.md
 #
 # Notes:
 #   - Deploys both progress monitor and auto-disable Lambda functions

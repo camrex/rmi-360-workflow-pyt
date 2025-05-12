@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, os, shutil, csv, pathlib, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/rename_images.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_images.md
 #
 # Notes:
 #   - Auto-detects duplicate filenames and applies numeric suffix (e.g., _v2)

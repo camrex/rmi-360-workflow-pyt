@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, sys, typing
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Resets ArcGIS progressor on exit if used

@@ -18,12 +18,14 @@
 # Ext. Dependencies:    os, typing
 #
 # Documentation:
-#   See: docs/UTILITIES.md
+#   See: docs_legacy/UTILITIES.md
 #
 # Notes:
 #   - Automatically inserts dynamic prefix (if defined) before filename
 #   - Ensures log directory exists or raises descriptive error
 # =============================================================================
+
+# TODO: Now superceded by path_manager.py, consider removing this file altogether.
 
 import os
 from typing import Optional

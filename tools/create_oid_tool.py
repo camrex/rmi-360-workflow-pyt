@@ -18,7 +18,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/create_oid_and_schema.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md
 #
 # Parameters:
 #   - Config File {config_file} (File): Optional path to a YAML config file

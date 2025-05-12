@@ -19,7 +19,7 @@
 #   - utils/arcpy_utils.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/enhance_images.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md
 #
 # Parameters:
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): Input OID feature class containing images to enhance.

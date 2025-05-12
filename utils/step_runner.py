@@ -19,7 +19,7 @@
 # Ext. Dependencies:    time, datetime, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/process_360_orchestrator.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md
 #
 # Notes:
 #   - Logs each step with emoji-coded status (✅, ❌, ⏭️)
@@ -29,8 +29,9 @@
 import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
-from utils.arcpy_utils import log_message, backup_oid
+from utils.arcpy_utils import backup_oid
 from utils.report_data_builder import save_report_json
+from utils.manager.config_manager import ConfigManager
 
 
 def run_steps(
@@ -40,7 +41,7 @@ def run_steps(
     param_values: Dict[str, Any],
     report_data: Dict[str, Any],
     project_folder: str,
-    config: dict,
+    cfg: ConfigManager,
     messages,
     wait_config: Optional[dict] = None
 ) -> List[Dict[str, Any]]:
@@ -59,19 +60,19 @@ def run_steps(
         param_values: Dictionary of parameters, including ArcPy parameters.
         report_data: Dictionary representing the report, updated incrementally with step results.
         project_folder: Path to the root project folder.
-        config: Configuration dictionary.
+        cfg: Configuration dictionary.
         messages: ArcGIS messages interface for logging.
         wait_config: Optional dictionary controlling waiting and OID backup behavior.
     
     Returns:
         A list of dictionaries, each summarizing the outcome of a step, including status, timing, and notes.
     """
+    logger = cfg.get_logger()
     results = []
 
     for step_key in step_order[start_index:]:
         if step_key not in step_funcs:
-            log_message(f"❌ Step '{step_key}' not found in step_funcs dictionary", messages, level="error",
-                        error_type=KeyError, config=config)
+            logger.error(f"Step '{step_key}' not found in step_funcs dictionary", error_type=KeyError)
             break
         step = step_funcs[step_key]
         label = step.get("label", step_key)
@@ -80,11 +81,11 @@ def run_steps(
         try:
             skip_reason = skip_fn(param_values) if skip_fn else None
         except Exception as e:
-            log_message(f"[WARNING] Skip-check for '{label}' failed: {e}", messages, level="warning", config=config)
+            logger.warning(f"Skip-check for '{label}' failed: {e}")
             skip_reason = None
 
         if skip_reason:
-            log_message(f"⏭️ {label} — {skip_reason}", messages, config=config)
+            logger.info(f"⏭️ {label} — {skip_reason}")
             step_result = {
                 "name": label,
                 "status": "⏭️",
@@ -93,7 +94,7 @@ def run_steps(
             }
             results.append(step_result)
             report_data["steps"].append(step_result)
-            save_report_json(report_data, project_folder, config, messages)
+            save_report_json(report_data, project_folder, cfg, messages)
             continue
 
         # Optional OID backup before this step
@@ -102,25 +103,23 @@ def run_steps(
             backup_steps = wait_config.get("backup_before_step", [])
             if step_key in backup_steps:
                 if "oid_fc" not in param_values:
-                    log_message("[WARNING] `oid_fc` not supplied skipping OID backup", messages, level="warning",
-                                config=config)
+                    logger.warning("`oid_fc` not supplied skipping OID backup")
                 else:
                     try:
-                        backup_oid(param_values["oid_fc"], step_key, config, messages)
+                        backup_oid(param_values["oid_fc"], step_key, cfg)
                         backup_occurred = True
                     except Exception as e:
-                        log_message(f"[WARNING] Failed to back up OID before step '{step_key}': {e}",
-                                    messages, level="warning", config=config)
+                        logger.warning(f"Failed to back up OID before step '{step_key}': {e}")
 
         # ⏳ Optional wait before next step
         if wait_config and wait_config.get("wait_between_steps", False):
             wait_steps = wait_config.get("wait_before_step", [])
             wait_seconds = wait_config.get("wait_duration_sec", 60)
             if step_key in wait_steps:
-                log_message(f"⏳ Waiting {wait_seconds} seconds before running step: {label}", messages, config=config)
+                logger.info(f"⏳ Waiting {wait_seconds} seconds before running step: {label}")
                 time.sleep(wait_seconds)
 
-        log_message(f"▶️ {label}", messages, config=config)
+        logger.info(f"▶️ {label}")  # TODO logger.step needs to be implemented
         step_start = datetime.now(timezone.utc)
 
         try:
@@ -130,7 +129,7 @@ def run_steps(
         except Exception as e:
             status = "❌"
             notes = f"{e}"
-            log_message(f"[ERROR] {label} failed: {e}", messages, level="error", config=config)
+            logger.error(f"{label} failed: {e}")
 
         step_end = datetime.now(timezone.utc)
         elapsed = f"{(step_end - step_start).total_seconds():.1f} sec"
@@ -151,7 +150,7 @@ def run_steps(
         report_data["steps"].append(step_result)
 
         # ✅ Save current state to JSON after each step
-        save_report_json(report_data, project_folder, config, messages)
+        save_report_json(report_data, project_folder, cfg, messages)
 
         # If the step failed, stop execution (optional; remove if continuing is preferred)
         if status == "❌":

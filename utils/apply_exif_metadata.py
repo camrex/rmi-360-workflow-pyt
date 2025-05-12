@@ -19,7 +19,7 @@
 # External Tools:       ExifTool (must be installed and available via PATH or config path)
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/rename_and_tag.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_and_tag.md
 #
 # Notes:
 #   - Supports both string and list-based tag expressions

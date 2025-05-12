@@ -18,7 +18,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/update_linear_and_custom.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/update_linear_and_custom.md
 #
 # Parameters:
 #   - Oriented Imagery Dataset (OID) {oid_fc} (Feature Class): OID feature class containing image points to enrich.

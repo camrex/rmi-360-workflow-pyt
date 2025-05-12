@@ -18,7 +18,7 @@
 # Ext. Dependencies:    keyring
 #
 # Documentation:
-#   See: docs/UTILITIES.md and docs/AWS_SETUP_GUIDE.md
+#   See: docs_legacy/UTILITIES.md and docs_legacy/AWS_SETUP_GUIDE.md
 #
 # Notes:
 #   - Compatible with AWS CLI–configured profiles or keyring service

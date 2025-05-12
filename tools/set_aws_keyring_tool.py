@@ -19,7 +19,7 @@
 #   - keyring
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/copy_to_aws.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/copy_to_aws.md
 #
 # Parameters:
 #   - AWS Access Key ID {access_key_id} (String): Your AWS access key. Will be stored securely in the keyring.

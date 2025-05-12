@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, os, typing
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/create_oid_and_schema.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md
 #
 # Notes:
 #   - Applies vertical WKID if defined in spatial_ref block of config

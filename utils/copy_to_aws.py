@@ -18,7 +18,7 @@
 # Ext. Dependencies:    boto3, botocore, threading, multiprocessing, csv, time, os, pathlib
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/copy_to_aws.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/copy_to_aws.md
 #
 # Notes:
 #   - Uses TransferManager with configurable concurrency and retry limits

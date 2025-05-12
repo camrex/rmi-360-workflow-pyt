@@ -19,7 +19,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/generate_oid_service.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/generate_oid_service.md
 #
 # Parameters:
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): Existing OID feature class to be duplicated and published.

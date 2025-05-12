@@ -18,7 +18,7 @@
 # Ext. Dependencies:    arcpy, os, shutil
 #
 # Documentation:
-#   See: docs/UTILITIES.md and docs/tools/enhance_images.md
+#   See: docs_legacy/UTILITIES.md and docs_legacy/tools/enhance_images.md
 #
 # Notes:
 #   - Automatically resolves the base folder from any image path in the OID

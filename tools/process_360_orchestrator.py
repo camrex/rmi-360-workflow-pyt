@@ -19,13 +19,13 @@
 #   - utils/step_runner.py
 #   - utils/config_loader.py
 #   - utils/report_data_builder.py
-#   - utils/folder_utils.py
+#   - utils/folder_stats.py
 #   - utils/gather_metrics.py
 #   - utils/arcpy_utils.py
 #   - utils/generate_report.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/process_360_orchestrator.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md
 #
 # Parameters:
 #   - Start From Step (Optional) {start_step} (String): Step label to start from. Skips earlier steps if selected.
@@ -51,15 +51,15 @@ import arcpy
 import time
 import os
 
-from utils.config_loader import get_default_config_path, resolve_config
-from utils.arcpy_utils import log_message, str_to_bool
+from utils.manager.config_manager import ConfigManager
+from utils.arcpy_utils import str_to_bool
 from utils.generate_report import generate_report_from_json
 
 # Import report generation functions
 from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
 from utils.gather_metrics import collect_oid_metrics, summarize_oid_metrics
-from utils.folder_utils import folder_stats
+from utils.folder_stats import folder_stats
 from utils.report_data_builder import initialize_report_data, save_report_json, load_report_json_if_exists
 
 
@@ -306,46 +306,52 @@ class Process360Workflow(object):
 
         generate_report_flag = str_to_bool(p.get("generate_report", "true"))
 
-        config = resolve_config(
-            config_file=p.get("config_file") or get_default_config_path(),
-            project_folder=p["project_folder"],
-            messages=messages
+        cfg = ConfigManager.from_file(
+            path=p.get("config_file"),
+            project_base=p["project_folder"],
+            messages=messages,
         )
+        logger = cfg.get_logger(messages)
+        paths = cfg.paths
 
-        log_message("--- Starting Mosaic 360 Workflow ---", messages, config=config)
-        log_message(f"[DEBUG] Using config: {config.get('__source__')}", messages, level="debug", config=config)
-        log_message(f"[DEBUG] Project root: {config.get('__project_root__')}", messages, level="debug", config=config)
+        if cfg.get("debug_messages", False):
+            logger.debug("🔍 Debug mode enabled from config")
+
+        cfg.validate(messages=messages)
+
+        logger.info("--- Starting Mosaic 360 Workflow ---")
+        logger.debug(f"Using config: {cfg.source_path}")
+        logger.debug(f"Project root: {cfg.get('__project_root__')}")
 
         # Build steps + order
-        step_funcs = build_step_funcs(p, config, messages)
+        step_funcs = build_step_funcs(p, cfg, messages)
         step_order = get_step_order(step_funcs)
 
         # Initialize report data
-        report_data = load_report_json_if_exists(p["project_folder"], config, messages)
+        report_data = load_report_json_if_exists(p["project_folder"], cfg, messages)
         if report_data is None:
-            report_data = initialize_report_data(p, config)
-            save_report_json(report_data, p["project_folder"], config, messages)
+            report_data = initialize_report_data(p, cfg)
+            save_report_json(report_data, p["project_folder"], cfg, messages)
         else:
-            log_message("🔁 Loaded existing report JSON — appending new steps", messages, config=config)
+            logger.info("🔁 Loaded existing report JSON — appending new steps")
 
         # Execute steps and capture results
         t_start = time.time()
         start_step = p.get("start_step") or step_order[0]
         if start_step not in step_order:
-            log_message(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.",
-                        messages, level="warning", config=config)
+            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.")
             start_step = step_order[0]
         start_index = step_order.index(start_step)
 
-        wait_config = config.get("orchestrator", {})
-        run_steps(step_funcs, step_order, start_index, p, report_data, p["project_folder"], config, messages,
+        wait_config = cfg.get("orchestrator", {})
+        run_steps(step_funcs, step_order, start_index, p, report_data, p["project_folder"], cfg, messages,
                   wait_config=wait_config)
 
         # After the OID has been created (via run_steps), describe its GDB path
         try:
             report_data.setdefault("paths", {})["oid_gdb"] = arcpy.Describe(p["oid_fc"]).path
         except Exception as e:
-            log_message(f"[WARNING] Could not describe OID FC yet: {e}", messages, level="warning", config=config)
+            logger.warning(f"Could not describe OID FC yet: {e}")
             report_data.setdefault("paths", {})["oid_gdb"] = "Unavailable"
 
         # OID-based metrics
@@ -355,7 +361,7 @@ class Process360Workflow(object):
             report_data["metrics"].update(summary)
             report_data["reels"] = reels
         except Exception as e:
-            log_message(f"[WARNING] Could not gather OID stats: {e}", messages, level="warning", config=config)
+            logger.warning(f"Could not gather OID stats: {e}")
 
         # Reel folder count
         try:
@@ -364,7 +370,7 @@ class Process360Workflow(object):
             report_data["metrics"]["reel_count"] = len(reel_folders)
         except Exception as e:
             report_data["metrics"]["reel_count"] = "—"
-            log_message(f"[WARNING] Failed to count reel folders: {e}", messages, level="warning", config=config)
+            logger.warning(f"Failed to count reel folders: {e}")
 
         # Folder stats for original/enhanced/renamed
         for label in ["original", "enhanced", "renamed"]:
@@ -376,8 +382,7 @@ class Process360Workflow(object):
             except Exception as e:
                 report_data.setdefault("metrics", {})[f"{label}_count"] = 0
                 report_data.setdefault("metrics", {})[f"{label}_size"] = "0 B"
-                log_message(f"[WARNING] Failed to compute folder stats for {label}: {e}", messages, level="warning",
-                            config=config)
+                logger.warning(f"Failed to compute folder stats for {label}: {e}")
 
         # Elapsed time
         elapsed_total = time.time() - t_start
@@ -387,29 +392,28 @@ class Process360Workflow(object):
             report_data["metrics"]["time_per_image"] = f"{elapsed_total / total_images:.2f} sec/image"
 
         # Determine report output folder
-        report_dir = os.path.join(p["project_folder"], config.get("logs", {}).get("report_path", "report"))
+        report_dir = paths.report
         report_data["paths"]["report_dir"] = report_dir
 
         # Save report data to JSON for future recovery/report generation
-        save_report_json(report_data, p["project_folder"], config, messages)
+        save_report_json(report_data, p["project_folder"], cfg, messages)
 
         if generate_report_flag:
             try:
-                report_data["config"] = config  # REQUIRED for path resolver
-                slug = config.get("project", {}).get("slug", "unknown")
-                json_path = os.path.join(p["project_folder"], config.get("logs", {}).get("report_path", "report"),
-                                         f"report_data_{slug}.json")
+                report_data["config"] = cfg  # REQUIRED for path resolver
+                slug = cfg.get("project.slug", "unknown")
+                json_path = os.path.join(paths.report, f"report_data_{slug}.json")
 
                 generate_report_from_json(
                     json_path=json_path,
                     output_dir=report_dir,
                     messages=messages,
-                    config=config
+                    config=cfg
                 )
-                log_message(f"📄 Final report and JSON saved to: {report_dir}", messages, config=config)
+                logger.info(f"📄 Final report and JSON saved to: {report_dir}")
             except Exception as e:
-                log_message(f"[WARNING] Report generation failed: {e}", messages, level="warning", config=config)
+                logger.warning(f"Report generation failed: {e}")
         else:
-            log_message("⏭️ Skipping report generation (disabled by user)", messages, config=config)
+            logger.info("⏭️ Skipping report generation (disabled by user)")
 
-        log_message("--- Mosaic 360 Workflow Complete ---", messages, config=config)
+        logger.info("--- Mosaic 360 Workflow Complete ---")

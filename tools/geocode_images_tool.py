@@ -18,7 +18,7 @@
 #   - utils/config_loader.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/geocode_images.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/geocode_images.md
 #
 # Parameters:
 #   - Oriented Imagery Feature Class {oid_fc} (Feature Class): The OID containing images to geotag.

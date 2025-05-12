@@ -17,7 +17,7 @@
 #   - utils/build_oid_footprints.py
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/build_oid_footprints.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/build_oid_footprints.md
 #
 # Parameters:
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): Path to an existing OID feature class.

@@ -19,7 +19,7 @@
 # External Tools:       ExifTool (must be installed and available via PATH or config path)
 #
 # Documentation:
-#   See: docs/TOOL_GUIDES.md and docs/tools/geocode_images.md
+#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/geocode_images.md
 #
 # Notes:
 #   - Skips images without GPS or valid path
