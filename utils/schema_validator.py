@@ -27,13 +27,13 @@
 # =============================================================================
 
 import arcpy
-from utils.schema_paths import resolve_schema_template_paths
 from utils.expression_utils import load_field_registry
-from utils.validate_config import ConfigValidationError, log_message
+from utils.validate_config import ConfigValidationError
 from utils.build_oid_schema import create_oid_schema_template
+from utils.manager.config_manager import ConfigManager
 
 
-def validate_oid_template_schema(config: dict, messages=None):
+def validate_oid_template_schema(cfg: ConfigManager):
     """
     Validates that the OID schema template feature class exists and contains all required fields.
     
@@ -41,50 +41,41 @@ def validate_oid_template_schema(config: dict, messages=None):
     configuration, including ESRI default, mosaic, group index, linear reference, and custom fields. Logs an error and
     raises a ConfigValidationError if any required fields are missing.
     """
-    template_fc = resolve_schema_template_paths(config).output_path
+    logger = cfg.get_logger()
+    paths = cfg.paths
+    template_fc = paths.oid_schema_template_path
 
     if not arcpy.Exists(template_fc):
-        log_message(f"OID schema template not found at: {template_fc}", messages,
-                    level="error", error_type=FileNotFoundError, config=config)
+        logger.error(f"OID schema template not found at: {template_fc}", error_type=FileNotFoundError)
 
     existing_fields = {f.name for f in arcpy.ListFields(template_fc)}
-    template_cfg = config.get("oid_schema_template", {})
-    esri_cfg = template_cfg.get("esri_default", {})
-    registry_path = esri_cfg.get("field_registry")
-    registry = load_field_registry(registry_path, config=config)
+    registry = load_field_registry(cfg=cfg)
 
     required_names = set()
 
     # ESRI standard + not_applicable (if enabled)
+    not_applicable_enabled = cfg.get("oid_schema_template.esri_default.not_applicable", False)
     for _key, field in registry.items():
         cat = field.get("category")
-        if cat == "standard" or (cat == "not_applicable" and esri_cfg.get("not_applicable", False)):
+        if cat == "standard" or (cat == "not_applicable" and not_applicable_enabled):
             required_names.add(field["name"])
 
-    # Mosaic
-    for f in template_cfg.get("mosaic_fields", {}).values():
-        required_names.add(f["name"])
-
-    # Group index fields
-    for f in template_cfg.get("grp_idx_fields", {}).values():
-        required_names.add(f["name"])
-
-    # Linear ref fields
-    for f in template_cfg.get("linear_ref_fields", {}).values():
-        required_names.add(f["name"])
-
-    # Custom
-    for f in template_cfg.get("custom_fields", {}).values():
-        required_names.add(f["name"])
+    # Schema-based fields using flat access
+    for section in ["mosaic_fields", "grp_idx_fields", "linear_ref_fields", "custom_fields"]:
+        fields = cfg.get(f"oid_schema_template.{section}", {})
+        for f in fields.values():
+            required_names.add(f["name"])
 
     # Compare
     missing = required_names - existing_fields
     if missing:
-        log_message(f"OID template is missing {len(missing)} required field(s): {sorted(missing)}",
-                    messages, level="error", error_type=ConfigValidationError, config=config)
+        logger.error(f"OID template is missing {len(missing)} required field(s): {sorted(missing)}",
+                     error_type=ConfigValidationError)
+
+    return True
 
 
-def ensure_valid_oid_schema_template(config: dict, config_file: str, messages=None) -> None:
+def ensure_valid_oid_schema_template(cfg: ConfigManager) -> None:
     """
     Ensures the OID schema template exists and meets all required field specifications.
     
@@ -93,34 +84,29 @@ def ensure_valid_oid_schema_template(config: dict, config_file: str, messages=No
     invalid after regeneration.
     
     Args:
-        config: Configuration dictionary containing OID schema template settings.
-        config_file: Path to the configuration file, used for template regeneration.
-        messages: Optional ArcGIS Pro message object for logging.
+        cfg (ConfigManager): Configuration manager with paths, logging, and template access.
     
     Raises:
         ConfigValidationError: If the schema template is invalid after a rebuild attempt.
     """
-    auto_create = config.get("oid_schema_template", {}).get("template", {}).get("auto_create_oid_template", False)
+    logger = cfg.get_logger()
+    auto_create = cfg.get("oid_schema_template.template.auto_create_oid_template", False)
 
     try:
-        validate_oid_template_schema(config, messages=messages)
+        validate_oid_template_schema(cfg)
         return  # ✅ Schema is valid, done
     except (FileNotFoundError, ConfigValidationError):
         if not auto_create:
-            log_message(
-                "❌ OID schema template is invalid and auto_create_oid_template is set to False. "
-                "Please run create_oid_schema_template() manually.",
-                messages, level="error", error_type=ConfigValidationError, config=config
-            )
+            logger.error("❌ OID schema template is invalid and auto_create_oid_template is set to False. "
+                         "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError)
             return
 
         # 🚧 Try to rebuild
-        log_message("⚠️ Schema template invalid — attempting to regenerate with build_oid_schema.py...", messages,
-                    config=config)
-        create_oid_schema_template(config_file=config_file, messages=messages)
+        logger.info("⚠️ Schema template invalid — attempting to regenerate with build_oid_schema.py...")
+        create_oid_schema_template(config_file=cfg.source_path)
 
         try:
-            validate_oid_template_schema(config, messages=messages)
+            validate_oid_template_schema(cfg)
         except (FileNotFoundError, ConfigValidationError):
-            log_message("❌ Rebuilt schema template, but validation still failed. Check for missing fields or "
-                        "malformed registry.", messages, level="error", error_type=ConfigValidationError, config=config)
+            logger.error("❌ Rebuilt schema template, but validation still failed. Check for missing fields or "
+                         "malformed registry.", error_type=ConfigValidationError)

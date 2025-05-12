@@ -27,16 +27,15 @@
 
 import os
 import yaml
-import contextlib
 from datetime import datetime
 from typing import Union, Optional, Any
-from utils.manager.path_manager import PathManager
+from utils.manager.config_manager import ConfigManager
 
 
 REQUIRED_REGISTRY_KEYS = {"name", "type", "length", "alias", "category", "expr", "oid_default", "orientation_format"}
 
 
-def load_field_registry(category_filter: Optional[str] = None) \
+def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = None) \
         -> dict:
     """
     Loads and validates a field registry from a YAML file.
@@ -45,6 +44,7 @@ def load_field_registry(category_filter: Optional[str] = None) \
     if the file is missing, cannot be parsed as a dictionary, or if required keys are absent.
 
     Args:
+        cfg: ConfigManager instance used to resolve config-based expressions.
         category_filter: If provided, only fields matching this category are included.
 
     Returns:
@@ -54,23 +54,24 @@ def load_field_registry(category_filter: Optional[str] = None) \
         FileNotFoundError: If the registry file does not exist.
         ValueError: If the file cannot be parsed as a dictionary or required keys are missing.
     """
-    paths = PathManager()
+    paths = cfg.paths
+    logger = cfg.get_logger()
 
     registry_path = paths.oid_field_registry
 
     if not os.path.exists(registry_path):
-        raise FileNotFoundError(f"Field registry file not found: {registry_path}")
+        logger.error(f"Field registry file does not exist: {registry_path}", error_type=FileNotFoundError)
 
     with open(registry_path, "r", encoding="utf-8") as f:
         registry = yaml.safe_load(f)
 
     if not isinstance(registry, dict):
-        raise ValueError(f"Field registry did not parse as a dictionary: {registry_path}")
+        logger.error(f"Field registry did not parse as a dictionary: {registry_path}", error_type=ValueError)
 
     validated = {}
     for key, field in registry.items():
         if not isinstance(field, dict):
-            raise ValueError(f"Field '{key}' must be a dictionary")
+            logger.error(f"Field '{key}' must be a dictionary", error_type=ValueError)
 
         missing = REQUIRED_REGISTRY_KEYS - set(field.keys())
         if missing:
@@ -78,7 +79,7 @@ def load_field_registry(category_filter: Optional[str] = None) \
             for opt in ["expr", "oid_default", "orientation_format"]:
                 missing.discard(opt)
             if missing:
-                raise ValueError(f"Field '{key}' missing required keys: {sorted(missing)}")
+                logger.error(f"Field '{key}' missing required keys: {sorted(missing)}", error_type=ValueError)
 
         if category_filter and field.get("category") != category_filter:
             continue
@@ -88,7 +89,7 @@ def load_field_registry(category_filter: Optional[str] = None) \
     return validated
 
 
-def resolve_expression(expr: Union[str, float, int], config: dict, row: Optional[dict] = None) -> Any:
+def resolve_expression(expr: Union[str, float, int], cfg: ConfigManager, row: Optional[dict] = None) -> Any:
     """
     Resolves an expression string using values from a configuration and optional data row.
     
@@ -98,24 +99,24 @@ def resolve_expression(expr: Union[str, float, int], config: dict, row: Optional
     
     Args:
         expr: The expression to evaluate, which may be a string, float, or integer.
-        config: Configuration dictionary used to resolve config-based expressions.
+        cfg: ConfigManager instance used to resolve config-based expressions.
         row: Optional dictionary representing a data row, used to resolve field-based expressions (e.g., {FieldName}).
     
     Returns:
-        The resolved value as a string, or the original value if not a string expression.
+        The resolved value as a string, or the literal value if no resolution was required.
     """
     if not isinstance(expr, str):
         return str(expr)
 
     if " + " in expr:
-        parts = [resolve_expression(p.strip(), row=row, config=config) for p in expr.split("+")]
+        parts = [resolve_expression(p.strip(), row=row, cfg=cfg) for p in expr.split("+")]
         return "".join(str(p) for p in parts)
 
     if expr.startswith("field.") and row is not None:
         return _resolve_field_expr(expr[6:], row)
 
     if expr.startswith("config."):
-        return _resolve_config_expr(expr[7:], config)
+        return _resolve_config_expr(expr[7:], cfg)
 
     if expr == "now.year":
         return str(datetime.now().year)
@@ -135,6 +136,9 @@ def _resolve_field_expr(expr: str, row: dict) -> str:
     """
     base, *mods = expr.split(".")
     value = row.get(base)
+
+    if value is None:
+        return ""
 
     for mod in mods:
         if mod.startswith("float("):
@@ -161,52 +165,75 @@ def _resolve_field_expr(expr: str, row: dict) -> str:
     return value
 
 
-def _resolve_config_expr(expr: str, config: dict) -> str:
+def _resolve_config_expr(expr: str, cfg: ConfigManager) -> str:
     """
-    Resolves a value from a nested configuration dictionary with optional formatting modifiers.
-    
-    Supports dot-separated keys for nested lookup and applies modifiers such as stripping characters, date formatting,
-    float precision, integer conversion, and case transformations. Raises KeyError if a specified key or attribute is
-    missing or invalid.
-    
+    Resolves a value from a ConfigManager using dot-separated key paths with optional modifiers.
+
+    Supports modifiers such as stripping characters, date formatting, float precision, integer conversion,
+    and case transformations.
+
     Args:
-        expr: Dot-separated expression specifying the config key and optional modifiers (e.g., "project.number.strip(-)").
-        config: The configuration dictionary to resolve values from.
-    
+        expr: Dot-separated expression (e.g., "project.name.strip(-)").
+        cfg: ConfigManager instance providing access to config, paths, and logger.
+
     Returns:
-        The resolved and formatted configuration value as a string.
+        str: The resolved and formatted configuration value.
+
+    Raises:
+        KeyError: If the base config key cannot be resolved.
     """
+    logger = cfg.get_logger()
+
     if expr == "now.year":
         return str(datetime.now().year)
 
-    base, *mods = expr.split(".")
-    value = config
     try:
-        for part in [base] + [m for m in mods if not _is_modifier(m)]:
-            value = value.get(part) if isinstance(value, dict) else getattr(value, part)
-    except (KeyError, AttributeError, TypeError):
-        raise KeyError(f"Missing or invalid key in config: {expr}") from None
+        # Separate key path and modifiers
+        parts = expr.split(".")
+        base_parts = []
+        mods = []
+        for p in parts:
+            if _is_modifier(p):
+                mods.append(p)
+            else:
+                base_parts.append(p)
 
+        # Resolve config value using ConfigManager
+        key_path  = ".".join(base_parts)
+        value = cfg.get(key_path)
+
+        if value is None:
+            raise KeyError(f"Config key '{key_path}' returned None")
+
+    except (KeyError, AttributeError, TypeError) as e:
+        logger.error(f"Error resolving config expression: '{expr}': {e}", error_type=KeyError)
+        return ""
+
+
+    # Apply modifiers
     for mod in mods:
-        if mod.startswith("strip("):
-            char = mod[6:-1]
-            value = str(value).replace(char, "")
-        elif mod.startswith("date("):
-            fmt = mod[5:-1]
-            if isinstance(value, datetime):
-                value = value.strftime(fmt)
-        elif mod.startswith("float("):
-            precision = int(mod[6:-1])
-            with contextlib.suppress(Exception):
+        try:
+            if mod.startswith("strip("):
+                char = mod[6:-1]
+                value = str(value).replace(char, "")
+            elif mod.startswith("date("):
+                fmt = mod[5:-1]
+                if isinstance(value, datetime):
+                    value = value.strftime(fmt)
+            elif mod.startswith("float("):
+                precision = int(mod[6:-1])
                 value = round(float(value), precision)
-        elif mod == "int":
-            value = int(float(value))
-        elif mod == "upper":
-            value = str(value).upper()
-        elif mod == "lower":
-            value = str(value).lower()
+            elif mod == "int":
+                value = int(float(value))
+            elif mod == "upper":
+                value = str(value).upper()
+            elif mod == "lower":
+                value = str(value).lower()
+        except ValueError:
+            logger.error(f"Modifier '{mod}' failed on config value: {value}", error_type=ValueError)
+            return ""
 
-    return value
+    return str(value)
 
 
 def _is_modifier(mod: str) -> bool:

@@ -1,5 +1,5 @@
 # =============================================================================
-# 📊 ArcGIS + CLI Progress Tracker (utils/progressor_utils.py)
+# 📊 ArcGIS + CLI Progress Tracker (utils/manager/progressor_manager.py)
 # -----------------------------------------------------------------------------
 # Purpose:             Provides unified progress tracking for ArcGIS Pro and CLI contexts
 # Project:             RMI 360 Imaging Workflow Python Toolbox
@@ -8,11 +8,11 @@
 # Created:             2025-05-08
 #
 # Description:
-#   Defines a context-managed Progressor class that attempts to initialize ArcGIS Pro's progressor
+#   Defines a context-managed ProgressorManager class that attempts to initialize ArcGIS Pro's progressor
 #   UI when available, falling back to console output otherwise. Supports updating the progress label
 #   and position and gracefully degrades if ArcPy is unavailable or fails.
 #
-# File Location:        /utils/progressor_utils.py
+# File Location:        /utils/manager/progressor_manager.py
 # Called By:            enhance_images.py, copy_to_aws.py, orchestrator tools
 # Int. Dependencies:    arcpy_utils
 # Ext. Dependencies:    arcpy, sys, typing
@@ -28,11 +28,11 @@
 import arcpy
 import sys
 from typing import Optional
-from utils.arcpy_utils import log_message
+from utils.manager.log_manager import LogManager
 
 
-class Progressor:
-    def __init__(self, total: int, label: str = "Processing...", step: int = 1, messages: Optional[list] = None):
+class ProgressorManager:
+    def __init__(self, total: int, label: str = "Processing...", step: int = 1, log_manager: Optional[LogManager] = None):
         """
         Initializes a Progressor instance for tracking and reporting progress.
         
@@ -40,12 +40,12 @@ class Progressor:
             total: The total number of steps to track.
             label: The label to display for the progressor.
             step: The increment value for each progress update.
-            messages: Optional list to collect log messages.
+            log_manager: Optional LogManager instance for logging errors.
         """
         self.total = total
         self.label = label
         self.step = step
-        self.messages = messages or []
+        self.log_manager = log_manager
         self.use_progressor = False
         self.completed = 0
 
@@ -64,7 +64,7 @@ class Progressor:
                 arcpy.SetProgressor("step", self.label, 0, self.total, self.step)
                 self.use_progressor = True
             except Exception as e:
-                log_message(f"[WARNING] Could not initialize ArcGIS Pro progressor: {e}", self.messages)
+                self.log_manager.warning(f"Could not initialize ArcGIS Pro progressor: {e}")
         return self
 
     def update(self, pos: int, label: Optional[str] = None):
@@ -81,7 +81,7 @@ class Progressor:
                     arcpy.SetProgressorLabel(label)
                 arcpy.SetProgressorPosition(pos)
             except Exception as e:
-                log_message(f"[WARNING] Progressor update failed: {e}", self.messages)
+                self.log_manager.warning(f"Progressor update failed: {e}")
                 self.use_progressor = False
 
         if not self.use_progressor:
@@ -101,6 +101,7 @@ class Progressor:
             try:
                 arcpy.ResetProgressor()
             except Exception as e:
-                log_message(f"[WARNING] Could not reset progressor: {e}", self.messages)
+                if self.log_manager:
+                    self.log_manager.warning(f"Could not reset progressor: {e}")
         else:
             print()  # Ensure newline after CLI progress

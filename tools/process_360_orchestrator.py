@@ -324,14 +324,14 @@ class Process360Workflow(object):
         logger.debug(f"Project root: {cfg.get('__project_root__')}")
 
         # Build steps + order
-        step_funcs = build_step_funcs(p, cfg, messages)
+        step_funcs = build_step_funcs(p, cfg)
         step_order = get_step_order(step_funcs)
 
         # Initialize report data
-        report_data = load_report_json_if_exists(p["project_folder"], cfg, messages)
+        report_data = load_report_json_if_exists(cfg)
         if report_data is None:
             report_data = initialize_report_data(p, cfg)
-            save_report_json(report_data, p["project_folder"], cfg, messages)
+            save_report_json(report_data, cfg)
         else:
             logger.info("🔁 Loaded existing report JSON — appending new steps")
 
@@ -344,8 +344,7 @@ class Process360Workflow(object):
         start_index = step_order.index(start_step)
 
         wait_config = cfg.get("orchestrator", {})
-        run_steps(step_funcs, step_order, start_index, p, report_data, p["project_folder"], cfg, messages,
-                  wait_config=wait_config)
+        run_steps(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
 
         # After the OID has been created (via run_steps), describe its GDB path
         try:
@@ -374,11 +373,18 @@ class Process360Workflow(object):
 
         # Folder stats for original/enhanced/renamed
         for label in ["original", "enhanced", "renamed"]:
-            path = report_data.setdefault("paths", {}).get(f"{label}_images")
             try:
-                count, size = folder_stats(path)
+                # Get the folder path directly from PathManager
+                folder_path = getattr(paths, label)
+
+                # Run stats
+                count, size = folder_stats(folder_path)
+
+                # Save path and metrics to report_data
+                report_data.setdefault("paths", {})[f"{label}_images"] = str(folder_path)
                 report_data.setdefault("metrics", {})[f"{label}_count"] = count
                 report_data.setdefault("metrics", {})[f"{label}_size"] = size
+
             except Exception as e:
                 report_data.setdefault("metrics", {})[f"{label}_count"] = 0
                 report_data.setdefault("metrics", {})[f"{label}_size"] = "0 B"
@@ -393,22 +399,20 @@ class Process360Workflow(object):
 
         # Determine report output folder
         report_dir = paths.report
-        report_data["paths"]["report_dir"] = report_dir
+        report_data["paths"]["report_dir"] = str(report_dir)
 
         # Save report data to JSON for future recovery/report generation
-        save_report_json(report_data, p["project_folder"], cfg, messages)
+        save_report_json(report_data, cfg)
 
         if generate_report_flag:
             try:
-                report_data["config"] = cfg  # REQUIRED for path resolver
+                report_data["config"] = cfg
                 slug = cfg.get("project.slug", "unknown")
                 json_path = os.path.join(paths.report, f"report_data_{slug}.json")
 
                 generate_report_from_json(
                     json_path=json_path,
-                    output_dir=report_dir,
-                    messages=messages,
-                    config=cfg
+                    cfg=cfg
                 )
                 logger.info(f"📄 Final report and JSON saved to: {report_dir}")
             except Exception as e:
