@@ -13,6 +13,7 @@
 #   defaults for both horizontal and vertical coordinate systems and performs creation only if the OID does not exist.
 #
 # File Location:        /utils/create_oid_feature_class.py
+# Validator:            /utils/validators/create_oid_validator.py
 # Called By:            tools/create_oid_tool.py, orchestrator pipeline
 # Int. Dependencies:    config_loader, arcpy_utils, schema_paths, schema_validator
 # Ext. Dependencies:    arcpy, os, typing
@@ -30,19 +31,15 @@ __all__ = ["create_oriented_imagery_dataset"]
 import os
 import arcpy
 from typing import Optional, Union
-from utils.config_loader import resolve_config
-from utils.arcpy_utils import log_message
-from utils.schema_paths import resolve_schema_template_paths
+
+from utils.manager.config_manager import ConfigManager
 from utils.schema_validator import ensure_valid_oid_schema_template
 
 
 def create_oriented_imagery_dataset(
         output_fc_path: str,
-        spatial_reference: Optional[Union[int, arcpy.SpatialReference]] = None,
-        config: Optional[dict] = None,
-        config_file: Optional[str] = None,
-        project_folder: Optional[str] = None,
-        messages=None) -> str:
+        cfg: ConfigManager,
+        spatial_reference: Optional[Union[int, arcpy.SpatialReference]] = None) -> str:
     """
     Creates an Oriented Imagery Dataset (OID) feature class at the specified path.
 
@@ -52,12 +49,9 @@ def create_oriented_imagery_dataset(
 
     Args:
         output_fc_path: Full path where the new OID feature class will be created.
+        cfg:
         spatial_reference: Optional. Horizontal spatial reference as a WKID (int), an arcpy.SpatialReference object,
         or None to use defaults from configuration.
-        config: Optional. Configuration dictionary to override or supplement settings.
-        config_file: Optional. Path to a configuration file.
-        project_folder: Optional. Path to the project folder for resolving configuration.
-        messages: Optional. ArcGIS UI logger for message output.
 
     Returns:
         The path to the created OID feature class.
@@ -65,25 +59,18 @@ def create_oriented_imagery_dataset(
     Raises:
         ValueError: If the output feature class already exists or if the spatial reference is invalid.
     """
-    config = resolve_config(
-        config=config,
-        config_file=config_file,
-        project_folder=project_folder,
-        messages=messages,
-        tool_name="create_oriented_imagery_dataset")
-
-    resolved_config_file = config.get("__source__")
-    paths = resolve_schema_template_paths(config)
+    logger = cfg.get_logger()
+    cfg.validate(tool="create_oriented_imagery_dataset")
+    paths = cfg.paths
 
     output_gdb, oid_name = os.path.split(output_fc_path)
 
     if arcpy.Exists(output_fc_path):
-        log_message(f"Output feature class already exists: {output_fc_path}", messages, level="error",
-                    error_type=FileExistsError, config=config)
+        logger.error(f"Output feature class already exists: {output_fc_path}", error_type=FileExistsError)
+        return output_fc_path
 
-    sr_cfg = config.get("spatial_ref", {})
-    default_xy = sr_cfg.get("gcs_horizontal_wkid", 4326)
-    default_z = sr_cfg.get("vcs_vertical_wkid", 5703)
+    default_xy = cfg.get("spatial_ref.gcs_horizontal_wkid", 4326)
+    default_z = cfg.get("spatial_ref.vcs_vertical_wkid", 5703)
 
     if isinstance(spatial_reference, arcpy.SpatialReference):
         sr = spatial_reference
@@ -92,30 +79,33 @@ def create_oriented_imagery_dataset(
     elif spatial_reference is None:
         sr = arcpy.SpatialReference(default_xy, default_z)
     else:
-        log_message(f"Invalid spatial_reference: {spatial_reference}. Must be None, WKID (int), or "
-                    f"arcpy.SpatialReference.", messages, level="error", error_type=ValueError, config=config)
+        logger.error(f"Invalid spatial_reference: {spatial_reference}. Must be None, WKID (int), or "
+                     f"arcpy.SpatialReference.", error_type=ValueError)
         raise
 
-    # ✅ Ensure schema template is valid (and rebuild it if needed)
-    ensure_valid_oid_schema_template(config=config, config_file=resolved_config_file, messages=messages)
+    with cfg.get_progressor(total=2, label="Creating OID...") as progressor:
+        # ✅ Ensure schema template is valid (and rebuild it if needed)
+        ensure_valid_oid_schema_template(cfg)
+        progressor.update(1)
 
-    log_message(f"Creating Oriented Imagery Dataset at {output_fc_path}...", messages, config=config)
+        logger.info(f"Creating Oriented Imagery Dataset at {output_fc_path}...")
 
-    try:
-        arcpy.oi.CreateOrientedImageryDataset(
-            out_dataset_path=output_gdb,
-            out_dataset_name=oid_name,
-            spatial_reference=sr,
-            elevation_source="DEM",
-            dem="https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer",
-            lod="17",
-            template=[paths.output_path],
-            has_z="ENABLED"
-        )
-    except arcpy.ExecuteError as exc:
-        log_message(f"Arcpy failed while creating OID: {oid_name}: {exc}", messages, level="error",
-                    error_type=RuntimeError, config=config)
+        try:
+            arcpy.oi.CreateOrientedImageryDataset(
+                out_dataset_path=output_gdb,
+                out_dataset_name=oid_name,
+                spatial_reference=sr,
+                elevation_source="DEM",
+                dem="https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer",
+                lod="17",
+                template=[paths.oid_schema_template_path],
+                has_z="ENABLED"
+            )
+        except arcpy.ExecuteError as exc:
+            logger.error(f"Arcpy failed while creating OID: {oid_name}: {exc}", error_type=RuntimeError)
 
-    log_message(f"OID created successfully: {output_fc_path}", messages, config=config)
+        progressor.update(2)
+
+    logger.info(f"OID created successfully: {output_fc_path}")
 
     return output_fc_path

@@ -1,0 +1,54 @@
+from utils.manager.config_manager import ConfigManager
+from utils.exceptions import ConfigValidationError
+from utils.validators.common_validators import (
+    validate_type,
+    try_resolve_config_expression,
+    validate_config_section
+)
+
+
+def validate(cfg: ConfigManager) -> bool:
+    """
+    Validates the configuration for the OID service generation tool.
+
+    Checks the presence and types of required and optional keys in the "portal" and "aws" sections, including
+    resolution of the "s3_bucket_folder" expression to a string.
+
+    Returns:
+        bool: True if validation passes, False otherwise.
+    """
+    logger = cfg.get_logger()
+    error_count = 0
+
+    if not validate_config_section(cfg, "portal", dict):
+        error_count += 1
+
+    portal = cfg.get("portal", {})
+    if not validate_type(portal.get("project_folder"), "portal.project_folder", str, cfg):
+        error_count += 1
+
+    if "summary" in portal:
+        if not validate_type(portal["summary"], "portal.summary", str, cfg):
+            error_count += 1
+
+    if "portal_tags" in portal:
+        if not validate_type(portal["portal_tags"], "portal.portal_tags", list, cfg):
+            error_count += 1
+        else:
+            for i, tag in enumerate(portal["portal_tags"]):
+                if not validate_type(tag, f"portal.portal_tags[{i}]", str, cfg):
+                    error_count += 1
+
+    if not validate_config_section(cfg, "aws", dict):
+        error_count += 1
+
+    aws = cfg.get("aws", {})
+    if "s3_bucket_folder" not in aws:
+        logger.error("Missing required key: aws.s3_bucket_folder", error_type=ConfigValidationError)
+        error_count += 1
+
+    if not try_resolve_config_expression(aws.get("s3_bucket_folder"), "aws.s3_bucket_folder", cfg,
+                                         expected_type=str):
+        error_count += 1
+
+    return error_count == 0

@@ -28,7 +28,7 @@
 
 import arcpy
 from utils.expression_utils import load_field_registry
-from utils.validate_config import ConfigValidationError
+from utils.validate_full_config import ConfigValidationError
 from utils.build_oid_schema import create_oid_schema_template
 from utils.manager.config_manager import ConfigManager
 
@@ -92,21 +92,25 @@ def ensure_valid_oid_schema_template(cfg: ConfigManager) -> None:
     logger = cfg.get_logger()
     auto_create = cfg.get("oid_schema_template.template.auto_create_oid_template", False)
 
-    try:
-        validate_oid_template_schema(cfg)
-        return  # ✅ Schema is valid, done
-    except (FileNotFoundError, ConfigValidationError):
-        if not auto_create:
-            logger.error("❌ OID schema template is invalid and auto_create_oid_template is set to False. "
-                         "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError)
-            return
-
-        # 🚧 Try to rebuild
-        logger.info("⚠️ Schema template invalid — attempting to regenerate with build_oid_schema.py...")
-        create_oid_schema_template(config_file=cfg.source_path)
-
+    with cfg.get_progressor(total=2, label="Validating OID Schema Template") as progressor:
         try:
             validate_oid_template_schema(cfg)
+            progressor.update(2)
+            return  # ✅ Schema is valid, done
         except (FileNotFoundError, ConfigValidationError):
-            logger.error("❌ Rebuilt schema template, but validation still failed. Check for missing fields or "
-                         "malformed registry.", error_type=ConfigValidationError)
+            if not auto_create:
+                logger.error("❌ OID schema template is invalid and auto_create_oid_template is set to False. "
+                             "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError)
+                return
+
+            # 🚧 Try to rebuild
+            logger.info("⚠️ Schema template invalid — attempting to regenerate with build_oid_schema.py...")
+            create_oid_schema_template(cfg)
+            progressor.update(1)
+
+            try:
+                validate_oid_template_schema(cfg)
+                progressor.update(2)
+            except (FileNotFoundError, ConfigValidationError):
+                logger.error("❌ Rebuilt schema template, but validation still failed. Check for missing fields or "
+                             "malformed registry.", error_type=ConfigValidationError)

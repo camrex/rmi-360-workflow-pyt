@@ -699,8 +699,9 @@ image_enhancement:
   # ----------------------------------------------------------------
   # ⚪ WHITE BALANCE SETTINGS
   # ----------------------------------------------------------------
-  apply_white_balance: true
+  apply_white_balance: true  # SUPERCEDED (BUT KEEP FOR NOW)
   white_balance:
+    enabled: true
     method: "gray_world"      # Options:
                               #   "gray_world" – Balance RGB to average intensity
                               #   "simple"     – OpenCV SimpleWB (more aggressive)
@@ -710,6 +711,7 @@ image_enhancement:
   # ----------------------------------------------------------------
   apply_contrast_enhancement: true
   clahe:
+    enabled: true
     tile_grid_size: [8, 8]           # Size of local regions for CLAHE
     contrast_thresholds: [60, 80]    # For adaptive clip limit
                                      # contrast < 60 → use clip_limit_high
@@ -723,6 +725,7 @@ image_enhancement:
   # ----------------------------------------------------------------
   apply_sharpening: true
   sharpen:
+    enabled: true
     # min_contrast_to_sharpen: 50    # (Optional) Only sharpen if contrast is high enough
     kernel:
       - [ 0, -0.3,  0 ]
@@ -734,6 +737,7 @@ image_enhancement:
   # ----------------------------------------------------------------
   brightness_recovery: true
   brightness:
+    enabled: true
     threshold: 110           # Only apply if brightness falls below this value
     factor: 1.1              # Multiplier to gently lift brightness (e.g., 1.1 = +10%)
 
@@ -742,6 +746,7 @@ image_enhancement:
   # ----------------------------------------------------------------
   apply_saturation_boost: true
   saturation_boost:
+    enabled: true
     factor: 1.1              # Multiply saturation (1.1 = +10%)
 
 # ----------------------------------------------------------------
@@ -783,3 +788,10 @@ orchestrator:
   # Backups are named like: OID_before_{step}_{timestamp}
   backup_folder: "backups"
   oid_backup_fgdb: "oid_snapshots.gdb"
+
+# ----------------------------------------------------------------
+# DISK SPACE CONFIG
+# ----------------------------------------------------------------
+disk_space:
+  check_enabled: True
+  min_buffer_ratio: 1.1

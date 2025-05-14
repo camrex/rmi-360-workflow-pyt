@@ -33,7 +33,7 @@ __all__ = ["load_config", "prepare_config", "load_and_validate_config",
 import os
 import yaml
 from typing import Any, Optional, NoReturn
-from utils.validate_config import validate_full_config, validate_tool_config
+from utils.validate_full_config import validate_full_config, validate_tool_config
 from utils.arcpy_utils import log_message, infer_project_root_from_oid
 
 EXPECTED_SCHEMA_VERSION = "1.0.1"  # Update this when schema changes significantly

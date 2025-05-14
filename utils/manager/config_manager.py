@@ -28,13 +28,33 @@ import os
 import yaml
 from typing import Any, Optional, Union, Dict, List
 from pathlib import Path
-from utils.validate_config import validate_full_config, validate_tool_config
+from utils.validate_full_config import validate_full_config
+from utils.exceptions import ConfigValidationError
 from utils.expression_utils import resolve_expression
 from utils.manager.path_manager import PathManager
 from utils.manager.log_manager import LogManager
 from utils.manager.progressor_manager import ProgressorManager
+from utils.validators import (
+    mosaic_processor_validator,
+    build_oid_schema_validator,
+    create_oid_validator,
+    add_images_to_oid_validator,
+    assign_group_index_validator,
+    calculate_oid_attributes_validator,
+    smooth_gps_noise_validator,
+    correct_gps_outliers_validator,
+    update_linear_and_custom_validator,
+    enhance_images_validator,
+    rename_images_validator,
+    apply_exif_metadata_validator,
+    geocode_images_validator,
+    build_oid_footprints_validator,
+    deploy_lambda_monitor_validator,
+    copy_to_aws_validator,
+    generate_oid_service_validator
+)
 
-EXPECTED_SCHEMA_VERSION = "1.0.1"
+SUPPORTED_SCHEMA_VERSIONS = {"1.0.1"}
 
 
 class ConfigManager:
@@ -122,8 +142,8 @@ class ConfigManager:
 
             # Validate schema version
             version = config.get("schema_version")
-            if version != EXPECTED_SCHEMA_VERSION:
-                error_msg = f"⚠️ Expected schema_version {EXPECTED_SCHEMA_VERSION}, got {version}"
+            if version not in SUPPORTED_SCHEMA_VERSIONS:
+                error_msg = f"⚠️ Expected schema_version {SUPPORTED_SCHEMA_VERSIONS}, got {version}"
                 lm.error(error_msg, error_type=RuntimeError)
                 raise RuntimeError(error_msg)
 
@@ -171,7 +191,7 @@ class ConfigManager:
             lm.error("No config.yaml or config.sample.yaml found in /configs", error_type=FileNotFoundError)
             raise FileNotFoundError("No config.yaml or config.sample.yaml found in /configs")
 
-    def validate(self, tool: Optional[str] = None, messages: Optional[list] = None) -> None:
+    def validate(self, tool: Optional[str] = None) -> None:
         """
         Run schema validation on the config, optionally scoped to a tool.
 
@@ -181,15 +201,14 @@ class ConfigManager:
 
         Args:
             tool (str, optional): Name of the tool section to validate (e.g., "enhance_images").
-            messages (list, optional): Optional ArcPy-style messages list for logging validation results.
 
         Raises:
             ValueError: If the configuration fails validation.
         """
         if tool:
-            validate_tool_config(self._config, tool, messages=messages)
+            self.validate_tool_config(tool)
         else:
-            validate_full_config(self._config, messages=messages)
+            validate_full_config(self)
 
     def has_section(self, section: str) -> bool:
         """
@@ -335,3 +354,42 @@ class ConfigManager:
             ProgressorManager: Progress tracker instance
         """
         return ProgressorManager(total=total, label=label, step=step, log_manager=self.get_logger())
+
+    TOOL_VALIDATORS = {
+        "mosaic_processor": mosaic_processor_validator.validate,
+        "build_oid_schema": build_oid_schema_validator.validate,
+        "create_oriented_imagery_dataset": create_oid_validator.validate,
+        "add_images_to_oid": add_images_to_oid_validator.validate,
+        "assign_group_index": assign_group_index_validator.validate,
+        "calculate_oid_attributes": calculate_oid_attributes_validator.validate,
+        "smooth_gps_noise": smooth_gps_noise_validator.validate,
+        "correct_gps_outliers": correct_gps_outliers_validator.validate,
+        "update_linear_and_custom": update_linear_and_custom_validator.validate,
+        "enhance_images": enhance_images_validator.validate,
+        "rename_images": rename_images_validator.validate,
+        "apply_exif_metadata": apply_exif_metadata_validator.validate,
+        "geocode_images": geocode_images_validator.validate,
+        "build_oid_footprints": build_oid_footprints_validator.validate,
+        "deploy_lambda_monitor": deploy_lambda_monitor_validator.validate,
+        "copy_to_aws": copy_to_aws_validator.validate,
+        "generate_oid_service": generate_oid_service_validator.validate
+    }
+
+    def validate_tool_config(self, tool: str):
+        """
+        Validates the configuration for a specified tool using its registered validator.
+
+        If the tool name is not recognized, logs an error and signals a configuration validation failure.
+
+        Args:
+            tool: The name of the tool whose configuration should be validated.
+
+        Raises:
+            ConfigValidationError: If the tool name is not registered.
+        """
+        logger = self.get_logger()
+
+        if tool in self.TOOL_VALIDATORS:
+            self.TOOL_VALIDATORS[tool](self)
+        else:
+            logger.error(f"Unknown tool '{tool}'", error_type=ConfigValidationError)

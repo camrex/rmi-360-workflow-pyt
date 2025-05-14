@@ -3,11 +3,11 @@ from utils.validators.common_validators import (
     validate_type, check_file_exists
 )
 from utils.manager.config_manager import ConfigManager
-from utils.validate_config import ConfigValidationError
+from utils.exceptions import ConfigValidationError
 from utils.expression_utils import load_field_registry
 
 
-def validate(cfg: ConfigManager):
+def validate(cfg: ConfigManager) -> bool:
     """
     Validates the configuration for adding images to an Oriented Imagery Dataset.
 

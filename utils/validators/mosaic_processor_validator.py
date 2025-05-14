@@ -1,6 +1,6 @@
 from utils.validators.common_validators import validate_type
 from utils.manager.config_manager import ConfigManager
-from utils.validate_config import ConfigValidationError
+from utils.exceptions import ConfigValidationError
 
 def validate(cfg: ConfigManager) -> bool:
     """
@@ -27,6 +27,9 @@ def validate(cfg: ConfigManager) -> bool:
     # Use PathManager's built-in executable and GRP validation
     if not cfg.paths.validate_mosaic_config():
         logger.error("Mosaic Processor configuration is invalid.", error_type=ConfigValidationError)
+        error_count += 1
+
+    if not cfg.paths.check_mosaic_processor_available():
         error_count += 1
 
     return error_count == 0

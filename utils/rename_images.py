@@ -3,9 +3,9 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Renames and organizes OID images using config-based filename expressions
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
-# Created:             2025-05-08
+# Created:             2025-05-13
 #
 # Description:
 #   Resolves dynamic filename parts from config expressions (e.g., reel, MP, timestamp),
@@ -13,6 +13,7 @@
 #   fields, and logs all rename operations. Optionally deletes originals after copy.
 #
 # File Location:        /utils/rename_images.py
+# Validator:            /utils/validators/rename_images_validator.py
 # Called By:            tools/rename_and_tag_tool.py, tools/process_360_orchestrator.py
 # Int. Dependencies:    config_loader, arcpy_utils, expression_utils, check_disk_space, path_utils
 # Ext. Dependencies:    arcpy, os, shutil, csv, pathlib, typing
@@ -25,6 +26,8 @@
 #   - Ensures output directory is writable and validated before execution
 # =============================================================================
 
+# TODO: Make sure this properly handles enhance_images = FALSE
+
 __all__ = ["rename_images"]
 
 import arcpy
@@ -32,21 +35,14 @@ import os
 import shutil
 import csv
 from pathlib import Path
-from typing import Optional
 
-from utils.config_loader import resolve_config
-from utils.arcpy_utils import validate_fields_exist, log_message
+from utils.manager.config_manager import ConfigManager
+from utils.arcpy_utils import validate_fields_exist
 from utils.expression_utils import resolve_expression
 from utils.check_disk_space import check_sufficient_disk_space
-from utils.path_utils import get_log_path
 
 
-def rename_images(
-        oid_fc: str,
-        delete_originals: bool = False,
-        config: Optional[dict] = None,
-        config_file: Optional[str] = None,
-        messages=None):
+def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = False):
     """
     Renames and copies image files for an Oriented Imagery Dataset according to configuration rules.
 
@@ -55,26 +51,19 @@ def rename_images(
     rename operations is generated. Returns a list of dictionaries with updated image metadata.
 
     Args:
+        cfg:
         oid_fc: Path to the feature class containing image records.
         delete_originals: If True, deletes original image files after copying.
-        config: Optional configuration dictionary; if not provided, loaded from file.
-        config_file: Optional path to configuration file if `config` is not provided.
-        messages: Optional messaging or logging interface.
 
     Returns:
         A list of dictionaries representing updated image records, including OID, new path, filename, QC flag,
         coordinates, and resolved metadata.
     """
-    config = resolve_config(
-        config=config,
-        config_file=config_file,
-        oid_fc_path=oid_fc,
-        messages=messages,
-        tool_name="rename_images")
+    logger = cfg.get_logger()
+    cfg.validate(tool="rename_images")
 
-    folders = config.get("image_output", {}).get("folders", {})
-    fmt = config.get("image_output", {}).get("filename_settings", {}).get("format", "{Name}.jpg")
-    parts = config.get("image_output", {}).get("filename_settings", {}).get("parts", {})
+    fmt = cfg.get("image_output.filename_settings.format", "{Name}.jpg")
+    parts = cfg.get("image_output.filename_settings.parts", {})
 
     required_fields = ["OID@", "ImagePath", "Name", "QCFlag", "X", "Y"]
     for expr in parts.values():
@@ -86,18 +75,9 @@ def rename_images(
     validate_fields_exist(oid_fc, [f for f in required_fields if f != "OID@"])
     fields = list(dict.fromkeys(required_fields))
 
-    check_sufficient_disk_space(oid_fc=oid_fc, config=config, buffer_ratio=1.1, verbose=True, messages=messages)
+    check_sufficient_disk_space(oid_fc, cfg)
 
-    # Prepare output folder
-    try:
-        parent_dir = folders["parent"]
-        renamed_dir = folders["renamed"]
-    except KeyError as ke:
-        log_message(f"Required image_output.folders key missing: {ke}", messages, level="error",
-                    error_type=KeyError, config=config)
-        raise
-    output_dir = Path(config["__project_root__"]) / parent_dir / renamed_dir
-
+    output_dir = cfg.paths.renamed
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Verify write permissions
@@ -106,14 +86,13 @@ def rename_images(
         test_file.touch()
         test_file.unlink()
     except (PermissionError, OSError) as e:
-        log_message(f"❌ Output directory is not writable: {output_dir}. Error: {e}", messages, level="error",
-                    error_type=PermissionError, config=config)
+        logger.error(f"Output directory is not writable: {output_dir}. Error: {e}", error_type=PermissionError)
 
-    log_message(f"[DEBUG] Writing renamed images to: {output_dir}", messages, level="debug", config=config)
+    logger.debug(f"Writing renamed images to: {output_dir}")
 
     # Prepare CSV log
-    rename_log_path = get_log_path("rename_log", config)
-    log_message(f"[DEBUG] Writing rename log to: {rename_log_path}", messages, level="debug", config=config)
+    rename_log_path = cfg.paths.get_log_file_path("rename_log", cfg)
+    logger.debug(f"Writing rename log to: {rename_log_path}")
     log_fields = ["OID", "OriginalPath", "OriginalName", "NewPath", "NewName"]
     log_rows = []
 
@@ -126,13 +105,12 @@ def rename_images(
             old_path = Path(row_dict["ImagePath"])
 
             if not old_path.is_file():
-                log_message(f"⚠️ Image path missing or invalid for OID {oid}: {old_path}", messages,
-                            level="warning", config=config)
+                logger.warning(f"Image path missing or invalid for OID {oid}: {old_path}")
                 continue
 
             try:
                 resolved = {
-                    key: resolve_expression(expr, row=row_dict, config=config)
+                    key: resolve_expression(expr, cfg, row=row_dict)
                     for key, expr in parts.items()
                 }
 
@@ -151,8 +129,7 @@ def rename_images(
                     if delete_originals:
                         os.remove(old_path)
                 except (PermissionError, OSError) as e:
-                    log_message(f"⚠️ Failed to copy/delete file for OID {oid}: {e}", messages, level="warning",
-                                config=config)
+                    logger.warning(f"Failed to copy/delete file for OID {oid}: {e}")
                     continue
 
                 row_dict["ImagePath"] = str(new_path)
@@ -178,17 +155,15 @@ def rename_images(
                     "NewName": filename
                 })
 
-                log_message(f"✅ Renamed OID {oid} ➜ {filename}", messages, level="debug", config=config)
+                logger.debug(f"✅ Renamed OID {oid} ➜ {filename}")
             except KeyError as ke:
-                log_message(f"⚠️ Failed to resolve filename part for OID {oid}: Missing key {ke}", messages,
-                            level="warning", config=config)
+                logger.warning(f"Failed to resolve filename part for OID {oid}: Missing key {ke}")
                 continue
             except ValueError as ve:
-                log_message(f"⚠️ Failed to resolve filename part for OID {oid}: Invalid value: {ve}", messages,
-                            level="warning", config=config)
+                logger.warning(f"Failed to resolve filename part for OID {oid}: Invalid value: {ve}")
                 continue
             except Exception as e:
-                log_message(f"⚠️ Failed to rename/copy for OID {oid}: {e}", messages, level="warning", config=config)
+                logger.warning(f"Failed to rename/copy for OID {oid}: {e}")
                 continue
 
     # Write rename log CSV
@@ -197,9 +172,9 @@ def rename_images(
             writer = csv.DictWriter(f, fieldnames=log_fields)
             writer.writeheader()
             writer.writerows(log_rows)
-        log_message(f"📝 Rename log saved to: {rename_log_path}", messages, config=config)
+        logger.info(f"📝 Rename log saved to: {rename_log_path}")
     except PermissionError as e:
-        log_message(f"❌ Failed to write rename log: {e}", messages, level="warning", config=config)
+        logger.warning(f"Failed to write rename log: {e}")
 
-    log_message(f"✅ {len(updated_images)} image(s) renamed and attributes updated.", messages, config=config)
+    logger.info(f"✅ {len(updated_images)} image(s) renamed and attributes updated.")
     return updated_images

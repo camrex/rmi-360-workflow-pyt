@@ -3,9 +3,9 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Verifies available disk space before performing image enhancement or export
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.0.1
 # Author:              RMI Valuation, LLC
-# Created:             2025-05-08
+# Created:             2025-05-13
 #
 # Description:
 #   Estimates required disk space using the size of the base imagery folder (original or enhanced),
@@ -14,8 +14,8 @@
 #
 # File Location:        /utils/check_disk_space.py
 # Called By:            tools/enhance_images_tool.py, tools/rename_images_tool.py
-# Int. Dependencies:    arcpy_utils
-# Ext. Dependencies:    arcpy, os, shutil
+# Int. Dependencies:    ConfigManager
+# Ext. Dependencies:    arcpy, os, shutil, pathlib
 #
 # Documentation:
 #   See: docs_legacy/UTILITIES.md and docs_legacy/tools/enhance_images.md
@@ -28,10 +28,12 @@
 import arcpy
 import os
 import shutil
-from utils.arcpy_utils import log_message
+from pathlib import Path
+from typing import Optional
+from utils.manager.config_manager import ConfigManager
 
 
-def check_sufficient_disk_space(oid_fc, config=None, buffer_ratio=1.1, verbose=False, messages=None):
+def check_sufficient_disk_space(oid_fc:str, cfg: ConfigManager) -> bool:
     """
     Checks if sufficient disk space is available for image operations on an Oriented Imagery Dataset.
     
@@ -41,11 +43,8 @@ def check_sufficient_disk_space(oid_fc, config=None, buffer_ratio=1.1, verbose=F
     
     Args:
         oid_fc: Path to the Oriented Imagery Dataset feature class.
-        config: Optional configuration dictionary that may specify disk space settings and folder names.
-        buffer_ratio: Safety multiplier applied to the estimated required space. Defaults to 1.1.
-        verbose: If True, logs detailed messages.
-        messages: Optional ArcGIS Pro message interface or None for CLI.
-    
+        cfg (ConfigManager): ConfigManager instance.
+
     Raises:
         ValueError: If no valid image path is found or if the image path does not include expected folder names.
         FileNotFoundError: If the base image directory does not exist.
@@ -54,87 +53,77 @@ def check_sufficient_disk_space(oid_fc, config=None, buffer_ratio=1.1, verbose=F
     Returns:
         True if sufficient disk space is available.
     """
+    logger = cfg.get_logger()
 
-    if config is None:
-        config = {}
+    if not cfg.get("disk_space.check_enabled", True):
+        logger.info("Disk space check is disabled via config.")
+        return True
 
-    # Read from config if available
-    if config:
-        disk_cfg = config.get("disk_space", {})
-        if not disk_cfg.get("check_enabled", True):
-            if verbose:
-                log_message("Disk space check is disabled via config.", messages, config=config)
-            return True
-        buffer_ratio = disk_cfg.get("min_buffer_ratio", buffer_ratio)
+    buffer_ratio = cfg.get("disk_space.min_buffer_ratio", 1.1)
 
     # Get one valid ImagePath from the FC
     with arcpy.da.SearchCursor(oid_fc, ["ImagePath"]) as cursor:
         image_path = next((row[0] for row in cursor if row[0]), None)
 
     if not image_path:
-        log_message("No valid ImagePath found in the OID feature class.", messages, level="error",
-                    error_type=ValueError, config=config)
+        logger.error("No valid ImagePath found in the OID feature class.", error_type=ValueError)
 
     # Determine target folder from ImagePath
     target_dir = os.path.dirname(image_path)
-    drive_root = os.path.splitdrive(target_dir)[0] + os.sep
+    drive_root = Path(target_dir).anchor
 
-    # Get folder names from config
-    img_folders = config.get("image_output", {}).get("folders", {})
-    original_folder = img_folders.get("original", "original").lower()
-    enhanced_folder = img_folders.get("enhanced", "enhanced").lower()
+    original_folder = cfg.get("image_output.folders.original", "original").lower()
+    enhanced_folder = cfg.get("image_output.folders.enhanced", "enhanced").lower()
 
-    # Identify which folder we're in (preserving case but allowing case-insensitive match)
-    def _find_base(d: str, token: str) -> str | None:
+    def _find_base(d: str, token: str) -> Optional[str]:
         idx = d.lower().find(token.lower())
         return d[: idx + len(token)] if idx != -1 else None
 
     base_dir = _find_base(target_dir, original_folder) or _find_base(target_dir, enhanced_folder)
 
     if not base_dir:
-        log_message(f"ImagePath does not include '{original_folder}' or '{enhanced_folder}' folder.", messages,
-                    level="error", error_type=ValueError, config=config)
+        logger.error(f"ImagePath does not include '{original_folder}' or '{enhanced_folder}' folder.",
+                     error_type=ValueError)
 
     if not os.path.exists(base_dir):
-        log_message(f"Base folder not found: {base_dir}", messages, level="error", error_type=FileNotFoundError,
-                    config=config)
+        logger.error(f"Base folder not found: {base_dir}", error_type=FileNotFoundError)
 
     # Calculate total existing size
-    def get_folder_size(path):
+    def get_folder_size(path: str, config: ConfigManager) -> int:
         """
         Calculates the total size of all files within a directory, including subdirectories.
         
         Args:
             path: Path to the directory whose total file size will be computed.
+            config (ConfigManager): ConfigManager instance.
         
         Returns:
             The cumulative size in bytes of all files contained in the directory and its subdirectories.
         """
         total = 0
-        for root, _, files in os.walk(path):
-            for f in files:
-                fp = os.path.join(root, f)
-                if os.path.isfile(fp):
-                    total += os.path.getsize(fp)
+        all_files = list(Path(path).rglob("*"))
+        files_only = [f for f in all_files if f.is_file()]
+
+        with config.get_progressor(total=len(files_only), label="Calculating folder size...") as prog:
+            for i, file in enumerate(files_only, start=1):
+                total += file.stat().st_size
+                prog.update(i)
+
         return total
 
-    folder_size = get_folder_size(base_dir)
+    folder_size = get_folder_size(base_dir, cfg)
     estimated_required = int(folder_size * buffer_ratio)
-
-    # Get available space on drive
     free_space = shutil.disk_usage(drive_root).free
 
-    if verbose:
-        log_message(f"Checking disk space on drive: {drive_root}", messages, config=config)
-        log_message(f"Checking space in folder: {base_dir}", messages, config=config)
-        log_message(f"Base folder size (used): {folder_size / 1e9:.2f} GB", messages, config=config)
-        log_message(f"Estimated required: {estimated_required / 1e9:.2f} GB (with buffer)", messages, config=config)
-        log_message(f"Available: {free_space / 1e9:.2f} GB", messages, config=config)
+    logger.debug(f"Checking disk space on drive: {drive_root}")
+    logger.debug(f"Checking space in folder: {base_dir}")
+    logger.debug(f"Base folder size (used): {folder_size / 1e9:.2f} GB")
+    logger.debug(f"Estimated required: {estimated_required / 1e9:.2f} GB (with buffer)")
+    logger.debug(f"Available: {free_space / 1e9:.2f} GB")
 
     if free_space < estimated_required:
-        log_message(f"❌ Insufficient disk space.\n"
-                    f"Needed (with buffer): {estimated_required / 1e9:.2f} GB\n"
-                    f"Available: {free_space / 1e9:.2f} GB",
-                    messages, level="error", error_type=RuntimeError, config=config)
+        logger.error(f"❌ Insufficient disk space.\n"
+                     f"Needed (with buffer): {estimated_required / 1e9:.2f} GB\n"
+                     f"Available: {free_space / 1e9:.2f} GB", error_type=RuntimeError)
 
     return True

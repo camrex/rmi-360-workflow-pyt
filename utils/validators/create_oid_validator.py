@@ -4,7 +4,7 @@ from utils.validators.common_validators import (
 )
 from utils.manager.config_manager import ConfigManager
 
-def validate(cfg: ConfigManager):
+def validate(cfg: ConfigManager) -> bool:
     """
     Validates the configuration for the 'create_oriented_imagery_dataset' tool.
 

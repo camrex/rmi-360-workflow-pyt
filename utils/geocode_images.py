@@ -68,7 +68,7 @@ def geocode_images(
     log_message(f"🌍 Using geolocation DB: {db_choice}", messages, config=config)
     exiftool_cmd = ["exiftool"]
 
-    # Config validation (including ExifTool config path + geoDir check) is performed by validate_config.py.
+    # Config validation (including ExifTool config path + geoDir check) is performed by validate_full_config.py.
     # This script assumes config has already been validated.
 
     # Handle alternate DBs with config files
