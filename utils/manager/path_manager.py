@@ -205,6 +205,11 @@ class PathManager:
             return Path(val).resolve()
         return None
 
+    @property
+    def mosaic_processor_cfg(self):
+        """Path to Mosaic Processor config file (no default)."""
+        return self._get_config_value("executables.mosaic_processor.cfg_path")
+
     def get_log_file_path(self, log_key: str, cfg: Optional["ConfigManager"] = None) -> Path:
         """
         Constructs the full path for a log file with optional prefix.

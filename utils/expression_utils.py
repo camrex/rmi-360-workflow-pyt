@@ -13,7 +13,7 @@
 #   and special keywords like `now.year`. Also loads and validates OID field registry schemas.
 #
 # File Location:        /utils/expression_utils.py
-# Called By:            config_loader.py, validate_config.py, most workflow steps
+# Called By:            config_loader.py, validate_full_config.py, most workflow steps
 # Int. Dependencies:    path_resolver
 # Ext. Dependencies:    os, yaml, datetime, typing, contextlib
 #

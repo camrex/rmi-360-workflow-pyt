@@ -1,11 +1,7 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# SHARED UTILITIES
-# ─────────────────────────────────────────────────────────────────────────────
-
 import shutil
 from typing import Union, Tuple, Type
 from pathlib import Path
-from utils.validate_config import ConfigValidationError
+from utils.exceptions import ConfigValidationError
 from utils.expression_utils import resolve_expression
 from utils.manager.config_manager import ConfigManager
 
@@ -322,3 +318,42 @@ def check_duplicate_field_names(cfg: ConfigManager, registry: dict):
                      error_type=ConfigValidationError)
 
     return duplicates
+
+
+def validate_keys_with_types(
+    cfg: ConfigManager,
+    section: dict,
+    keymap: dict,
+    context_prefix: str,
+    required: bool = True,
+) -> int:
+    """
+    Validates keys in a config section for type correctness, and optionally for presence.
+
+    Args:
+        cfg (ConfigManager): ConfigManager instance.
+        section (dict): Config subsection to check (e.g. cfg.get(\"aws\")).
+        keymap (dict): Mapping of keys to expected types.
+        context_prefix (str): String prefix for logging context.
+        required (bool): If True, missing keys are errors. If False, keys are only validated if present.
+
+    Returns:
+        int: Number of validation errors encountered.
+    """
+    logger = cfg.get_logger()
+    error_count = 0
+
+    for key, expected_type in keymap.items():
+        context = f"{context_prefix}.{key}"
+        val = section.get(key)
+
+        if val is None:
+            if required:
+                logger.error(f"{context} is required", error_type=ConfigValidationError)
+                error_count += 1
+        else:
+            if not validate_type(val, context, expected_type, cfg):
+                error_count += 1
+
+    return error_count
+

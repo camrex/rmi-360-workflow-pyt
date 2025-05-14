@@ -1,5 +1,5 @@
 from utils.manager.config_manager import ConfigManager
-from utils.validate_config import ConfigValidationError
+from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     check_required_keys,
@@ -24,12 +24,6 @@ def validate(cfg: ConfigManager) -> bool:
 
     schema_cfg = cfg.get("oid_schema_template", {})
     template_cfg = cfg.get("oid_schema_template.template", {})
-    registry_path = cfg.paths.oid_field_registry
-
-    if not registry_path:
-        logger.error("Missing required key: oid_schema_template.esri_default.field_registry",
-                     error_type=ConfigValidationError)
-        error_count += 1
 
     if not validate_type(template_cfg, "oid_schema_template.template", dict, cfg):
         error_count += 1
@@ -45,19 +39,24 @@ def validate(cfg: ConfigManager) -> bool:
         bool, cfg):
         error_count += 1
 
-    # Load and validate registry fields
-    try:
-        registry = load_field_registry(cfg)
-    except (FileNotFoundError, ValueError) as e:
-        logger.error(f"Failed to load field registry: {e}", error_type=ConfigValidationError)
-        return False
+    esri_cfg = cfg.get("oid_schema_template.esri_default", {})
+    active_categories = [cat for cat in ("standard", "not_applicable") if esri_cfg.get(cat, True)]
 
-    for key, field in registry.items():
-        if not validate_field_block(field, cfg, context=f"registry.{key}"):
-            error_count += 1
+    # 1. Validate individual fields
+    combined_registry = {}
+    for category in active_categories:
+        try:
+            entries = load_field_registry(cfg, category_filter=category)
+        except (FileNotFoundError, ValueError) as e:
+            logger.error(f"Failed to load field registry ({category}): {e}", error_type=ConfigValidationError)
+            return False
+        for key, field in entries.items():
+            if not validate_field_block(field, cfg, context=f"registry.{key}"):
+                error_count += 1
+        combined_registry.update(entries)
 
     # Validate user-defined schema blocks
-    for block_key in ["mosaic_fields", "linear_ref_fields", "custom_fields"]:
+    for block_key in ["mosaic_fields", "grp_idx_fields", "linear_ref_fields", "custom_fields"]:
         block = schema_cfg.get(block_key, {})
         if not validate_type(block, f"oid_schema_template.{block_key}", dict, cfg):
             error_count += 1
@@ -65,7 +64,7 @@ def validate(cfg: ConfigManager) -> bool:
             if not validate_field_block(field, cfg, context=f"{block_key}.{key}"):
                 error_count += 1
 
-    duplicates = check_duplicate_field_names(cfg, registry)
+    duplicates = check_duplicate_field_names(cfg, combined_registry)
     if duplicates:
         error_count += 1
 
