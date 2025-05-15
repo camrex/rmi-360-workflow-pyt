@@ -375,14 +375,16 @@ class Process360Workflow(object):
         logger = cfg.get_logger(messages)
         paths = cfg.paths
 
+        logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 0, "🚀")
+        logger.custom("| --- Starting Mosaic 360 Workflow --- |", 0, "🚀")
+        logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 0, "🚀")
+        logger.push(f"Using config: {cfg.source_path}", 1)
+        logger.info(f"Project root: {cfg.get('__project_root__')}", 1)
+
         if cfg.get("debug_messages", False):
-            logger.debug("🔍 Debug mode enabled from config")
-
+            logger.custom("Debug mode enabled from config", 1, "🔍")
+       
         cfg.validate()
-
-        logger.info("--- Starting Mosaic 360 Workflow ---")
-        logger.debug(f"Using config: {cfg.source_path}")
-        logger.debug(f"Project root: {cfg.get('__project_root__')}")
 
         # Build steps + order
         step_funcs = self.build_step_funcs_fn(p, cfg)
@@ -394,13 +396,13 @@ class Process360Workflow(object):
             report_data = self.initialize_report_data_fn(p, cfg)
             self.save_report_json_fn(report_data, cfg)
         else:
-            logger.info("🔁 Loaded existing report JSON — appending new steps")
+            logger.custom("Loaded existing report JSON — appending new steps", 1, "🔄")
 
         # Execute steps and capture results
         t_start = self.time_mod.time()
         start_step = p.get("start_step") or step_order[0]
         if start_step not in step_order:
-            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.")
+            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", 1)
             start_step = step_order[0]
         start_index = step_order.index(start_step)
 
@@ -411,7 +413,7 @@ class Process360Workflow(object):
         try:
             report_data.setdefault("paths", {})["oid_gdb"] = self.arcpy_mod.Describe(p["oid_fc"]).path
         except Exception as e:
-            logger.warning(f"Could not describe OID FC yet: {e}")
+            logger.warning(f"Could not describe OID FC yet: {e}", 1)
             report_data.setdefault("paths", {})["oid_gdb"] = "Unavailable"
 
         # OID-based metrics
@@ -421,7 +423,7 @@ class Process360Workflow(object):
             report_data["metrics"].update(summary)
             report_data["reels"] = reels
         except Exception as e:
-            logger.warning(f"Could not gather OID stats: {e}")
+            logger.warning(f"Could not gather OID stats: {e}", 1)
 
         # Reel folder count
         try:
@@ -430,7 +432,7 @@ class Process360Workflow(object):
             report_data["metrics"]["reel_count"] = len(reel_folders)
         except Exception as e:
             report_data["metrics"]["reel_count"] = "—"
-            logger.warning(f"Failed to count reel folders: {e}")
+            logger.warning(f"Failed to count reel folders: {e}", 1)
 
         # Folder stats for original/enhanced/renamed
         self._compute_and_store_folder_stats(["original", "enhanced", "renamed"], paths, report_data, logger)
@@ -459,10 +461,12 @@ class Process360Workflow(object):
                     json_path=json_path,
                     cfg=cfg
                 )
-                logger.info(f"📄 Final report and JSON saved to: {report_dir}")
+                logger.custom(f"Final report and JSON saved to: {report_dir}", 1, "📄")
             except Exception as e:
-                logger.warning(f"Report generation failed: {e}")
+                logger.warning(f"Report generation failed: {e}", 1)
         else:
-            logger.info("⏭️ Skipping report generation (disabled by user)")
-
-        logger.info("--- Mosaic 360 Workflow Complete ---")
+            logger.custom("Skipping report generation (disabled by user)", 1, "⏭️")
+        
+        logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 0, "🎉")
+        logger.custom("| --- Mosaic 360 Workflow Complete --- |", 0, "🎉")
+        logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", 0, "🎉")

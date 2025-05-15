@@ -49,7 +49,6 @@ class LogManager:
     - ArcGIS Pro messaging (if a message object is provided)
     - Export to .txt, .html, and .json files via PathManager
 
-    Optional celebratory methods (.success(), .fireworks(), .party()) are included for end-of-run flair.
     Designed for use in orchestration scripts, CLI tools, and ArcGIS Python Toolbox tools.
     
     """
@@ -58,8 +57,12 @@ class LogManager:
         "debug": "🛠️",
         "info": "ℹ️",
         "warning": "⚠️",
-        "error": "❌"
+        "error": "❌",
+        "success": "✅",
+        "custom": ""  # Emoji passed as parameter
     }
+    # When True, show [indent] after emoji in log output if debug_messages is True
+    SHOW_INDENT_LEVEL_IN_DEBUG = True
 
     def __init__(
             self,
@@ -67,7 +70,6 @@ class LogManager:
             config: Optional[dict] = None,
             path_manager: Optional[PathManager] = None,
             enable_file_output: bool = True,
-            pop_on_error: bool = True,
     ):
         """
         Initialize the LogManager.
@@ -90,6 +92,7 @@ class LogManager:
         self.depth = 0
         self.indent_char = "    "
         self._timing_stack: List[float] = []
+        self._context_stack: List[Optional[Dict]] = []
 
     def push(self, msg: str) -> None:
         """
@@ -101,47 +104,63 @@ class LogManager:
         self.depth += 1
         self._timing_stack.append(time.time())
 
-    def log(self, msg: str, level: str = "info", error_type: Optional[Type[Exception]] = None, context: Optional[Dict] = None) -> None:
-        """Log a message with a specified level, optional context, and error type.
+    def log(self, msg: str, level: str = "info", context: Optional[Dict] = None, indent: int = 0, error_type: Optional[Type[Exception]] = None, emoji: Optional[str] = None) -> None:
+        """
+        Log a message with a specified level, optional context, and explicit indentation.
 
         Args:
             msg (str): The message to log.
-            level (str): Logging level ('info', 'warning', 'error', 'debug').
-            error_type (Exception, optional): Exception to raise if level is 'error'.
-            context (dict, optional): Metadata context appended and recorded.
+            level (str): Logging level. One of 'debug', 'info', 'warning', 'error', 'success', or 'custom'.
+            context (dict, optional): Metadata context to include in the log (default: None).
+            indent (int, optional): Indentation level (number of indent units, default: 0).
+            error_type (Type[Exception], optional): Exception type to raise if level is 'error' (default: None).
+            emoji (str, optional): Emoji to use for 'custom' level messages (default: None).
+
+        For 'custom' level, provide an emoji.
+        For 'error', if error_type is given, raises after logging (indent forced to 0 unless overridden).
         """
-        valid_levels = {"debug", "info", "warning", "error"}
+        valid_levels = {"debug", "info", "warning", "error", "success", "custom"}
         if level not in valid_levels:
-            self.log(f"⚠️ Invalid log level '{level}' (defaulting to info)", level="warning")
+            self.log(f"⚠️ Invalid log level '{level}' (defaulting to info)", level="warning", indent=indent)
             level = "info"
 
         if level == "debug" and not self.config.get("debug_messages", False):
             return
 
-        prefix = self.LEVEL_PREFIX.get(level, "")
+        # Use context from stack if not provided
+        if context is None and self._context_stack:
+            context = self._context_stack[-1]
+
+        # For custom, emoji must be provided
+        if level == "custom":
+            prefix = emoji or self.LEVEL_PREFIX["custom"]
+        else:
+            prefix = self.LEVEL_PREFIX.get(level, "")
+
+        # Add indent level in debug mode if enabled
+        if self.config.get("debug_messages", False) and self.SHOW_INDENT_LEVEL_IN_DEBUG:
+            prefix = f"{prefix} [{indent}]"
 
         context_str = ""
         if context:
             context_str = "  " + " ".join(f"{k}={v}" for k, v in context.items())
 
-        indent = self.indent_char * self.depth
+        indent_str = self.indent_char * indent
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         iso_timestamp = datetime.now().isoformat()
-        full_msg = f"[{timestamp}] {prefix} {indent}{msg}{context_str}"
+        full_msg = f"[{timestamp}] {prefix} {indent_str}{msg}{context_str}"
         self.entries.append(full_msg)
 
         self.records.append({
             "timestamp": iso_timestamp,
             "level": level,
             "message": msg,
-            "depth": self.depth,
+            "indent": indent,
             "context": context or {}
         })
 
-        # Directly use the level variable for CSS class
         css_class = level
-
-        html_line = f'<div class="{css_class}"><span class="ts">[{timestamp}]</span> {prefix} {html.escape(indent + msg + context_str)}</div>'
+        html_line = f'<div class="{css_class}"><span class="ts">[{timestamp}]</span> {prefix} {html.escape(indent_str + msg + context_str)}</div>'
         self.html_blocks.append(html_line)
 
         if self.messages:
@@ -161,55 +180,36 @@ class LogManager:
                 with open(log_file, "a", encoding="utf-8") as f:
                     f.write(full_msg + "\n")
             except Exception as e:
-                # Use warning method for consistency, but avoid infinite recursion
-                # by directly printing if we're already handling a warning
                 if level == "warning":
                     print(f"⚠️ Could not write to log file: {e}")
                 else:
-                    self.warning(f"Could not write to log file: {e}")
+                    # Avoid recursion
+                    print(f"Could not write to log file: {e}")
 
-        if level == "error":
-            if self.pop_on_error:
-                self.depth = max(0, self.depth - 1)
-                if self._timing_stack:
-                    self._timing_stack.pop()
-            if error_type:
-                raise error_type(full_msg)
+        if level == "error" and error_type:
+            raise error_type(full_msg)
 
-    def info(self, msg: str, context: Optional[Dict] = None) -> None: self.log(msg, "info", context=context)
-    def warning(self, msg: str, context: Optional[Dict] = None) -> None: self.log(msg, "warning", context=context)
-    def error(self, msg: str, error_type: Type[Exception] = RuntimeError, context: Optional[Dict] = None) -> None: self.log(msg, "error", error_type=error_type, context=context)
-    def debug(self, msg: str, context: Optional[Dict] = None) -> None: self.log(msg, "debug", context=context)
+    def debug(self, msg: str, context: Optional[Dict] = None, indent: int = 0) -> None:
+        self.log(msg, level="debug", context=context, indent=indent)
 
-    def push(self, msg: str) -> None:
-        """Start a new indented log section and begin timing it.
+    def info(self, msg: str, context: Optional[Dict] = None, indent: int = 0) -> None:
+        self.log(msg, level="info", context=context, indent=indent)
 
-        Args:
-            msg (str): Header message for the step or section.
-        """
-        self.info(msg)
-        self.depth += 1
-        self._timing_stack.append(time.time())
-        indent = self.indent_char * (self.depth - 1)
-        self.html_blocks.append(f'<details open><summary>{html.escape(indent + msg)}</summary><div class="block">')
+    def warning(self, msg: str, context: Optional[Dict] = None, indent: int = 0) -> None:
+        self.log(msg, level="warning", context=context, indent=indent)
 
-    def pop(self, msg: Optional[str] = None) -> None:
-        """End the most recent log section, record duration, and log exit message.
+    def error(self, msg: str, context: Optional[Dict] = None, indent: int = 0, error_type: Optional[Type[Exception]] = None) -> None:
+        # If error_type is provided, always log at indent=0 unless overridden
+        use_indent = 0 if error_type is not None and indent == 0 else indent
+        self.log(msg, level="error", context=context, indent=use_indent, error_type=error_type)
 
-        Args:
-            msg (str, optional): Optional message to log on exit. Elapsed time is auto-appended.
-        """
-        self.depth = max(0, self.depth - 1)
-        elapsed = None
-        if self._timing_stack:
-            start_time = self._timing_stack.pop()
-            elapsed = time.time() - start_time
-        if msg:
-            if elapsed is not None:
-                elapsed_str = self._format_duration(elapsed)
-                msg = f"{msg} (Elapsed: {elapsed_str})"
-            self.info(msg)
-        self.html_blocks.append("</div></details>")
+    def success(self, msg: str, context: Optional[Dict] = None, indent: int = 0) -> None:
+        self.log(msg, level="success", context=context, indent=indent)
+
+    def custom(self, msg: str, emoji: str, context: Optional[Dict] = None, indent: int = 0) -> None:
+        self.log(msg, level="custom", context=context, indent=indent, emoji=emoji)
+
+
 
     @staticmethod
     def _format_duration(seconds: float) -> str:
@@ -278,39 +278,37 @@ class LogManager:
         self.export_json(f"{basename}.json")
         self.export_html(f"{basename}.html")
 
-    def success(self, msg: Optional[str] = None) -> None:
-        """Log a celebratory 'success' message with confetti emoji."""
-        msg = msg or "🎉 ALL DONE! Time to celebrate."
-        self.info(msg)
-
-    def party(self) -> None:
-        """Log an ASCII party message to signal celebration."""
-        self.info("(>'-')> <('-'<) ^('-')^ v('-')v  🎉 PARTY MODE ACTIVATED!")
-
-    def fireworks(self) -> None:
-        """Log celebratory emoji fireworks."""
-        self.info("🎆 🎇 🎉 💥 💫 ✨")
-
-    def rickroll(self) -> None:
-        """Log a playful rickroll message."""
-        self.info("🎵 Never gonna give you up, never gonna let you down! 🎵")
-
     @contextmanager
-    def step(self, title: str, end_msg: Optional[str] = None) -> Generator[None, None, None]:
-        """Context manager for structured, indented logging steps.
-
-        Args:
-            title (str): The block header or step name.
-            end_msg (str, optional): Custom exit message for success.
+    def step(self, msg: str, context: Optional[Dict] = None):
         """
-        self.push(title)
+        Context manager for logging the start and end of a logical step.
+        Logs separators before and after the step message at indent=0.
+        Any log messages inside should use indent=1 for proper nesting.
+        Usage:
+            with logger.step("Run Mosaic Processor"):
+                logger.info("Hello", indent=1)
+        """
+        self._context_stack.append(context)
+        sep = "=" * 40
+        self.custom(sep, emoji="▶️", indent=0)
+        self.custom(msg, emoji="▶️", indent=0, context=context)
+        self.custom(sep, emoji="▶️", indent=0)
+        start_time = time.time()
         try:
             yield
         except Exception as e:
-            self.pop(f"❌ {title} failed: {e}")
+            elapsed = time.time() - start_time
+            elapsed_str = self._format_duration(elapsed)
+            self.error(f"{msg} failed: {e} (Elapsed: {elapsed_str})", indent=0)
+            self.custom(sep, emoji="▶️", indent=0)
             raise
         else:
-            self.pop(end_msg or f"✅ {title} complete")
+            elapsed = time.time() - start_time
+            elapsed_str = self._format_duration(elapsed)
+            self.success(f"{msg} complete (Elapsed: {elapsed_str})", indent=0)
+        finally:
+            self._context_stack.pop()
+
 
 # --- HTML Log Template Components ---
 

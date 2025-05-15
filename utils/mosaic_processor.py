@@ -142,7 +142,7 @@ def run_processor_stage(
     exe_dir = os.path.dirname(exe_path)
 
     if cfg_path != "DISABLED":
-        logger.warning(f"Note: cfg_path is not yet implemented. Provided value: {cfg_path}")
+        logger.warning(f"Note: cfg_path is not yet implemented. Provided value: {cfg_path}", 1)
 
     cmd = build_mosaic_command(
         exe_path=exe_path,
@@ -157,11 +157,12 @@ def run_processor_stage(
         wrap_in_shell=True,
     )
 
-    logger.debug(f"🛠️ Running command: {cmd}")
+    logger.custom(f"Running command: {cmd}", 1, "🧑🏻‍💻")
     log_f.write(f"COMMAND: {cmd}\n\n")
 
     result = subprocess.run(cmd, cwd=exe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
 
+    logger.success(f"=== {stage_name} Complete ===", 0)
     log_f.write(f"=== {stage_name} ===\n")
     log_f.write(result.stdout or "")
     log_f.write("\n\n")
@@ -186,7 +187,13 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
         Number of files renamed.
     """
     renamed_count = 0
-    logger.debug(f"Checking for frame number padding in: {output_dir}")
+    logger.info(f"Checking for frame number padding in: {output_dir}", 0)
+
+    padded = False  # TODO: Add support for checking if frame numbers are padded (Check if any file has a 6-digit frame number)
+    if not padded:
+        logger.info("Frame numbers are not padded, padding...", 1)
+    else:
+        logger.info("Frame numbers are padded. Skipping padding.", 1)
 
     for root, dirs, files in os.walk(output_dir):
         for f in files:
@@ -201,9 +208,9 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
                         new_path = os.path.join(root, new_name)
                         os.rename(old_path, new_path)
                         renamed_count += 1
-                        logger.debug(f"Renamed: {f} → {new_name}")
+                        logger.debug(f"Renamed: {f} → {new_name}", 2)
 
-    logger.info(f"Total files renamed: {renamed_count}")
+    logger.info(f"Total files padded: {renamed_count}", 1)
     return renamed_count
 
 
@@ -255,7 +262,13 @@ def run_mosaic_processor(
                 cfg.get_progressor(total=3, label="Mosaic Processor Workflow") as progressor:
 
             # === Step 1: Render + Reel Fix ===
-            logger.info("Running Mosaic Processor: Render + Reel Fix...")
+            logger.info("=== Render + Reel Fix Started ===", 0)
+            number_of_reels = len(os.listdir(input_dir))  # TODO: Is this the best way to get the number of reels? (just need to get number of folders in input_dir)
+            logger.info(f"Found {number_of_reels} reel(s) in {input_dir}", 1)
+
+            # TODO get folder names from input_dir and add logger.info for each folder
+            for folder in os.listdir(input_dir):
+                logger.info(f"🎞️ {folder}", 2)
             if not run_processor_stage(
                     cfg, input_dir, output_dir, start_frame, end_frame,
                     log_f, log_path,
@@ -266,12 +279,11 @@ def run_mosaic_processor(
             progressor.update(1)
 
             # === Step 2: Pad frame numbers ===
-            logger.info("Checking and renaming frame numbers if needed...")
             pad_frame_numbers(str(output_dir), logger)
             progressor.update(2)
 
             # === Step 3: GPX Integration ===
-            logger.info("Running Mosaic Processor: GPX Integration...")
+            logger.info("=== GPX Integration Started ===", 0)
             if not run_processor_stage(
                     cfg, input_dir, output_dir, start_frame, end_frame,
                     log_f, log_path,
@@ -283,7 +295,6 @@ def run_mosaic_processor(
             progressor.update(3)
 
     except Exception as e:
-        logger.error(f"❌ Error during Mosaic Processor workflow: {e}", error_type=RuntimeError)
+        logger.error(f"Error during Mosaic Processor workflow: {e}", error_type=RuntimeError)
 
-    logger.info("✅ Mosaic Processor workflow complete.")
-    logger.info(f"📄 Mosaic Processor log saved to: {log_path}")
+    logger.custom(f"Mosaic Processor log saved to: {log_path}", 0, "📄")
