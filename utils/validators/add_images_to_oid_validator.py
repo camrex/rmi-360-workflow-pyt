@@ -1,10 +1,28 @@
+# =============================================================================
+# 🛂 Add Images to OID Validator (utils/validators/add_images_to_oid_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for adding images to an Oriented Imagery Dataset (OID)
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures the presence and correctness of the 'OrientedImageryType' field in the registry, validates field types,
+#   and checks allowed image type values for adding images to an OID.
+#
+# File Location:        /utils/validators/add_images_to_oid_validator.py
+# Called By:            OID creation and update workflows
+# Notes:                Used for schema and value validation when ingesting new images into an OID.
+# =============================================================================
+
+from utils.shared.exceptions import ConfigValidationError
+from utils.shared.expression_utils import load_field_registry
 from utils.validators.common_validators import (
     validate_field_block,
     validate_type, check_file_exists
 )
-
-from utils.exceptions import ConfigValidationError
-from utils.expression_utils import load_field_registry
 
 
 def validate(cfg: "ConfigManager") -> bool:

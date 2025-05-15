@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Builds a BUFFER-style footprint for an Oriented Imagery Dataset (OID) using ArcPy’s
@@ -15,11 +16,12 @@
 # File Location:        /utils/build_oid_footprints.py
 # Validator:            /utils/validators/build_oid_footprints_validator.py
 # Called By:            tools/build_oid_footprints_tool.py
-# Int. Dependencies:    config_loader, expression_utils, arcpy_utils
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils
 # Ext. Dependencies:    arcpy, os, typing
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/build_oid_footprints.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Restores env settings after footprint creation
@@ -31,7 +33,7 @@ import os
 from typing import Optional
 
 from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import resolve_expression
+from utils.shared.expression_utils import resolve_expression
 
 
 def resolve_spatial_reference(cfg, logger):

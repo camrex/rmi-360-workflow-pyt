@@ -1,3 +1,24 @@
+# =============================================================================
+# 🧮 Calculate OID Attributes Validator (utils/validators/calculate_oid_attributes_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for calculating OID attribute fields
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of required OID fields, validates types and defaults, and checks mosaic and
+#   linear reference fields for attribute calculation tools.
+#
+# File Location:        /utils/validators/calculate_oid_attributes_validator.py
+# Called By:            OID attribute calculation workflows
+# Notes:                Used for validation of attribute calculation settings and field requirements.
+# =============================================================================
+
+from utils.shared.exceptions import ConfigValidationError
+from utils.shared.expression_utils import load_field_registry
 from utils.validators.common_validators import (
     validate_field_block,
     validate_type,
@@ -5,8 +26,6 @@ from utils.validators.common_validators import (
     validate_expression_block
 )
 
-from utils.exceptions import ConfigValidationError
-from utils.expression_utils import load_field_registry
 
 def validate(cfg: "ConfigManager") -> bool:
     from utils.manager.config_manager import ConfigManager

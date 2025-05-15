@@ -6,6 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Constructs a new OID feature class using ArcGIS Pro’s CreateOrientedImageryDataset tool. Validates schema
@@ -15,11 +16,12 @@
 # File Location:        /utils/create_oid_feature_class.py
 # Validator:            /utils/validators/create_oid_validator.py
 # Called By:            tools/create_oid_tool.py, orchestrator pipeline
-# Int. Dependencies:    config_loader, arcpy_utils, schema_paths, schema_validator
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/schema_validator
 # Ext. Dependencies:    arcpy, os, typing
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Applies vertical WKID if defined in spatial_ref block of config
@@ -33,7 +35,7 @@ import arcpy
 from typing import Optional, Union
 
 from utils.manager.config_manager import ConfigManager
-from utils.schema_validator import ensure_valid_oid_schema_template
+from utils.shared.schema_validator import ensure_valid_oid_schema_template
 
 
 def create_oriented_imagery_dataset(

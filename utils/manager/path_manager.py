@@ -2,21 +2,21 @@ from __future__ import annotations
 # =============================================================================
 # 📂 Path Manager Utility (utils/manager/path_manager.py)
 # -----------------------------------------------------------------------------
-# Purpose:             Resolves all script, config, image, log, and report paths
+# Purpose:             Resolves all script, config, image, log, and report paths for the RMI 360 Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-10
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Centralizes and simplifies path resolution across the Python Toolbox project.
 #   Supports both static paths (e.g. templates, lambdas) and dynamic project-specific
-#   paths (e.g. logs, pano image folders). Fully supports config-based overrides.
+#   paths (e.g. logs, pano image folders). Fully supports config-based overrides and expression resolution.
 #
 # File Location:        /utils/manager/path_manager.py
 # Called By:            ArcGIS tools, utility modules, CLI scripts
-# Int. Dependencies:    resolve_expression
+# Int. Dependencies:    utils/expression_utils
 # Ext. Dependencies:    pathlib, yaml, os, subprocess
 #
 # Documentation:
@@ -24,8 +24,9 @@ from __future__ import annotations
 #   (Ensure this doc is current; update if needed.)
 #
 # Notes:
-#   - Script base is resolved to the repo root unless explicitly passed
-#   - Verifies presence of rmi_360_workflow.pyt to validate repo structure
+#   - Script base is resolved to the repo root unless explicitly passed.
+#   - Verifies presence of rmi_360_workflow.pyt to validate repo structure.
+#   - Integrates with ConfigManager and LogManager for coordinated path management.
 # =============================================================================
 import os
 import subprocess

@@ -6,15 +6,16 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
-#   ArcPy Tool class for adding 360° images to an existing Oriented Imagery Dataset (OID).
-#   Assigns group indices and enriches OID attributes after insertion. Uses project config
-#   for source folders, schema enforcement, and vertical offset control.
+#   ArcPy Tool class for adding rendered 360° images to an existing Oriented Imagery Dataset (OID).
+#   Assigns group indices and enriches OID attributes after insertion. Uses project configuration
+#   for source folders, schema enforcement, and vertical offset control. Ensures compatibility with
+#   CORE utils and project schema templates. Designed for robust integration into the RMI 360 workflow.
 #
 # File Location:      /tools/add_images_to_oid_tool.py
-# Uses:
+# Core Utils:
 #   - utils/add_images_to_oid_fc.py
 #   - utils/assign_group_index.py
 #   - utils/calculate_oid_attributes.py
@@ -25,15 +26,16 @@
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
-#   - Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project.
+#   - Project Folder {project_folder} (Folder): Root folder for the Mosaic 360 imagery project.
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): OID feature class to which images will be added.
-#   - Adjust Z (Apply Offset) {adjust_z} (Boolean): Apply vertical offset to GPS elevation using config.
+#   - Adjust Z (Apply Offset) {adjust_z} (Boolean): If True, applies vertical offset to GPS elevation using config.
 #   - Config File {config_file} (File): YAML config file. Optional; uses default if not provided.
 #
 # Notes:
-#   - Applies GroupIndex and orientation enrichment if configured
-#   - Overwrites output feature class if it exists (arcpy.env.overwriteOutput = True)
-#   - Designed for use with schema templates
+#   - Applies GroupIndex and orientation enrichment if configured in project settings.
+#   - Overwrites output feature class if it exists (arcpy.env.overwriteOutput = True).
+#   - Designed for use with schema templates and robust error handling.
+#   - Ensure documentation is kept current with tool updates.
 # =============================================================================
 
 import arcpy

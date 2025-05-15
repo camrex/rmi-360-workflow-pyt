@@ -1,93 +1,76 @@
 # 🛠️ Tool: Add Images to Oriented Imagery Dataset (OID)
 
-## 🧰 Tool Name
+## 🧑‍💻 Tool Name
 **03 – Add Images to OID**
 
 ---
 
-## 🧭 Purpose
+## 📝 Purpose
 
-This tool:
-- Adds renamed images to an existing Oriented Imagery Dataset (OID) using `arcpy.oi.AddImagesToOrientedImageryDataset`
-- Automatically extracts and calculates the following key attributes:
-  - `Reel` and `Frame` from filenames
-  - Orientation metadata like `CameraPitch`, `CameraRoll`, `NearDistance`, `FarDistance`
-  - Adjusted geometry (`Z`) using camera offset values from `config.yaml`
-  - `CameraOrientation` string in ESRI Type 1 format
-- Assigns a repeating `GroupIndex` used for display filtering in ArcGIS Pro
-
-This tool is **required** before running metadata tagging or uploading to AWS.
+Adds rendered and renamed images to an existing Oriented Imagery Dataset (OID) using ArcGIS Pro's Oriented Imagery tools. This tool extracts and calculates required attributes (Reel, Frame, orientation, Z offset, etc.), applies group indices for ArcGIS Pro filtering, and ensures all schema requirements are met. This step is required before metadata tagging or uploading to AWS.
 
 ---
 
-## 🔧 Toolbox Parameters
+## 🧰 Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Project Folder` | ✅ | Folder for the current Mosaic 360 project (used to resolve relative paths) |
-| `Oriented Imagery Dataset` | ✅ | Target OID feature class (must exist and use schema) |
-| `Adjust Z (Apply Offset)` | ⬜️ | Toggles camera height/Z offset correction using values in `config.yaml` |
-| `Config File` | ✅ | Full path to `config.yaml` |
-
----
-
-## 🧩 Scripts & Logic
-
-| Script | Purpose |
-|--------|---------|
-| `add_images_to_oid_tool.py` | ArcGIS Toolbox wrapper, handles parameter inputs |
-| `add_images_to_oid_fc.py` | Runs `AddImagesToOrientedImageryDataset` and validates input |
-| `assign_group_index.py` | Assigns 1–4 group index based on `AcquisitionDate` |
-| `calculate_oid_attributes.py` | Computes and populates Z, SRS, CameraHeight, Reel, Frame, Orientation |
+| Parameter                   | Required | Description                                                         |
+|-----------------------------|----------|---------------------------------------------------------------------|
+| Project Folder              | ✅       | Folder for the current Mosaic 360 project (used to resolve paths)   |
+| Oriented Imagery Dataset    | ✅       | Target OID feature class (must exist and use schema)                |
+| Adjust Z (Apply Offset)     | ⬜️      | Toggles camera height/Z offset correction using values in config    |
+| Config File                 | ✅       | Full path to `config.yaml`                                          |
 
 ---
 
-## 📥 Inputs
+## 🗂️ Scripts & Components
 
-- **Images** in `panos/original` (folder is resolved from config)
-- **OID feature class** created via schema template
-- **Filename format** and spatial reference definitions from `config.yaml`
+| Script                              | Role/Responsibility                                                 |
+|-------------------------------------|---------------------------------------------------------------------|
+| `tools/add_images_to_oid_tool.py`   | ArcGIS Toolbox wrapper, parameter handling                          |
+| `utils/add_images_to_oid_fc.py`     | Adds images to OID, schema validation                               |
+| `utils/assign_group_index.py`       | Assigns group index based on `AcquisitionDate`                      |
+| `utils/calculate_oid_attributes.py` | Computes and populates Z, SRS, CameraHeight, Reel, Frame, Orientation |
+| `utils/manager/config_manager.py`   | Loads and validates configuration                                   |
+
+---
+
+## ⚙️ Behavior / Logic
+
+1. Loads configuration (`config.yaml`) and resolves image source folder.
+2. Validates OID feature class and schema.
+3. Adds all JPEG images (including subfolders) to the OID using ArcPy tools.
+4. Extracts and populates attributes: Reel, Frame, CameraPitch, CameraRoll, NearDistance, FarDistance, CameraHeight, CameraOrientation.
+5. Optionally applies Z offset correction based on config.
+6. Assigns cyclic `GroupIndex` for display filtering, based on `AcquisitionDate`.
+7. Logs warnings for schema or metadata issues, supports robust error handling.
+
+---
+
+## 🗃️ Inputs
+
+- Images in `panos/original` (resolved from config)
+- OID feature class created via schema template
+- Filename format and spatial reference from `config.yaml`
 
 ---
 
 ## 📤 Outputs
 
-Each image feature in the OID will have:
-
-- **Linked file path** and `Name`
-- **X, Y, Z geometry** with adjusted Z (optional)
-- **CameraPitch** (default: 90), **CameraRoll** (default: 0)
-- **NearDistance** (default: 2), **FarDistance** (default: 50)
-- **CameraHeight**, **CameraOrientation** (Type 1 string)
-- **Reel** and **Frame** (from filename or `reel_info.json`)
-- **GroupIndex** (1–4), used for display filtering
+- OID feature class with new image features, including:
+  - Linked file path and `Name`
+  - X, Y, Z geometry (with optional Z adjustment)
+  - CameraPitch (default: 90), CameraRoll (default: 0)
+  - NearDistance (default: 2), FarDistance (default: 50)
+  - CameraHeight, CameraOrientation (Type 1 string)
+  - GroupIndex (for scalable display in ArcGIS Pro)
 
 ---
 
-## 🧮 Z and Height Calculation
+## 🗝️ Configuration / Notes
 
-Controlled by:
-```yaml
-camera_offset:
-  z:
-    gps_base_height: -7.5
-    mount_height: 51.0
-    lens_height: 16.5
-  camera_height:
-    rail_height: 18.5
-    vehicle_height: 198.0
-    mount_height: 51.0
-    lens_height: 16.5
+- Camera offset and orientation settings are drawn from `config.yaml`:
+
 ```
-
-Z = geometry Z + offset (if enabled)  
-CameraHeight = sum from rail to lens
-
----
-
-## 🧪 Example Usage (Python)
-
-```python
 from utils.add_images_to_oid_fc import add_images_to_oid
 from utils.assign_group_index import assign_group_index
 from utils.calculate_oid_attributes import enrich_oid_attributes

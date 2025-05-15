@@ -6,18 +6,19 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class for uploading enhanced or renamed images to AWS S3 using TransferManager.
 #   Optionally deploys a Lambda-based monitor to track upload progress via CloudWatch Events.
-#   Reads from a config YAML and supports skipping existing uploads, logging, and progress tracking.
+#   Reads from a config YAML and supports skipping existing uploads, robust logging, and progress tracking.
+#   Integrates with the RMI 360 workflow CORE utils for configuration, error handling, and AWS interaction.
 #
 # File Location:      /tools/copy_to_aws_tool.py
-# Uses:
+# Core Utils:
 #   - utils/copy_to_aws.py
 #   - utils/deploy_lambda_monitor.py
-#   - utils/arcpy_utils.py
+#   - utils/shared/arcpy_utils.py
 #   - utils/manager/config_manager.py
 #
 # Documentation:
@@ -27,20 +28,21 @@
 # Parameters:
 #   - Input Folder for Images to be Uploaded {input_image_folder} (Folder): Directory containing images to upload to AWS S3.
 #   - Skip Existing Files in S3? {skip_existing} (Boolean): If checked, skips files that already exist in the target S3 location.
-#   - Config File {config_file} (File): Path to the project YAML config file with AWS and path settings.
 #   - Project Folder {project_folder} (Folder): Root folder for the project; used for resolving logs and asset paths.
+#   - Config File {config_file} (File): Path to the project YAML config file with AWS and path settings.
 #   - Deploy Upload Monitor? {enable_monitor} (Boolean): Whether to deploy the AWS Lambda upload monitor before transfer.
 #
 # Notes:
-#   - Supports optional Lambda monitor deployment before upload
-#   - Skips re-uploading files already present in S3 if specified
-#   - Uses resumable upload strategy with retry handling
+#   - Supports optional Lambda monitor deployment before upload for real-time tracking.
+#   - Skips re-uploading files already present in S3 if specified.
+#   - Uses resumable upload strategy with retry handling for reliability.
+#   - Ensure AWS credentials and permissions are correctly configured in the config file.
 # =============================================================================
 
 import arcpy
 from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
-from utils.arcpy_utils import str_to_bool
+from utils.shared.arcpy_utils import str_to_bool
 from utils.manager.config_manager import ConfigManager
 
 

@@ -1,55 +1,99 @@
 # 🖼 Tool: Enhance Images
 
 ## 🧰 Tool Name
-**02 – Enhance Images**
 
 ---
 
-## 🧭 Purpose
+## 📝 Purpose
 
-This tool performs **automated image enhancement** on Mosaic 360 imagery by applying a configurable series of visual adjustments, including:
-
-- White balance correction
-- Adaptive local contrast enhancement (CLAHE)
-- Optional sharpening
-- Saturation boost
-- Gentle brightness recovery
-
-Enhanced images can be saved to a new folder, use a suffix, or overwrite originals. The OID’s `ImagePath` field is optionally updated to point to the enhanced images.
+Applies configurable image enhancement algorithms (white balance, contrast, denoising, sharpening, color correction, etc.) to all images referenced in an Oriented Imagery Dataset (OID) feature class. Designed for 360° panoramic images in Mosaic OID workflows.
 
 ---
 
-## 🔧 Parameters (ArcGIS Toolbox)
+## 🧰 Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Oriented Imagery Dataset` | ✅ | OID Feature Class with populated `ImagePath` values |
-| `Config File (optional)` | ⬜️ | Custom `config.yaml` with enhancement settings (uses default if not provided) |
-
----
-
-## 🧩 Scripts & Responsibilities
-
-| Script | Role |
-|--------|------|
-| `enhance_images_tool.py` | ArcGIS Toolbox wrapper |
-| `enhance_images.py` | Main enhancement engine |
-| `cv2` (OpenCV) | Image processing backend |
-| `ThreadPoolExecutor` | Parallel processing for performance |
+| Parameter            | Required | Description                                     |
+|----------------------|----------|-------------------------------------------------|
+| OID Feature Class    | ✅       | Input OID containing image paths                 |
+| Config File          | ✅       | Path to `config.yaml` with enhancement options   |
+| Project Folder       | ✅       | Project root for resolving outputs               |
 
 ---
 
-## ⚙️ Enhancement Pipeline
+## 🗂️ Scripts & Components
 
-Each image is enhanced in the following order (configurable via `config.yaml`):
+| Script                              | Role/Responsibility                |
+|-------------------------------------|------------------------------------|
+| `tools/enhance_images_tool.py`      | ArcGIS Toolbox wrapper             |
+| `utils/enhance_images.py`           | Core enhancement logic             |
+| `utils/manager/config_manager.py`   | Loads and validates configuration  |
 
-1. **White Balance**
-2. **CLAHE** (Contrast Limited Adaptive Histogram Equalization)
-3. **Saturation Boost**
-4. **Sharpening**
-5. **Brightness Recovery** (if image is too dark)
+---
 
-Statistics are computed before/after enhancement and logged for QA.
+## ⚙️ Behavior / Logic
+
+1. Loads enhancement parameters from config.
+2. Iterates over images referenced in OID.
+3. Applies selected enhancements (white balance, contrast, denoise, sharpen, etc.).
+4. Writes enhanced images to output folder.
+5. Optionally updates OID with new image paths.
+
+---
+
+## 🗃️ Inputs
+
+- OID feature class
+- Project YAML config with enhancement options
+
+---
+
+## 📤 Outputs
+
+- Enhanced images in output folder
+- Updated OID with new image paths (if configured)
+
+---
+
+## 🗝️ Configuration / Notes
+
+From `config.yaml`:
+
+```yaml
+enhance_images:
+  white_balance: true
+  contrast: 1.2
+  denoise: true
+  sharpen: false
+  output_folder: "enhanced_images"
+```
+
+- Output folder is created if missing.
+- Enhancement steps are configurable and can be chained.
+
+---
+
+## 🧩 Dependencies
+
+- Python with `opencv-python`, `numpy`
+- ArcGIS Pro
+- Project YAML config
+
+---
+
+## ✅ Validation
+
+Validation is performed by the appropriate validator in `utils/validators` (not `validate_config.py`).
+- Checks that enhancement config block exists and values are valid
+- Ensures OID and output paths are writable
+
+---
+
+## 🔗 Related Tools
+
+- Add Images to OID
+- Rename and Tag Images
+- Build OID Footprints
+- Generate OID Service
 
 ---
 

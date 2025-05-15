@@ -6,15 +6,15 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class that creates a new Oriented Imagery Dataset (OID) feature class
-#   using a validated schema template and optional custom spatial reference. Delegates to utility
-#   function for spatial reference, config resolution, and field population.
+#   using a validated schema template and optional custom spatial reference. Handles spatial reference,
+#   config resolution, and field population using Core Utils for robust and consistent output.
 #
 # File Location:      /tools/create_oid_tool.py
-# Uses:
+# Core Utils:
 #   - utils/create_oid_feature_class.py
 #   - utils/manager/config_manager.py
 #
@@ -23,14 +23,15 @@
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
-#   - Config File {config_file} (File): Optional path to a YAML config file
-#   - Output Oriented Imagery Dataset {output_fc} (Feature Class): Output OID feature class to create
-#   - Spatial Reference {spatial_ref} (Spatial Reference): Optional custom spatial reference
-#   - Project Folder {project_folder} (Folder): Root folder for this project
+#   - Output Oriented Imagery Dataset {output_fc} (Feature Class): Output OID feature class to create.
+#   - Spatial Reference {spatial_ref} (Spatial Reference): Optional custom spatial reference for the output.
+#   - Config File {config_file} (File): Optional path to a YAML config file with project and schema settings.
+#   - Project Folder {project_folder} (Folder): Root folder for this project.
 #
 # Notes:
-#   - Defaults to vertical WKID 5703 (Ellipsoidal) if none is specified
-#   - Supports both interactive ArcGIS use and automated orchestration
+#   - Defaults to vertical WKID 5703 (Ellipsoidal) if none is specified.
+#   - Supports both interactive ArcGIS use and automated orchestration.
+#   - Ensure the schema template and config file are up-to-date for consistent results.
 # =============================================================================
 
 import arcpy

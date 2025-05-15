@@ -6,15 +6,16 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class that wraps the Mosaic Processor command-line tool to render 360° video imagery
 #   and apply GPX integration. Requires a GRP file from Mosaic and proper installation of Mosaic Stitcher
-#   or MistikaVR. Can render full reels or specified frame ranges and supports config override.
+#   or MistikaVR. Can render full reels or specified frame ranges and supports config override. Integrates
+#   with Core Utils for configuration, command execution, and logging.
 #
 # File Location:      /tools/run_mosaic_processor_tool.py
-# Uses:
+# Core Utils:
 #   - utils/mosaic_processor.py
 #   - utils/manager/config_manager.py
 #
@@ -31,9 +32,10 @@
 #   - End Frame (optional) {end_frame} (Long): Last frame to render. Leave blank to render until end.
 #
 # Notes:
-#   - Requires Mosaic Processor and GRP calibration files installed separately
-#   - Supports partial reel rendering via start/end frame range
-#   - Logs command and reel metadata to project output directory
+#   - Requires Mosaic Processor and GRP calibration files installed separately.
+#   - Supports partial reel rendering via start/end frame range.
+#   - Logs command and reel metadata to project output directory.
+#   - Ensure Mosaic Processor, GRP, and config files are present and valid for successful processing.
 # =============================================================================
 
 import arcpy

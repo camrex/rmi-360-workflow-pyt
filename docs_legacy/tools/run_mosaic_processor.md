@@ -32,26 +32,93 @@ This step is **required before image enhancement, renaming, metadata tagging, or
 
 ---
 
-## 🔌 Parameters (ArcGIS Toolbox)
+## 🧰 Parameters
 
-| Name                        | Required | Type     | Description |
-|----------------------------|----------|----------|-------------|
-| `Project Folder`           | ✅       | Folder   | Root for project outputs and logs |
-| `Input Reels Folder`       | ✅       | Folder   | Raw Mosaic `.mp4` reels with optional `.gpx` |
-| `Config File`              | ⬜️       | File     | YAML config file (optional if using default) |
-| `Mosaic GRP Template Path` | ⬜️       | File     | Overrides `executables.mosaic_processor.grp_path` |
-| `Start Frame`              | ⬜️       | Integer  | First frame to process |
-| `End Frame`                | ⬜️       | Integer  | Last frame to process |
+| Parameter         | Required | Description                                         |
+|-------------------|----------|-----------------------------------------------------|
+| Project Folder    | ✅       | Root for project outputs and logs                   |
+| Input Reels Folder | ✅       | Folder containing raw Mosaic `.mp4` reels with optional `.gpx` |
+| Config File       | ⬜️       | Path to `config.yaml` with processing options        |
+| Mosaic GRP Template Path | ⬜️       | Overrides `executables.mosaic_processor.grp_path` |
+| Start Frame       | ⬜️       | First frame to process                               |
+| End Frame         | ⬜️       | Last frame to process                                |
+
+---
+
+## 🗂️ Scripts & Components
+
+| Script                                  | Role/Responsibility                |
+|-----------------------------------------|------------------------------------|
+| `tools/run_mosaic_processor_tool.py`    | ArcGIS Toolbox wrapper             |
+| `utils/run_mosaic_processor.py`         | Core processing logic              |
+| `utils/manager/config_manager.py`       | Loads and validates configuration  |
+
+---
+
+## ⚙️ Behavior / Logic
+
+1. Loads processing parameters from config.
+2. Ingests and organizes raw images.
+3. Performs QC checks and flags issues.
+4. Extracts and standardizes metadata.
+5. Outputs processed images and logs.
+
+---
+
+## 🗃️ Inputs
+
+- Folder of raw images
+- Project YAML config with processing options
+
+---
+
+## 📤 Outputs
+
+- Processed images ready for OID creation
+- QC and metadata logs
+
+---
+
+## 🗝️ Configuration / Notes
+
+From `config.yaml`:
+
+```yaml
+mosaic_processor:
+  qc_checks: true
+  organize_by_date: true
+  extract_metadata: true
+  output_folder: "processed_images"
+```
+
+- Output folder is created if missing.
+- QC checks can be toggled on/off.
 
 ---
 
 ## 🧩 Dependencies
 
-| Script | Responsibility |
-|--------|----------------|
-| `mosaic_processor.py` | Core logic for CLI execution and output folder structure |
-| `pad_mosaic_frame_numbers.py` | Normalizes filenames by padding frame numbers |
-| `validate_config.py` | Verifies executable paths and GRP file in `executables.mosaic_processor` |
+- Python with `opencv-python`, `pandas`
+- ArcGIS Pro
+- Project YAML config
+
+---
+
+## ✅ Validation
+
+Validation is performed by the appropriate validator in `utils/validators`.
+- Checks that input folder and output folder are valid
+- Ensures config options are present and correct
+- Validates image file types and required metadata fields
+
+---
+
+## 🔗 Related Tools
+
+- Enhance Images
+- Rename and Tag Images
+- Add Images to OID
+- Create OID Schema Template
 
 ---
 

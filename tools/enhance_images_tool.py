@@ -6,30 +6,32 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class for enhancing 360° images referenced in an OID feature class.
 #   Applies image processing operations including white balance, contrast, saturation boost,
-#   and sharpening. Supports batch multiprocessing and writes results to a configurable output mode.
+#   and sharpening. Supports batch multiprocessing, configurable output modes, and robust logging
+#   for integration with the RMI 360 workflow.
 #
 # File Location:      /tools/enhance_images_tool.py
-# Uses:
+# Core Utils:
 #   - utils/enhance_images.py
 #   - utils/manager/config_manager.py
-#   - utils/arcpy_utils.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
+#   - Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project. All imagery and logs will be organized under this folder.
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): Input OID feature class containing images to enhance.
 #   - Config File (optional) {config_file} (File): Path to YAML config file. Defaults to /configs/config.yaml if omitted.
 #
 # Notes:
-#   - Performs enhancement using OpenCV with multiprocessing support
-#   - Writes detailed logs and enhancement stats to project log folder
+#   - Performs enhancement using OpenCV with multiprocessing support.
+#   - Writes detailed logs and enhancement stats to project log folder.
+#   - Ensure config file specifies output and enhancement options as needed for the workflow.
 # =============================================================================
 
 import arcpy

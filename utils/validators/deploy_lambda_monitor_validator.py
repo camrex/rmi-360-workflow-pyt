@@ -1,8 +1,26 @@
+# =============================================================================
+# 🛰️ Deploy Lambda Monitor Validator (utils/validators/deploy_lambda_monitor_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for deploying AWS Lambda monitoring tools
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of AWS, image output, and project keys for Lambda monitoring deployment.
+#
+# File Location:        /utils/validators/deploy_lambda_monitor_validator.py
+# Called By:            Lambda monitor deployment workflows
+# Notes:                Used for validation of AWS and project settings in Lambda monitoring tools.
+# =============================================================================
 
 from utils.validators.common_validators import (
     validate_config_section,
     validate_type
 )
+
 
 def validate(cfg: "ConfigManager") -> bool:
     from utils.manager.config_manager import ConfigManager

@@ -6,15 +6,16 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class for generating an HTML (and optionally PDF) report based on
 #   a saved report JSON file. Optionally reattaches a configuration file for template path
 #   resolution and branding. Output folder can be overridden or defaults to path from JSON.
+#   Integrates with Core Utils for configuration, template management, and report generation.
 #
 # File Location:      /tools/generate_report_tool.py
-# Uses:
+# Core Utils:
 #   - utils/generate_report.py
 #   - utils/manager/config_manager.py
 #
@@ -27,8 +28,9 @@
 #   - Config File (Optional) {config_file} (File): Optional YAML config file to reattach template, logo, and slug context.
 #
 # Notes:
-#   - Generates HTML report from Jinja2 templates; PDF export is optional
-#   - Can be re-run at any time using archived JSON data
+#   - Generates HTML report from Jinja2 templates; PDF export is optional.
+#   - Can be re-run at any time using archived JSON data.
+#   - Ensure config and template paths are correct for branding and output.
 # =============================================================================
 
 import arcpy

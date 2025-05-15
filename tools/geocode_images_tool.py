@@ -6,15 +6,16 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class that geotags images from an Oriented Imagery Dataset (OID)
 #   using GPS metadata and ExifTool. Adds XMP geolocation data to image files in-place and
-#   supports project-specific geolocation configuration files.
+#   supports project-specific geolocation configuration files. Integrates with Core Utils for
+#   configuration and batch geotagging logic.
 #
 # File Location:      /tools/geocode_images_tool.py
-# Uses:
+# Core Utils:
 #   - utils/geocode_images.py
 #   - utils/manager/config_manager.py
 #
@@ -23,12 +24,13 @@
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
-#   - Oriented Imagery Feature Class {oid_fc} (Feature Class): The OID containing images to geotag.
-#   - Config File (optional) {config_file} (File): Optional config.yaml with geolocation DB and output settings.
+#   Oriented Imagery Feature Class {oid_fc} (Feature Class): The OID containing images to geotag.
+#   Config File (optional) {config_file} (File): Optional config.yaml with geolocation DB and output settings.
 #
 # Notes:
-#   - Requires ExifTool to be installed and available in PATH
-#   - Can be re-run safely; overwrites existing XMP location tags
+#   - Requires ExifTool to be installed and available in PATH.
+#   - Can be re-run safely; overwrites existing XMP location tags.
+#   - Ensure config file and ExifTool installation are correct for successful geotagging.
 # =============================================================================
 
 import arcpy

@@ -1,6 +1,24 @@
-from utils.validators.common_validators import validate_type
+# =============================================================================
+# 🧩 Mosaic Processor Validator (utils/validators/mosaic_processor_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for the Mosaic Processor tool
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of mosaic processor executable, GRP paths, and config path for mosaic workflows.
+#
+# File Location:        /utils/validators/mosaic_processor_validator.py
+# Called By:            Mosaic processor workflows
+# Notes:                Used for validation of mosaic processor settings and executable paths.
+# =============================================================================
 
-from utils.exceptions import ConfigValidationError
+from utils.validators.common_validators import validate_type
+from utils.shared.exceptions import ConfigValidationError
+
 
 def validate(cfg: "ConfigManager") -> bool:
     from utils.manager.config_manager import ConfigManager

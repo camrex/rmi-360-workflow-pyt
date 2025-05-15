@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Scans and validates a folder of enhanced/final images, checks for reel_info
@@ -15,14 +16,16 @@
 # File Location:        /utils/add_images_to_oid_fc.py
 # Validator:            /utils/validators/add_images_to_oid_validator.py
 # Called By:            tools/add_images_to_oid_tool.py
-# Int. Dependencies:    config_loader, arcpy_utils, expression_utils
-# Ext. Dependencies:    arcpy, os, pathlib, typing
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils
+# Ext. Dependencies:    arcpy, os, pathlib
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/add_images_to_oid.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Supports recursive reel folder discovery and duplicate prevention
+#   - Integrates schema validation and status/error logging
 # =============================================================================
 
 __all__ = ["add_images_to_oid"]
@@ -32,7 +35,7 @@ import os
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import load_field_registry
+from utils.shared.expression_utils import load_field_registry
 
 
 def warn_if_multiple_reel_info(image_folder, logger):

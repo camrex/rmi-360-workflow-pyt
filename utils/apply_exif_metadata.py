@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Resolves tag expressions from config for each image in an OID feature class, then generates
@@ -15,16 +16,18 @@
 # File Location:        /utils/apply_exif_metadata.py
 # Validator:            /utils/validators/apply_exif_metadata_validator.py
 # Called By:            tools/rename_and_tag_tool.py
-# Int. Dependencies:    config_loader, arcpy_utils, path_utils, expression_utils, executable_utils
-# Ext. Dependencies:    arcpy, os, subprocess, typing
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/arcpy_utils, utils/shared/expression_utils
+# Ext. Dependencies:    arcpy, os, subprocess
 # External Tools:       ExifTool (must be installed and available via PATH or config path)
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_and_tag.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Supports both string and list-based tag expressions
 #   - Uses ExifTool's -@ arg file interface for efficient batch execution
+#   - Logs all resolved metadata and batch execution results
 # =============================================================================
 
 __all__ = ["update_metadata_from_config"]
@@ -34,8 +37,8 @@ import subprocess
 import arcpy
 
 from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import resolve_expression
-from utils.arcpy_utils import validate_fields_exist
+from utils.shared.expression_utils import resolve_expression
+from utils.shread.arcpy_utils import validate_fields_exist
 
 
 def _extract_required_fields(tags):

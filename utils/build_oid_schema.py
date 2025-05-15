@@ -6,6 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Builds a geodatabase table to serve as a schema template for OID creation. It integrates
@@ -15,11 +16,12 @@
 # File Location:        /utils/build_oid_schema.py
 # Validator:            /utils/validators/build_oid_schema_validator.py
 # Called By:            tools/create_oid_template_tool.py
-# Int. Dependencies:    config_loader, expression_utils, arcpy_utils, schema_paths
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils
 # Ext. Dependencies:    arcpy, os, datetime, typing
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Respects categories (standard, not_applicable) from registry
@@ -31,11 +33,11 @@ __all__ = ["create_oid_schema_template"]
 import arcpy
 import os
 from datetime import datetime
-from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import load_field_registry
-
-
 from typing import Optional, Callable, Any
+
+from utils.manager.config_manager import ConfigManager
+from utils.shared.expression_utils import load_field_registry
+
 
 def _field_tuple(f: dict) -> tuple[str, str, Optional[int], str]:
     return (

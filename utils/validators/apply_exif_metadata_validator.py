@@ -1,5 +1,23 @@
+# =============================================================================
+# 🏷️ Apply EXIF Metadata Validator (utils/validators/apply_exif_metadata_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for applying EXIF metadata to images
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Checks required EXIF metadata tags, validates their structure and resolvable expressions, and ensures
+#   the ExifTool executable path is present and valid for image processing.
+#
+# File Location:        /utils/validators/apply_exif_metadata_validator.py
+# Called By:            EXIF metadata application workflows
+# Notes:                Ensures all required EXIF tags and tool paths are set for downstream processing.
+# =============================================================================
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     try_resolve_config_expression

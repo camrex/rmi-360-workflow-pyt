@@ -1,5 +1,23 @@
+# =============================================================================
+# ☁️ Copy to AWS Validator (utils/validators/copy_to_aws_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates AWS configuration for copying data to S3
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of required AWS keys, validates types, and checks max_workers and S3 folder
+#   configuration for compatibility with S3 upload workflows.
+#
+# File Location:        /utils/validators/copy_to_aws_validator.py
+# Called By:            AWS S3 upload and sync tools
+# Notes:                Used for validation of AWS credentials and S3 upload settings.
+# =============================================================================
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     try_resolve_config_expression,
     validate_keys_with_types

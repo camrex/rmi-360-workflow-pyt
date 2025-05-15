@@ -6,18 +6,19 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class that detects and flags suspect GPS points in an Oriented Imagery Dataset
 #   (OID) using geometric deviation and optional centerline validation. Optionally applies corrections
-#   based on detected outliers unless run in flag-only mode.
+#   based on detected outliers unless run in flag-only mode. Integrates with Core Utils for batch
+#   GPS analysis, correction, and configuration management.
 #
 # File Location:      /tools/smooth_gps_noise_tool.py
-# Uses:
+# Core Utils:
 #   - utils/smooth_gps_noise.py
 #   - utils/correct_gps_outliers.py
-#   - utils/arcpy_utils.py
+#   - utils/manager/config_manager.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/smooth_gps_noise.md
@@ -30,9 +31,10 @@
 #   - Config File {config_file} (File): Path to the project configuration YAML file.
 #
 # Notes:
-#   - Flag-only mode skips the coordinate update pass
-#   - Requires centerline to be in projected coordinate system if used
-#   - Updates QCFlag and optionally overwrites geometry of suspect features
+#   - Flag-only mode skips the coordinate update pass.
+#   - Requires centerline to be in projected coordinate system if used.
+#   - Updates QCFlag and optionally overwrites geometry of suspect features.
+#   - Ensure config file and Core Utils are up-to-date for reliable GPS correction.
 # =============================================================================
 
 import arcpy

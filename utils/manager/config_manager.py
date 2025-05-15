@@ -1,12 +1,12 @@
 # =============================================================================
 # 🧠 Config Manager Utility (utils/manager/config_manager.py)
 # -----------------------------------------------------------------------------
-# Purpose:             Loads, validates, and manages access to YAML configuration
+# Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360 Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Centralized configuration manager for the toolbox. Wraps access to key config
@@ -15,8 +15,8 @@
 #
 # File Location:        /utils/manager/config_manager.py
 # Called By:            ArcGIS tools, orchestrators, log initializers
-# Int. Dependencies:    utils/manager/path_manager, utils/manager/log_manager, utils/validate_config
-# Ext. Dependencies:    yaml, pathlib, typing
+# Int. Dependencies:    utils/manager/path_manager, utils/manager/log_manager, utils/validate_full_config, utils/expression_utils, utils/exceptions, utils/validators
+# Ext. Dependencies:    yaml, pathlib, typing, os
 #
 # Documentation:
 #   See: docs_legacy/CONFIG_MANAGER.md
@@ -25,6 +25,7 @@
 # Notes:
 #   - Automatically populates __project_root__ if project_base is passed
 #   - Supports .get(), .resolve(), and .validate() access patterns
+#   - Integrates tool-specific validators for robust schema enforcement
 # =============================================================================
 import os
 import yaml

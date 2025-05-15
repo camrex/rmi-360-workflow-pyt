@@ -1,66 +1,73 @@
 # 🌍 Tool: Geocode Images
 
 ## 🧰 Tool Name
-**07 – Geocode Images**
 
 ---
 
-## 🧭 Purpose
+## 📝 Purpose
 
-This tool adds **location metadata** (e.g., city, state, country) to each image using **reverse geocoding** based on GPS coordinates. It uses **ExifTool’s built-in geolocation features** and optionally supports:
-
-- The default location DB (cities > 2000 population)
-- Geolocation500 database (cities > 500 population)
-- Custom user-created location databases
-
-It writes standardized tags to EXIF and XMP metadata fields.
+Assigns spatial coordinates to images based on their EXIF GPS data or external CSV logs, updating the Oriented Imagery Dataset (OID) with accurate geometry. Supports batch geocoding, error reporting for missing/invalid location data, and prioritizes EXIF or CSV as configured.
 
 ---
 
-## 🔧 Parameters (ArcGIS Toolbox)
+## 🧰 Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Oriented Imagery Feature Class` | ✅ | Feature class with `ImagePath`, `X`, and `Y` fields |
-| `Config File` | ⬜️ | Optional override to use a specific `config.yaml` |
-
----
-
-## 🧩 Scripts & Flow
-
-| Script | Purpose |
-|--------|---------|
-| `geocode_images_tool.py` | Toolbox wrapper for ArcGIS Pro |
-| `geocode_images.py` | Applies geolocation tags via ExifTool |
-| `validate_config.py` | Ensures database paths and method are correctly configured |
+| Parameter            | Required | Description                                      |
+|----------------------|----------|--------------------------------------------------|
+| OID Feature Class    | ✅       | Input OID containing image references             |
+| Config File          | ✅       | Path to `config.yaml` with geocoding options      |
+| Project Folder       | ✅       | Project root for resolving outputs                |
 
 ---
 
-## 🔁 Workflow Summary
+## 🗂️ Scripts & Components
 
-```text
-1. Loads project-specific config
-2. Checks for image paths and GPS values
-3. Builds ExifTool arguments to write tags like:
-   - LocationShownCity
-   - LocationShownProvinceState
-   - LocationShownCountryName
-4. Writes logs and runs ExifTool in batch mode
-```
+| Script                              | Role/Responsibility                |
+|-------------------------------------|------------------------------------|
+| `tools/geocode_images_tool.py`      | ArcGIS Toolbox wrapper             |
+| `utils/geocode_images.py`           | Core geocoding logic               |
+| `utils/manager/config_manager.py`   | Loads and validates configuration  |
 
 ---
 
-## 🧠 Geolocation Configuration (`config.yaml → geocoding`)
+## ⚙️ Behavior / Logic
+
+1. Loads geocoding parameters from config.
+2. Iterates over images in OID.
+3. Extracts GPS data from EXIF or CSV (as prioritized in config).
+4. Updates OID geometry fields.
+5. Logs errors for missing or invalid data.
+
+---
+
+## 🗃️ Inputs
+
+- OID feature class
+- Project YAML config with geocoding options
+- (Optional) CSV logs with GPS data
+
+---
+
+## 📤 Outputs
+
+- OID feature class with updated geometry
+- Error logs for images with missing coordinates
+
+---
+
+## 🗝️ Configuration / Notes
+
+From `config.yaml`:
 
 ```yaml
-geocoding:
-  method: "exiftool"  # Required method
-  exiftool_geodb: "geolocation500"  # Options: default, geolocation500, geocustom
-  geoloc500_config_path: "../templates/exiftool/geolocation500.config"
-  geocustom_config_path: "../templates/exiftool/geocustom.config"
+geocode_images:
+  exif_priority: true
+  csv_fallback: "gps_log.csv"
+  geometry_fields: ["SHAPE@X", "SHAPE@Y"]
 ```
 
-> Each `.config` file must point to an absolute path to the geolocation DB folder. Relative paths inside ExifTool configs will not work.
+- If EXIF GPS is missing and `csv_fallback` is set, uses CSV for coordinates.
+- Logs images where neither source is available.
 
 ---
 
@@ -94,7 +101,7 @@ geocode_images(
 
 ## ✅ Validation
 
-Validation logic is implemented in `validate_tool_geocode_images()`:
+Validation is performed by `validate_tool_geocode_images()` in `utils/validators`:
 - Checks that `method` is `"exiftool"`
 - Validates that chosen DB is one of `default`, `geolocation500`, or `geocustom`
 - Validates presence and path of `.config` file if using a custom or Geolocation500 DB
