@@ -16,10 +16,6 @@
 # Called By:            GPS outlier correction tools
 # Notes:                Used for validation of spatial reference and WKID settings in GPS correction.
 # =============================================================================
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
 
 from utils.validators.common_validators import (
     validate_config_section,

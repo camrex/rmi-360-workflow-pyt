@@ -15,12 +15,8 @@
 # Called By:            Image enhancement workflows
 # Notes:                Used for validation of enhancement parameters for image processing.
 # =============================================================================
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
-
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     check_required_keys

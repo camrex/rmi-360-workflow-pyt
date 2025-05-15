@@ -17,12 +17,8 @@
 # Notes:                Used for validation of filename formats and dynamic parts for output images.
 # =============================================================================
 import string
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
-
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     validate_type,

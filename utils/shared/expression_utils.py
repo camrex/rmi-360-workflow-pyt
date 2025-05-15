@@ -31,10 +31,7 @@ from __future__ import annotations
 import os
 import yaml
 from datetime import datetime
-from typing import Union, Optional, Any, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
+from typing import Union, Optional, Any
 
 
 REQUIRED_REGISTRY_KEYS = {"name", "type", "length", "alias", "category", "expr", "oid_default", "orientation_format"}
@@ -171,7 +168,7 @@ def _resolve_field_expr(expr: str, row: dict) -> str:
     return value
 
 
-def _resolve_config_expr(expr: str, cfg: ConfigManager) -> str:
+def _resolve_config_expr(expr: str, cfg: ConfigManager) -> Any:
     from utils.manager.config_manager import ConfigManager    
     """
     Resolves a value from a ConfigManager using dot-separated key paths with optional modifiers.
@@ -184,7 +181,8 @@ def _resolve_config_expr(expr: str, cfg: ConfigManager) -> str:
         cfg: ConfigManager instance providing access to config, paths, and logger.
 
     Returns:
-        str: The resolved and formatted configuration value.
+        The resolved configuration value, preserving its native type (e.g., int, float, str, bool, dict, etc.),
+        unless a string modifier is applied, in which case a string is returned.
 
     Raises:
         KeyError: If the base config key cannot be resolved.
@@ -240,7 +238,7 @@ def _resolve_config_expr(expr: str, cfg: ConfigManager) -> str:
             logger.error(f"Modifier '{mod}' failed on config value: {value}", error_type=ValueError)
             return ""
 
-    return str(value)
+    return value
 
 
 def _is_modifier(mod: str) -> bool:

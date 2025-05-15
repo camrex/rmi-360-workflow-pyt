@@ -16,12 +16,8 @@
 # Called By:            AWS S3 upload and sync tools
 # Notes:                Used for validation of AWS credentials and S3 upload settings.
 # =============================================================================
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
-
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     try_resolve_config_expression,
     validate_keys_with_types

@@ -58,7 +58,7 @@ from typing import Optional, Any, Callable, Dict, List
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.arcpy_utils import str_to_bool
-from utils.shared.generate_report import generate_report_from_json
+from utils.generate_report import generate_report_from_json
 from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
 from utils.shared.gather_metrics import collect_oid_metrics, summarize_oid_metrics

@@ -17,12 +17,9 @@
 # Notes:                Used for validation of spatial reference and transformation settings in OID tools.
 # =============================================================================
 
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
-
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     try_resolve_config_expression

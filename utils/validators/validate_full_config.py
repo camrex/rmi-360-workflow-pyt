@@ -28,11 +28,12 @@
 #   - Designed to be run both via `__main__` and programmatically from tool execution
 # =============================================================================
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
 
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     validate_config_section,
@@ -79,7 +80,7 @@ def validate_full_config(cfg: 'ConfigManager', logger=None) -> bool:
     ]
     for section in required_sections:
         try:
-            validate_config_section(cfg, section, cfg)
+            validate_config_section(cfg, section, dict)
         except ConfigValidationError as e:
             logger.error(str(e), error_type=ConfigValidationError)
             errors.append(str(e))
