@@ -5,7 +5,8 @@
 # Project:             RMI 360 Imaging Workflow Python Toolbox
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
-# Updated:             2025-05-13
+# Created:             2025-05-13
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Runs the Mosaic Processor in three sequential stages:
@@ -23,11 +24,13 @@
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/run_mosaic_processor.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Uses cfg.validate(tool="mosaic_processor") for schema enforcement
 #   - .cfg file support is reserved for future implementation
 #   - Output is auto-padded to 6-digit frame numbers post-render
+#
 # =============================================================================
 import os
 import subprocess

@@ -1,8 +1,9 @@
 from utils.validators.common_validators import validate_type
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the Mosaic Processor tool.
 

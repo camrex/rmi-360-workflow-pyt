@@ -52,6 +52,7 @@ logs:
   geocode_args: "exiftool_geocode.args"
   gps_smooth_debug: "debuglog_outliers.csv"
   aws_upload_log: "aws_upload_log.csv"
+  aws_upload_summary: "aws_upload_summary.csv"
   enhance_log: "enhance_log.csv"
   rename_log: "rename_log.csv"
   process_log: "process_log.txt"

@@ -1,5 +1,5 @@
 from typing import Optional
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
@@ -7,7 +7,8 @@ from utils.validators.common_validators import (
 )
 
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     # ✅ Ensure spatial_ref exists and is a dictionary
     """
     Validates the configuration for the OID footprint building tool.

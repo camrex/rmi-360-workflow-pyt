@@ -98,6 +98,68 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
         return {}
 
 
+from typing import List, Dict, Any, Tuple
+
+def compute_linear_and_custom_updates(
+    row: List[Any],
+    update_fields: List[str],
+    linear_fields: Dict,
+    custom_field_defs: List[Tuple[str, str, str, str]],
+    oid_to_loc: Dict,
+    enable_linear_ref: bool,
+    logger=None
+) -> Tuple[List[Any], bool]:
+    """
+    Given a row and config, return the updated row and a boolean indicating if it was changed.
+    """
+    update = False
+    context = dict(zip(update_fields, row))
+    oid = row[0]
+    # Linear reference updates
+    if enable_linear_ref:
+        loc = oid_to_loc.get(oid)
+        route_id = mp_value = None
+        if loc:
+            route_id = loc.get("route_id")
+            mp_value = loc.get("mp_value")
+        for key, field_def in linear_fields.items():
+            field_name = field_def.get("name")
+            value = None
+            if key == "route_identifier":
+                value = route_id
+            elif key == "route_measure":
+                value = mp_value
+            else:
+                continue
+            idx = update_fields.index(field_name)
+            if field_def["type"] == "DOUBLE":
+                try:
+                    value = float(value)
+                except (ValueError, TypeError):
+                    if logger:
+                        logger.warning(f"Could not convert value for {field_name} to float.")
+                    value = None
+            row[idx] = value
+            update = True
+    # Custom field updates
+    for key, target_field, expression, field_type in custom_field_defs:
+        try:
+            # resolve_expression may raise
+            value = resolve_expression(expression, None, row=context)
+            if field_type == "DOUBLE":
+                try:
+                    value = float(value)
+                except (ValueError, TypeError):
+                    if logger:
+                        logger.warning(f"Could not convert value for {target_field} to float.")
+                    continue
+            row[update_fields.index(target_field)] = value
+            update = True
+        except Exception as e:
+            if logger:
+                logger.warning(f"Failed to resolve expression for {target_field}: {e}")
+    return row, update
+
 def update_linear_and_custom(
         cfg: ConfigManager,
         oid_fc_path: str,
@@ -146,61 +208,32 @@ def update_linear_and_custom(
     updated = 0
 
     # Update records
+    updated_oids = set()
+    failed_oids = set()
     with cfg.get_progressor(total=row_count, label="Updating linear/custom fields") as progressor:
         with arcpy.da.UpdateCursor(oid_fc_path, update_fields) as cursor:
             for i, row in enumerate(cursor, start=1):
                 oid = row[0]
-                context = dict(zip(update_fields, row))
-                update = False
-
-                # 🔄 Linear reference updates
-                if enable_linear_ref:
-                    loc = oid_to_loc.get(oid)
-
-                    if loc:
-                        route_id = loc.get("route_id")
-                        mp_value = loc.get("mp_value")
-
-                    for key, field_def in linear_fields.items():
-                        field_name = field_def.get("name")
-
-                        if key == "route_identifier":
-                            value = route_id
-                        elif key == "route_measure":
-                            value = mp_value
-                        else:
-                            continue
-
-                        idx = update_fields.index(field_name)
-                        if field_def["type"] == "DOUBLE":
-                            try:
-                                value = float(value)
-                            except (ValueError, TypeError):
-                                logger.warning(f"Could not convert value for {field_name} to float.")
-                                value = None
-
-                        row[idx] = value
-                        update = True
-
-                # 🔄 Custom field updates
-                for key, target_field, expression, field_type in custom_field_defs:
-                    try:
-                        value = resolve_expression(expression, cfg, row=context)
-                        if field_type == "DOUBLE":
-                            try:
-                                value = float(value)
-                            except (ValueError, TypeError):
-                                logger.warning(f"Could not convert value for {field_name} to float.")
-                                continue
-                        row[update_fields.index(target_field)] = value
-                        update = True
-                    except Exception as e:
-                        logger.warning(f"Failed to resolve expression for {target_field}: {e}")
-
-                if update:
-                    cursor.updateRow(row)
-                    updated += 1
-
+                try:
+                    new_row, update = compute_linear_and_custom_updates(
+                        row=list(row),
+                        update_fields=update_fields,
+                        linear_fields=linear_fields,
+                        custom_field_defs=custom_field_defs,
+                        oid_to_loc=oid_to_loc,
+                        enable_linear_ref=enable_linear_ref,
+                        logger=logger
+                    )
+                    if update:
+                        cursor.updateRow(new_row)
+                        updated_oids.add(oid)
+                except Exception as e:
+                    failed_oids.add(oid)
+                    logger.error(f"Failed to update OID {oid}: {e}")
                 progressor.update(i)
+    logger.info(f"✅ Updated {len(updated_oids)} feature(s) with linear and custom attributes." + (f" Failed to update {len(failed_oids)} OIDs." if failed_oids else ""))
+    if updated_oids:
+        logger.debug(f"Updated OIDs: {sorted(updated_oids)}")
+    if failed_oids:
+        logger.warning(f"Failed OIDs: {sorted(failed_oids)}")
 
-    logger.info(f"✅ Updated {updated} feature(s) with linear and custom attributes.")

@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Calculates file counts and total size of image directories for reporting
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Recursively walks a given directory to count image files (default: .jpg) and compute their
@@ -19,6 +20,7 @@
 #
 # Documentation:
 #   See: docs_legacy/UTILITIES.md
+#   (Ensure this doc is current; update if needed.)
 #
 # Notes:
 #   - Recursively matches any extensions provided via argument (default: ['.jpg'])
@@ -31,27 +33,34 @@ import humanize
 from pathlib import Path
 
 
-def folder_stats(path, extensions=None):
+from typing import List, Optional, Tuple
+
+def folder_stats(path: str, extensions: Optional[List[str]] = None) -> Tuple[int, str]:
     """
-    Calculate statistics for JPG files in a directory.
+    Calculate statistics for image files in a directory (recursive, case-insensitive).
 
     Args:
-        path (str): Path to the directory to analyze
-        extensions (list, optional): List of file extensions to include (default: ['.jpg'])
+        path: Path to the directory to analyze.
+        extensions: List of file extensions to include (default: ['.jpg']). Extensions are matched case-insensitively.
 
     Returns:
-        tuple: (number_of_files, human_readable_size)
-            - number_of_files (int): Count of matching files
-            - human_readable_size (str): Total size in human-readable format
+        A tuple (number_of_files, human_readable_size):
+            - number_of_files: Count of matching files.
+            - human_readable_size: Total size in human-readable format.
     """
     if not path or not os.path.exists(path):
         return 0, "0 B"
 
     if extensions is None:
         extensions = ['.jpg']
+    # Normalize extensions to lower-case
+    norm_exts = {e.lower() for e in extensions}
     p = Path(path)
-    jpg_files = []
-    for ext in extensions:
-        jpg_files.extend(list(p.rglob(f"*{ext}")))  # ✅ Recursively find all .jpg files
-    total_size = sum(f.stat().st_size for f in jpg_files)
+    jpg_files = [f for f in p.rglob("*") if f.is_file() and f.suffix.lower() in norm_exts]
+    total_size = 0
+    for f in jpg_files:
+        try:
+            total_size += f.stat().st_size
+        except OSError:
+            continue  # Skip files that can't be accessed
     return len(jpg_files), humanize.naturalsize(total_size, binary=True)

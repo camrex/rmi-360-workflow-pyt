@@ -1,9 +1,9 @@
+from __future__ import annotations
 import shutil
 from typing import Union, Tuple, Type
 from pathlib import Path
 from utils.exceptions import ConfigValidationError
 from utils.expression_utils import resolve_expression
-from utils.manager.config_manager import ConfigManager
 
 
 def validate_type(value, context: str, expected_type: Union[Type, Tuple[Type, ...]], cfg: ConfigManager):
@@ -19,6 +19,7 @@ def validate_type(value, context: str, expected_type: Union[Type, Tuple[Type, ..
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
 
     if not isinstance(value, expected_type):
@@ -50,6 +51,7 @@ def validate_expression_block(block: dict, keys: list[str], cfg: ConfigManager,
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger =cfg.get_logger()
     error_count = 0
 
@@ -84,6 +86,7 @@ def check_required_keys(d, keys, context, cfg: ConfigManager):
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger =cfg.get_logger()
 
     for key in keys:
@@ -102,6 +105,7 @@ def validate_config_section(cfg: ConfigManager, path: str, expected_type=dict):
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
 
     if not path:
@@ -144,6 +148,7 @@ def try_resolve_config_expression(expr: str, context: str, cfg: ConfigManager, e
     Returns:
         The resolved value if successful and of the expected type, or None if resolution fails or is skipped.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
 
     if expr is None or not isinstance(expr, str):
@@ -181,6 +186,7 @@ def validate_field_block(field_block: dict, cfg: ConfigManager, context: str = "
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
     error_count = 0
 
@@ -237,6 +243,7 @@ def check_file_exists(path, context, cfg: ConfigManager):
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
 
     if path == "DISABLED":
@@ -274,6 +281,7 @@ def check_duplicate_field_names(cfg: ConfigManager, registry: dict):
     Returns:
         bool: True if validation passed, False otherwise.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
 
     seen = set()
@@ -340,6 +348,7 @@ def validate_keys_with_types(
     Returns:
         int: Number of validation errors encountered.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
     error_count = 0
 

@@ -26,8 +26,6 @@
 #   - Ensures output directory is writable and validated before execution
 # =============================================================================
 
-# TODO: Make sure this properly handles enhance_images = FALSE
-
 __all__ = ["rename_images"]
 
 import arcpy
@@ -40,6 +38,62 @@ from utils.manager.config_manager import ConfigManager
 from utils.arcpy_utils import validate_fields_exist
 from utils.expression_utils import resolve_expression
 from utils.check_disk_space import check_sufficient_disk_space
+
+
+def _resolve_fields(cfg, row_dict, parts):
+    """
+    Resolve dynamic filename parts from config expressions.
+    """
+    return {
+        key: resolve_expression(expr, cfg, row=row_dict)
+        for key, expr in parts.items()
+    }
+
+
+def _get_unique_filename(output_dir, filename):
+    """
+    Get a unique filename by appending a numeric suffix if the file already exists.
+    """
+    base, ext = os.path.splitext(filename)
+    counter = 1
+    while (output_dir / filename).is_file():
+        filename = f"{base}_v{counter}{ext}"
+        counter += 1
+    return filename
+
+
+def _copy_and_delete(old_path, new_path, delete_originals):
+    """
+    Copy the file and delete the original if specified.
+    """
+    try:
+        shutil.copy2(old_path, new_path)
+        if delete_originals:
+            os.remove(old_path)
+    except (PermissionError, OSError) as e:
+        raise Exception(f"Failed to copy/delete file: {e}")
+
+
+def _update_row(cursor, row_dict, fields, new_path, filename):
+    """
+    Update the row with the new image path and filename.
+    """
+    row_dict["ImagePath"] = str(new_path)
+    row_dict["Name"] = filename
+    cursor.updateRow([row_dict.get(f) for f in fields])
+
+
+def _write_rename_log(rename_log_path, log_rows):
+    """
+    Write the rename log to a CSV file.
+    """
+    try:
+        with open(rename_log_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["OID", "OriginalPath", "OriginalName", "NewPath", "NewName"])
+            writer.writeheader()
+            writer.writerows(log_rows)
+    except PermissionError as e:
+        raise Exception(f"Failed to write rename log: {e}")
 
 
 def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = False):
@@ -93,7 +147,6 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
     # Prepare CSV log
     rename_log_path = cfg.paths.get_log_file_path("rename_log", cfg)
     logger.debug(f"Writing rename log to: {rename_log_path}")
-    log_fields = ["OID", "OriginalPath", "OriginalName", "NewPath", "NewName"]
     log_rows = []
 
     updated_images = []
@@ -109,32 +162,12 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
                 continue
 
             try:
-                resolved = {
-                    key: resolve_expression(expr, cfg, row=row_dict)
-                    for key, expr in parts.items()
-                }
-
+                resolved = _resolve_fields(cfg, row_dict, parts)
                 filename = fmt.format(**resolved)
-                new_path = output_dir / filename
+                new_path = output_dir / _get_unique_filename(output_dir, filename)
 
-                base, ext = os.path.splitext(filename)
-                counter = 1
-                while new_path.is_file():
-                    filename = f"{base}_v{counter}{ext}"
-                    new_path = output_dir / filename
-                    counter += 1
-
-                try:
-                    shutil.copy2(old_path, new_path)
-                    if delete_originals:
-                        os.remove(old_path)
-                except (PermissionError, OSError) as e:
-                    logger.warning(f"Failed to copy/delete file for OID {oid}: {e}")
-                    continue
-
-                row_dict["ImagePath"] = str(new_path)
-                row_dict["Name"] = filename
-                cursor.updateRow([row_dict.get(f) for f in fields])
+                _copy_and_delete(old_path, new_path, delete_originals)
+                _update_row(cursor, row_dict, fields, new_path, filename)
 
                 updated_images.append({
                     "oid": oid,
@@ -156,25 +189,12 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
                 })
 
                 logger.debug(f"✅ Renamed OID {oid} ➜ {filename}")
-            except KeyError as ke:
-                logger.warning(f"Failed to resolve filename part for OID {oid}: Missing key {ke}")
-                continue
-            except ValueError as ve:
-                logger.warning(f"Failed to resolve filename part for OID {oid}: Invalid value: {ve}")
-                continue
             except Exception as e:
                 logger.warning(f"Failed to rename/copy for OID {oid}: {e}")
                 continue
 
-    # Write rename log CSV
-    try:
-        with open(rename_log_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=log_fields)
-            writer.writeheader()
-            writer.writerows(log_rows)
-        logger.info(f"📝 Rename log saved to: {rename_log_path}")
-    except PermissionError as e:
-        logger.warning(f"Failed to write rename log: {e}")
+    _write_rename_log(rename_log_path, log_rows)
+    logger.info(f"📝 Rename log saved to: {rename_log_path}")
 
     logger.info(f"✅ {len(updated_images)} image(s) renamed and attributes updated.")
     return updated_images

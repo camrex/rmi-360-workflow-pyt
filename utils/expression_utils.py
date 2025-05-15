@@ -1,11 +1,13 @@
+from __future__ import annotations
 # =============================================================================
 # 🧠 Expression & Field Resolver (utils/expression_utils.py)
 # -----------------------------------------------------------------------------
 # Purpose:             Resolves dynamic expressions from config and row data into final values
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Provides utility functions to resolve expressions defined in YAML config or field registry.
@@ -13,12 +15,13 @@
 #   and special keywords like `now.year`. Also loads and validates OID field registry schemas.
 #
 # File Location:        /utils/expression_utils.py
-# Called By:            config_loader.py, validate_full_config.py, most workflow steps
+# Called By:            validate_full_config.py, most workflow steps
 # Int. Dependencies:    path_resolver
 # Ext. Dependencies:    os, yaml, datetime, typing, contextlib
 #
 # Documentation:
 #   See: docs_legacy/UTILITIES.md and docs_legacy/config_schema_reference.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Supports modifiers: strip(), float(), int, date(), upper, lower
@@ -29,14 +32,12 @@ import os
 import yaml
 from datetime import datetime
 from typing import Union, Optional, Any
-from utils.manager.config_manager import ConfigManager
 
 
 REQUIRED_REGISTRY_KEYS = {"name", "type", "length", "alias", "category", "expr", "oid_default", "orientation_format"}
 
 
-def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = None) \
-        -> dict:
+def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = None) -> dict:
     """
     Loads and validates a field registry from a YAML file.
 
@@ -54,6 +55,7 @@ def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = Non
         FileNotFoundError: If the registry file does not exist.
         ValueError: If the file cannot be parsed as a dictionary or required keys are missing.
     """
+    from utils.manager.config_manager import ConfigManager
     paths = cfg.paths
     logger = cfg.get_logger()
 
@@ -105,6 +107,7 @@ def resolve_expression(expr: Union[str, float, int], cfg: ConfigManager, row: Op
     Returns:
         The resolved value as a string, or the literal value if no resolution was required.
     """
+    from utils.manager.config_manager import ConfigManager
     if not isinstance(expr, str):
         return str(expr)
 
@@ -182,6 +185,7 @@ def _resolve_config_expr(expr: str, cfg: ConfigManager) -> str:
     Raises:
         KeyError: If the base config key cannot be resolved.
     """
+    from utils.manager.config_manager import ConfigManager
     logger = cfg.get_logger()
 
     if expr == "now.year":

@@ -142,13 +142,12 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
     logger = cfg.get_logger()
     cfg.validate(tool="smooth_gps_noise")
 
-    smooth_cfg = cfg.get("gps_smoothing", {})
-    spacing = smooth_cfg.get("capture_spacing_meters", 5.0)
-    deviation_thresh = smooth_cfg.get("deviation_threshold_m", 0.5)
-    angle_bounds = smooth_cfg.get("angle_bounds_deg", [175, 185])
-    proximity_range = smooth_cfg.get("proximity_check_range_m", 0.75)
-    max_route_dev = smooth_cfg.get("max_route_dist_deviation_m", 0.5)
-    outlier_threshold = smooth_cfg.get("outlier_reason_threshold", 2)
+    spacing = cfg.get("gps_smoothing.capture_spacing_meters", 5.0)
+    deviation_thresh = cfg.get("gps_smoothing.deviation_threshold_m", 0.5)
+    angle_bounds = cfg.get("gps_smoothing.angle_bounds_deg", [175, 185])
+    proximity_range = cfg.get("gps_smoothing.proximity_check_range_m", 0.75)
+    max_route_dev = cfg.get("gps_smoothing.max_route_dist_deviation_m", 0.5)
+    outlier_threshold = cfg.get("gps_smoothing.outlier_reason_threshold", 2)
 
     log_csv_path = cfg.paths.get_log_file_path("gps_smooth_debug", cfg)
 

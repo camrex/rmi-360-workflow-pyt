@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Loads, validates, and manages access to YAML configuration
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Centralized configuration manager for the toolbox. Wraps access to key config
@@ -14,11 +15,12 @@
 #
 # File Location:        /utils/manager/config_manager.py
 # Called By:            ArcGIS tools, orchestrators, log initializers
-# Int. Dependencies:    utils/path_manager, utils/log_manager, utils/validate_config
+# Int. Dependencies:    utils/manager/path_manager, utils/manager/log_manager, utils/validate_config
 # Ext. Dependencies:    yaml, pathlib, typing
 #
 # Documentation:
 #   See: docs_legacy/CONFIG_MANAGER.md
+#   (Ensure this doc is current; update if needed.)
 #
 # Notes:
 #   - Automatically populates __project_root__ if project_base is passed
@@ -31,9 +33,7 @@ from pathlib import Path
 from utils.validate_full_config import validate_full_config
 from utils.exceptions import ConfigValidationError
 from utils.expression_utils import resolve_expression
-from utils.manager.path_manager import PathManager
-from utils.manager.log_manager import LogManager
-from utils.manager.progressor_manager import ProgressorManager
+
 from utils.validators import (
     mosaic_processor_validator,
     build_oid_schema_validator,
@@ -92,14 +92,19 @@ class ConfigManager:
         self._project_base = Path(project_base).resolve() if project_base else None
         if self._project_base:
             self._config["__project_root__"] = str(self._project_base)
-        self._paths: Optional[PathManager] = PathManager(project_base=self._project_base, config=self._config) \
-            if self._project_base else None
-        self._lm: Optional[LogManager] = LogManager(messages=None, config=self._config, path_manager=self._paths) \
-            if self._paths else None
+        if self._project_base:
+            from utils.manager.path_manager import PathManager
+            from utils.manager.log_manager import LogManager
+            self._paths = PathManager(project_base=self._project_base, config=self._config)
+            self._lm = LogManager(messages=None, config=self._config, path_manager=self._paths)
+        else:
+            self._paths = None
+            self._lm = None
 
     @classmethod
     def from_file(cls, path: Optional[str] = None, project_base: Optional[Union[str, Path]] = None, *,
                   messages: Optional[list] = None) -> "ConfigManager":
+        from utils.manager.log_manager import LogManager
         """
         Class method to load a config file, validate schema version, and return a ConfigManager.
 
@@ -162,6 +167,8 @@ class ConfigManager:
 
     @staticmethod
     def _get_default_config_path(messages: Optional[list] = None) -> str:
+        from utils.manager.log_manager import LogManager
+        from utils.manager.path_manager import PathManager
         """
         Resolve default config path using PathManager.
 
@@ -206,9 +213,13 @@ class ConfigManager:
             ValueError: If the configuration fails validation.
         """
         if tool:
-            self.validate_tool_config(tool)
+            result = self.validate_tool_config(tool)
+            if result is False:
+                raise ValueError(f"Validation failed for tool: {tool}")
         else:
-            validate_full_config(self)
+            result = validate_full_config(self)
+            if result is False:
+                raise ValueError("Full config validation failed.")
 
     def has_section(self, section: str) -> bool:
         """
@@ -304,7 +315,7 @@ class ConfigManager:
         return self._config_path
 
     @property
-    def paths(self) -> PathManager:
+    def paths(self) -> "PathManager":
         """
         Access the initialized PathManager.
 
@@ -318,7 +329,7 @@ class ConfigManager:
             raise RuntimeError("PathManager was not initialized — project_base is missing.")
         return self._paths
 
-    def get_logger(self, messages: Optional[list] = None) -> LogManager:
+    def get_logger(self, messages: Optional[list] = None) -> "LogManager":
         """
         Return a LogManager instance, optionally updating its message sink.
 
@@ -341,7 +352,7 @@ class ConfigManager:
             raise RuntimeError("LogManager was not initialized — project_base is missing.")
         return self._lm
 
-    def get_progressor(self, total: int, label: str = "Processing...", step: int = 1) -> ProgressorManager:
+    def get_progressor(self, total: int, label: str = "Processing...", step: int = 1) -> "ProgressorManager":
         """
         Returns a ProgressorManager initialized with the active LogManager.
 
@@ -353,6 +364,7 @@ class ConfigManager:
         Returns:
             ProgressorManager: Progress tracker instance
         """
+        from utils.manager.progressor_manager import ProgressorManager
         return ProgressorManager(total=total, label=label, step=step, log_manager=self.get_logger())
 
     TOOL_VALIDATORS = {

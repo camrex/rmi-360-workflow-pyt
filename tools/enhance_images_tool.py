@@ -3,23 +3,25 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          EnhanceImagesTool
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.0.0
+# Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
+# Last Updated:       2025-05-14
 #
 # Description:
-#   Implements ArcPy Tool class for enhancing 360° images referenced in an OID feature class.
+#   ArcPy Tool class for enhancing 360° images referenced in an OID feature class.
 #   Applies image processing operations including white balance, contrast, saturation boost,
 #   and sharpening. Supports batch multiprocessing and writes results to a configurable output mode.
 #
 # File Location:      /tools/enhance_images_tool.py
 # Uses:
 #   - utils/enhance_images.py
-#   - utils/config_loader.py
+#   - utils/manager/config_manager.py
 #   - utils/arcpy_utils.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): Input OID feature class containing images to enhance.
@@ -32,8 +34,7 @@
 
 import arcpy
 from utils.enhance_images import enhance_images_in_oid
-from utils.config_loader import get_default_config_path
-from utils.arcpy_utils import log_message
+from utils.manager.config_manager import ConfigManager
 
 
 class EnhanceImagesTool:
@@ -57,6 +58,18 @@ class EnhanceImagesTool:
             feature class and an optional YAML configuration file for project-specific settings.
         """
         params = []
+
+        # Project Folder
+        project_param = arcpy.Parameter(
+            displayName="Project Folder",
+            name="project_folder",
+            datatype="DEFolder",
+            parameterType="Required",
+            direction="Input"
+        )
+        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
+                                     "organized under this folder.")
+        params.append(project_param)
 
         # Oriented Imagery Dataset (OID)
         oid_param = arcpy.Parameter(
@@ -89,17 +102,24 @@ class EnhanceImagesTool:
         Extracts input parameters, determines the configuration file path, and invokes the image enhancement routine.
         Logs a success message upon completion or logs and raises a runtime error if an exception occurs.
         """
-        oid_fc = parameters[0].valueAsText
-        config_file = parameters[1].valueAsText or get_default_config_path(messages=messages)
+        project_folder = parameters[0].valueAsText
+        oid_fc = parameters[1].valueAsText
+        config_file = parameters[2].valueAsText
+
+        cfg = ConfigManager.from_file(
+            path=config_file,  # may be None
+            project_base=project_folder,
+            messages=messages
+        )
+        logger = cfg.get_logger()
 
         try:
-            log_message("Starting image enhancement...", messages)
+            logger.info("Starting image enhancement...")
             enhance_images_in_oid(
-                oid_fc_path=oid_fc,
-                config_file=config_file,
-                messages=messages
+                cfg=cfg,
+                oid_fc_path=oid_fc
             )
-            log_message("✅ Image enhancement completed successfully.", messages)
+            logger.info("✅ Image enhancement completed successfully.")
 
         except Exception as e:
-            log_message(f"❌ Enhance Images Tool failed: {e}", messages, level="error", error_type=RuntimeError)
+            logger.error(f"Enhance Images Tool failed: {e}", error_type=RuntimeError)

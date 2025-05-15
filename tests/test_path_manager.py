@@ -17,7 +17,7 @@
 import pytest
 from pathlib import Path
 from utils.manager.path_manager import PathManager
-from utils.config_loader import resolve_config
+from utils.manager.config_manager import ConfigManager
 
 # === Configurable Inputs ===
 CONFIG_FILE = r"D:\RMI Valuation LLC\RMI - Development\RMI Mosaic 360 Tools Test AGP\Project\config2.yaml"
@@ -27,13 +27,13 @@ PROJECT_FOLDER = r"D:\RMI Valuation LLC\RMI - Development\RMI Mosaic 360 Tools T
 def test_path_manager_resolution():
     messages = []
 
-    config = resolve_config(
-        config_file=CONFIG_FILE,
-        project_folder=PROJECT_FOLDER,
+    cfg = ConfigManager.from_file(
+        path=CONFIG_FILE,
+        project_base=PROJECT_FOLDER,
         messages=messages
     )
 
-    pm = PathManager(project_base=Path(PROJECT_FOLDER), config=config)
+    pm = PathManager(project_base=Path(PROJECT_FOLDER), config=cfg)
 
     attributes = [
     "script_base", "project_base",

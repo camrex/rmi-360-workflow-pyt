@@ -37,8 +37,8 @@ from utils.schema_validator import ensure_valid_oid_schema_template
 
 
 def create_oriented_imagery_dataset(
-        output_fc_path: str,
         cfg: ConfigManager,
+        output_fc_path: str,
         spatial_reference: Optional[Union[int, arcpy.SpatialReference]] = None) -> str:
     """
     Creates an Oriented Imagery Dataset (OID) feature class at the specified path.
@@ -48,8 +48,8 @@ def create_oriented_imagery_dataset(
     progress and errors through the configured messaging system.
 
     Args:
-        output_fc_path: Full path where the new OID feature class will be created.
         cfg:
+        output_fc_path: Full path where the new OID feature class will be created.
         spatial_reference: Optional. Horizontal spatial reference as a WKID (int), an arcpy.SpatialReference object,
         or None to use defaults from configuration.
 

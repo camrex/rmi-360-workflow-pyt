@@ -1,11 +1,12 @@
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     validate_field_block
 )
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the 'linear_ref_fields' and 'custom_fields' sections of the OID schema template.
 

@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Constructs an ordered dictionary of callable workflow steps for OID processing
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Maps each pipeline step in the 360° imagery workflow to a labeled function. Supports conditional
@@ -19,6 +20,7 @@
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/TOOL_OVERVIEW.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Controls step label mapping, execution logic, and skip conditions
@@ -45,136 +47,62 @@ from utils.generate_oid_service import generate_oid_service
 from utils.arcpy_utils import str_to_bool
 
 
+from collections import namedtuple
+
+StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
+
+def skip_enhance_images(params):
+    return "Skipped (enhancement disabled)" if params.get("skip_enhance_images") == "true" else None
+
+def skip_if_copy_to_aws_disabled(params):
+    return "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
+
 def build_step_funcs(p, cfg):
     """
     Builds a dictionary of processing step descriptors for an oriented imagery workflow.
-    
-    Each step descriptor includes a label, a callable for execution, and optional skip logic
-    based on input parameters. The returned dictionary maps step keys to their corresponding
-    descriptors, enabling sequential or conditional execution of the workflow steps.
+    Now uses declarative step specs and a builder for modularity and testability.
     """
-    return {
-        "run_mosaic_processor": {
-            "label": "Run Mosaic Processor",
-            "func": lambda: run_mosaic_processor(
-                project_folder=p["project_folder"],
-                input_dir=p["input_reels_folder"],
-                cfg=cfg
-            )
-        },
-        "create_oid": {
-            "label": "Create Oriented Imagery Dataset",
-            "func": lambda: create_oriented_imagery_dataset(
-                output_fc_path=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "add_images": {
-            "label": "Add Images to OID",
-            "func": lambda: add_images_to_oid(
-                project_folder=p["project_folder"],
-                oid_fc_path=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "assign_group_index": {
-            "label": "Assign Group Index",
-            "func": lambda: assign_group_index(
-                oid_fc_path=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "enrich_oid": {
-            "label": "Calculate OID Attributes",
-            "func": lambda: enrich_oid_attributes(
-                oid_fc_path=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "smooth_gps": {
-            "label": "Smooth GPS Noise",
-            "func": lambda: smooth_gps_noise(
-                oid_fc=p["oid_fc"],
-                centerline_fc=p["centerline_fc"],
-                cfg=cfg
-            )
-        },
-        "correct_gps": {
-            "label": "Correct Flagged GPS Points",
-            "func": lambda: correct_gps_outliers(
-                oid_fc=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "update_linear_custom": {
-            "label": "Update Linear and Custom Attributes",
-            "func": lambda: update_linear_and_custom(
-                oid_fc=p["oid_fc"],
-                centerline_fc=p["centerline_fc"],
-                route_id_field=p["route_id_field"],
-                enable_linear_ref=str_to_bool(p["enable_linear_ref"]),
-                cfg=cfg
-            )
-        },
-        "enhance_images": {
-            "label": "Enhance Images",
-            "func": lambda: enhance_images_in_oid(
-                oid_fc_path=p["oid_fc"],
-                cfg=cfg
-            ),
-            "skip": lambda params: "Skipped (enhancement disabled)" if params.get("skip_enhance_images") == "true" else None
-        },
-        "rename_images": {
-            "label": "Rename Images",
-            "func": lambda: rename_images(
-                oid_fc=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "update_metadata": {
-            "label": "Update EXIF Metadata",
-            "func": lambda: update_metadata_from_config(
-                oid_fc=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "geocode": {
-            "label": "Geocode Images",
-            "func": lambda: geocode_images(
-                oid_fc=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "build_footprints": {
-            "label": "Build OID Footprints",
-            "func": lambda: build_oid_footprints(
-                oid_fc=p["oid_fc"],
-                cfg=cfg
-            )
-        },
-        "deploy_lambda_monitor": {
-            "label": "Deploy Lambda AWS Monitor",
-            "func": lambda: deploy_lambda_monitor(
-                cfg=cfg
-            ),
-            "skip": lambda params: "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
-        },
-        "copy_to_aws": {
-            "label": "Upload to AWS S3",
-            "func": lambda: copy_to_aws(
-                cfg=cfg
-            ),
-            "skip": lambda params: "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
-        },
-        "generate_service": {
-            "label": "Generate OID Service",
-            "func": lambda: generate_oid_service(
-                oid_fc=p["oid_fc"],
-                cfg=cfg
-            ),
-            "skip": lambda params: "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
-        }
-    }
+    step_specs = [
+        StepSpec("run_mosaic_processor", "Run Mosaic Processor",
+            lambda p, cfg: lambda: run_mosaic_processor(project_folder=p["project_folder"], input_dir=p["input_reels_folder"], cfg=cfg), None),
+        StepSpec("create_oid", "Create Oriented Imagery Dataset",
+            lambda p, cfg: lambda: create_oriented_imagery_dataset(output_fc_path=p["oid_fc"], cfg=cfg), None),
+        StepSpec("add_images", "Add Images to OID",
+            lambda p, cfg: lambda: add_images_to_oid(project_folder=p["project_folder"], oid_fc_path=p["oid_fc"], cfg=cfg), None),
+        StepSpec("assign_group_index", "Assign Group Index",
+            lambda p, cfg: lambda: assign_group_index(oid_fc_path=p["oid_fc"], cfg=cfg), None),
+        StepSpec("enrich_oid", "Calculate OID Attributes",
+            lambda p, cfg: lambda: enrich_oid_attributes(oid_fc_path=p["oid_fc"], cfg=cfg), None),
+        StepSpec("smooth_gps", "Smooth GPS Noise",
+            lambda p, cfg: lambda: smooth_gps_noise(oid_fc=p["oid_fc"], centerline_fc=p["centerline_fc"], cfg=cfg), None),
+        StepSpec("correct_gps", "Correct Flagged GPS Points",
+            lambda p, cfg: lambda: correct_gps_outliers(oid_fc=p["oid_fc"], cfg=cfg), None),
+        StepSpec("update_linear_custom", "Update Linear and Custom Attributes",
+            lambda p, cfg: lambda: update_linear_and_custom(oid_fc=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=str_to_bool(p["enable_linear_ref"]), cfg=cfg), None),
+        StepSpec("enhance_images", "Enhance Images",
+            lambda p, cfg: lambda: enhance_images_in_oid(oid_fc_path=p["oid_fc"], cfg=cfg), skip_enhance_images),
+        StepSpec("rename_images", "Rename Images",
+            lambda p, cfg: lambda: rename_images(oid_fc=p["oid_fc"], cfg=cfg), None),
+        StepSpec("update_metadata", "Update EXIF Metadata",
+            lambda p, cfg: lambda: update_metadata_from_config(oid_fc=p["oid_fc"], cfg=cfg), None),
+        StepSpec("geocode", "Geocode Images",
+            lambda p, cfg: lambda: geocode_images(oid_fc=p["oid_fc"], cfg=cfg), None),
+        StepSpec("build_footprints", "Build OID Footprints",
+            lambda p, cfg: lambda: build_oid_footprints(oid_fc=p["oid_fc"], cfg=cfg), None),
+        StepSpec("deploy_lambda_monitor", "Deploy Lambda AWS Monitor",
+            lambda p, cfg: lambda: deploy_lambda_monitor(cfg=cfg), skip_if_copy_to_aws_disabled),
+        StepSpec("copy_to_aws", "Upload to AWS S3",
+            lambda p, cfg: lambda: copy_to_aws(cfg=cfg), skip_if_copy_to_aws_disabled),
+        StepSpec("generate_service", "Generate OID Service",
+            lambda p, cfg: lambda: generate_oid_service(oid_fc=p["oid_fc"], cfg=cfg), skip_if_copy_to_aws_disabled),
+    ]
+    step_funcs = {}
+    for spec in step_specs:
+        entry = {"label": spec.label, "func": spec.func_builder(p, cfg)}
+        if spec.skip_fn:
+            entry["skip"] = spec.skip_fn
+        step_funcs[spec.key] = entry
+    return step_funcs
 
 
 def get_step_order(step_funcs: dict) -> list:

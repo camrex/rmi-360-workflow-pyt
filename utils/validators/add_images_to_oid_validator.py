@@ -2,12 +2,12 @@ from utils.validators.common_validators import (
     validate_field_block,
     validate_type, check_file_exists
 )
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.expression_utils import load_field_registry
 
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
     """
     Validates the configuration for adding images to an Oriented Imagery Dataset.
 
@@ -24,7 +24,7 @@ def validate(cfg: ConfigManager) -> bool:
     context = "oid_schema_template.esri_default.field_registry"
     if not check_file_exists(registry_path, context, cfg):
         logger.error("OID field registry .yaml file not found.")
-        error_count += 1
+        return False
 
     try:
         registry = load_field_registry(cfg)

@@ -3,9 +3,10 @@ from utils.validators.common_validators import (
     check_required_keys
 )
 from utils.exceptions import ConfigValidationError
-from utils.manager.config_manager import ConfigManager
 
-def validate(cfg: ConfigManager) -> bool:
+
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the 'image_enhancement' section of the configuration for image enhancement settings.
 

@@ -1,11 +1,13 @@
+from __future__ import annotations
 # =============================================================================
 # 📂 Path Manager Utility (utils/manager/path_manager.py)
 # -----------------------------------------------------------------------------
 # Purpose:             Resolves all script, config, image, log, and report paths
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-10
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Centralizes and simplifies path resolution across the Python Toolbox project.
@@ -19,6 +21,7 @@
 #
 # Documentation:
 #   See: docs/source/path_manager.rst
+#   (Ensure this doc is current; update if needed.)
 #
 # Notes:
 #   - Script base is resolved to the repo root unless explicitly passed
@@ -28,10 +31,8 @@ import os
 import subprocess
 from pathlib import Path
 import yaml
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
-from utils.expression_utils import resolve_expression
-from utils.manager.config_manager import ConfigManager
 
 __all__ = ["PathManager"]
 
@@ -47,19 +48,22 @@ class PathManager:
 
     Supports config overrides, expression-based log prefixes, and runtime executable checks.
     """
-    def __init__(self, project_base: Path, config: dict = None, script_base: Path = None):
+    def __init__(self, project_base: Path, config: Union[dict, ConfigManager] = None, script_base: Path = None):
         """
         Initialize the PathManager.
 
         Args:
             project_base (Path): The base path of the active project.
-            config (dict, optional): The loaded YAML configuration.
+            config (dict or ConfigManager, optional): The loaded configuration, either raw or wrapped.
             script_base (Path, optional): The root folder where rmi_360_workflow.pyt lives.
                                           Defaults to the parent of the calling file's parent.
         """
         self.script_base: Path = script_base or Path(__file__).resolve().parents[2]
         self.project_base: Path = Path(project_base).resolve()
-        self.config: dict = config or {}
+        if config is not None and config.__class__.__name__ == "ConfigManager":
+            self.cfg = config.raw
+        else:
+            self.cfg = config or {}
 
         if not (self.script_base / "rmi_360_workflow.pyt").exists():
             raise ValueError(f"Resolved script base {self.script_base} does not contain rmi_360_workflow.pyt")
@@ -210,6 +214,18 @@ class PathManager:
         """Path to Mosaic Processor config file (no default)."""
         return self._get_config_value("executables.mosaic_processor.cfg_path")
 
+    @property
+    def lambda_pm_path(self):
+        """Path to the lambda_progress_monitor.py."""
+        progress_monitor_rel_path = "aws_lambdas/lambda_progress_monitor.py"
+        return self.script_base / progress_monitor_rel_path
+
+    @property
+    def lambda_dr_path(self):
+        """Path to the disable_rule.py."""
+        deactivator_rel_path = "aws_lambdas/disable_rule.py"
+        return self.script_base / deactivator_rel_path
+
     def get_log_file_path(self, log_key: str, cfg: Optional["ConfigManager"] = None) -> Path:
         """
         Constructs the full path for a log file with optional prefix.
@@ -240,7 +256,9 @@ class PathManager:
             pm.get_log_file_path("enhance_log")
                 Path("/project/logs/20230510_enhance_log.txt")
         """
-        logs_cfg = self.config.get("logs", {})
+        from utils.manager.config_manager import ConfigManager
+        from utils.expression_utils import resolve_expression
+        logs_cfg = self.cfg.get("logs", {})
         log_dir = self.logs
         log_file = logs_cfg.get(log_key)
 
@@ -344,7 +362,7 @@ class PathManager:
                 "default_value"
         """
         keys = dotted_key.split(".")
-        val = self.config
+        val = self.cfg
         for key in keys:
             if isinstance(val, dict) and key in val:
                 val = val[key]
@@ -408,4 +426,4 @@ class PathManager:
         """
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
-        return cls(project_base=project_base, config=config, script_base=script_base)
+        return cls(project_base=project_base, cfg=config, script_base=script_base)

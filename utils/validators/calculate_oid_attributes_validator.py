@@ -4,11 +4,12 @@ from utils.validators.common_validators import (
     validate_config_section,
     validate_expression_block
 )
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.expression_utils import load_field_registry
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the 'calculate_oid_attributes' tool.
 
