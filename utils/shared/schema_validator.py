@@ -31,8 +31,8 @@ import arcpy
 from typing import Callable, Any, Optional, Set
 
 from utils.shared.expression_utils import load_field_registry
-from utils.shared.build_oid_schema import create_oid_schema_template
-from utils.shared.exceptions import ConfigValidationError
+from utils.build_oid_schema import create_oid_schema_template
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.manager.config_manager import ConfigManager
 
 

@@ -1,5 +1,5 @@
 # =============================================================================
-# 🚨 Custom Exception Definitions (utils/exceptions.py)
+# 🚨 Custom Exception Definitions (utils/rmi_exceptions.py)
 # -----------------------------------------------------------------------------
 # Purpose:             Defines custom exception classes for error handling in the RMI 360 workflow
 # Project:             RMI 360 Imaging Workflow Python Toolbox
@@ -12,7 +12,7 @@
 #   Contains project-specific exception classes, such as ConfigValidationError, to standardize error handling
 #   and improve clarity in exception reporting across the codebase.
 #
-# File Location:        /utils/exceptions.py
+# File Location:        /utils/rmi_exceptions.py
 # Called By:            utils/validate_full_config.py, other validation and config modules
 # Notes:                Extend this file with additional exceptions as needed for future features.
 # =============================================================================

@@ -90,9 +90,18 @@ def create_oriented_imagery_dataset(
         ensure_valid_oid_schema_template(cfg)
         progressor.update(1)
 
-        logger.info(f"Creating Oriented Imagery Dataset at {output_fc_path}...")
+        logger.info(f"Creating Oriented Imagery Dataset at {output_fc_path}")
 
         try:
+            logger.debug(f"Calling CreateOrientedImageryDataset with parameters:\n"
+                         f"  out_dataset_path={output_gdb}\n"
+                         f"  out_dataset_name={oid_name}\n"
+                         f"  spatial_reference={sr}\n"
+                         f"  elevation_source='DEM'\n"
+                         f"  dem='https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'\n"
+                         f"  lod='17'\n"
+                         f"  template={str(paths.oid_schema_template_path)}\n"
+                         f"  has_z='ENABLED'")
             arcpy.oi.CreateOrientedImageryDataset(
                 out_dataset_path=output_gdb,
                 out_dataset_name=oid_name,
@@ -100,11 +109,12 @@ def create_oriented_imagery_dataset(
                 elevation_source="DEM",
                 dem="https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer",
                 lod="17",
-                template=[paths.oid_schema_template_path],
+                template=[str(paths.oid_schema_template_path)],
                 has_z="ENABLED"
             )
         except arcpy.ExecuteError as exc:
             logger.error(f"Arcpy failed while creating OID: {oid_name}: {exc}", error_type=RuntimeError)
+            logger.error(arcpy.GetMessages(2))
 
         progressor.update(2)
 

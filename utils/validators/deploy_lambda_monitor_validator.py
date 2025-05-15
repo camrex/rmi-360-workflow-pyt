@@ -15,10 +15,6 @@
 # Called By:            Lambda monitor deployment workflows
 # Notes:                Used for validation of AWS and project settings in Lambda monitoring tools.
 # =============================================================================
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
 
 from utils.validators.common_validators import (
     validate_config_section,

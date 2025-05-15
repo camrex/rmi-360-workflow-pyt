@@ -51,6 +51,7 @@ class LogManager:
 
     Optional celebratory methods (.success(), .fireworks(), .party()) are included for end-of-run flair.
     Designed for use in orchestration scripts, CLI tools, and ArcGIS Python Toolbox tools.
+    
     """
 
     LEVEL_PREFIX = {
@@ -89,6 +90,16 @@ class LogManager:
         self.depth = 0
         self.indent_char = "    "
         self._timing_stack: List[float] = []
+
+    def push(self, msg: str) -> None:
+        """
+        Start a new indented log section and begin timing it.
+        Args:
+            msg (str): Header message for the step or section.
+        """
+        self.info(msg)
+        self.depth += 1
+        self._timing_stack.append(time.time())
 
     def log(self, msg: str, level: str = "info", error_type: Optional[Type[Exception]] = None, context: Optional[Dict] = None) -> None:
         """Log a message with a specified level, optional context, and error type.

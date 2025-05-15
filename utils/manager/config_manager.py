@@ -30,16 +30,11 @@
 
 import os
 import yaml
-from typing import Any, Optional, Union, Dict, List, TYPE_CHECKING
+from typing import Any, Optional, Union, Dict, List
 from pathlib import Path
 
-if TYPE_CHECKING:
-    from utils.manager.path_manager import PathManager
-    from utils.manager.log_manager import LogManager
-    from utils.manager.progressor_manager import ProgressorManager
-
 from utils.validators.validate_full_config import validate_full_config
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.shared.expression_utils import resolve_expression
 
 from utils.validators import (
@@ -325,6 +320,7 @@ class ConfigManager:
 
     @property
     def paths(self) -> "PathManager":
+        from utils.manager.path_manager import PathManager
         """
         Access the initialized PathManager.
 
@@ -339,6 +335,7 @@ class ConfigManager:
         return self._paths
 
     def get_logger(self, messages: Optional[list] = None) -> "LogManager":
+        from utils.manager.log_manager import LogManager
         """
         Return a LogManager instance, optionally updating its message sink.
 
@@ -362,6 +359,7 @@ class ConfigManager:
         return self._lm
 
     def get_progressor(self, total: int, label: str = "Processing...", step: int = 1) -> "ProgressorManager":
+        from utils.manager.progressor_manager import ProgressorManager
         """
         Returns a ProgressorManager initialized with the active LogManager.
 

@@ -33,10 +33,7 @@ import os
 import subprocess
 from pathlib import Path
 import yaml
-from typing import Any, List, Optional, Union, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
+from typing import Any, List, Optional, Union
 
 
 __all__ = ["PathManager"]

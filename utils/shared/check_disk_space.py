@@ -27,13 +27,12 @@
 #   - Raises RuntimeError if insufficient space is detected
 # =============================================================================
 
+from __future__ import annotations
 import arcpy
 import os
 import shutil
 from pathlib import Path
 from typing import Optional
-
-from utils.manager.config_manager import ConfigManager
 
 
 def find_base_dir(dir_path: str, token: str) -> Optional[str]:
@@ -45,7 +44,7 @@ def find_base_dir(dir_path: str, token: str) -> Optional[str]:
     return dir_path[: idx + len(token)] if idx != -1 else None
 
 
-def get_folder_size(path: str, config: ConfigManager) -> int:
+def get_folder_size(path: str, config: "ConfigManager") -> int:
     """
     Calculates the total size of all files within a directory, including subdirectories.
 
@@ -68,8 +67,7 @@ def get_folder_size(path: str, config: ConfigManager) -> int:
 
 def check_sufficient_disk_space(
     oid_fc: str,
-    cfg: ConfigManager,
-    *,
+    cfg: "ConfigManager",
     cursor_factory=None,
     disk_usage_func=None,
     folder_size_func=None

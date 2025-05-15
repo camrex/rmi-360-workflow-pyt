@@ -26,19 +26,17 @@
 #   - Value/type coercion supports spatial reference and boolean handling
 # =============================================================================
 
+from __future__ import annotations
 import arcpy
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Union, Any
 
-from utils.manager.config_manager import ConfigManager
-from utils.manager.log_manager import LogManager
-
 
 def validate_fields_exist(
     feature_class: str,
     required_fields: List[str],
-    logger: Optional[LogManager] = None,
+    logger: Optional["LogManager"] = None,
     arcpy_mod: Any = None
 ) -> None:
     """
@@ -79,7 +77,7 @@ def str_to_bool(val: Any) -> bool:
 def str_to_value(
     value: Any,
     value_type: Union[str, type],
-    logger: Optional[LogManager] = None,
+    logger: Optional["LogManager"] = None,
     arcpy_mod: Any = None,
     spatial_ref_type: Any = None
 ) -> Any:
@@ -123,8 +121,7 @@ def str_to_value(
 def backup_oid(
     oid_fc: str,
     step_key: str,
-    cfg: ConfigManager,
-    *,
+    cfg: "ConfigManager",
     arcpy_mod: Any = None,
     path_mod: Any = None,
     datetime_mod: Any = None,

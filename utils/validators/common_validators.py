@@ -19,13 +19,10 @@
 
 from __future__ import annotations
 import shutil
-from typing import Union, Tuple, Type, Literal, get_args, TYPE_CHECKING
+from typing import Union, Tuple, Type, Literal, get_args
 from pathlib import Path
 
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
-
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.shared.expression_utils import resolve_expression
 
 

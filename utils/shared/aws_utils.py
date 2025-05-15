@@ -27,15 +27,13 @@
 #   - Supports switching between secure and fallback credential modes
 #   - Raises explicit errors if credentials are missing or misconfigured
 # =============================================================================
-
+from __future__ import annotations
 import keyring
 from typing import Tuple, Optional, Any
 
-from utils.manager.config_manager import ConfigManager
-
 
 def get_aws_credentials(
-    cfg: ConfigManager,
+    cfg: "ConfigManager",
     *,
     keyring_mod=None,
     logger: Optional[Any] = None

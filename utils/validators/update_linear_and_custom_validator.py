@@ -16,12 +16,8 @@
 # Called By:            OID schema update and field validation workflows
 # Notes:                Used for validation of schema changes and custom field additions to OID templates.
 # =============================================================================
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from utils.manager.config_manager import ConfigManager
-
-from utils.shared.exceptions import ConfigValidationError
+from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     validate_field_block

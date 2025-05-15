@@ -683,9 +683,14 @@ geocoding:
 #    5. Brightness recovery (if enabled)
 # --------------------------------------------------------------------
 image_enhancement:
-  enabled: true               # Master switch for image enhancement
-  adaptive: true              # Enable adaptive tuning for CLAHE
-  max_workers: 16             # For high throughput without overloading
+  enabled: true                             # Master switch for image enhancement
+  dry_run: false                            # NOT IMPLEMENTED IN 1.1.0
+  adaptive: true                            # Enable adaptive tuning for CLAHE
+  max_workers: 16                           # For high throughput without overloading
+  auto_generate_profile: true               # NOT IMPLEMENTED IN 1.1.0
+  profile_json: "enhancement_profile.json"  # NOT IMPLEMENTED IN 1.1.0
+  ai_assist: true                           # NOT IMPLEMENTED IN 1.1.0
+  interval: 10                              # NOT IMPLEMENTED IN 1.1.0
 
   # ----------------------------------------------------------------
   # 🗂️ OUTPUT MODE
@@ -796,3 +801,12 @@ orchestrator:
 disk_space:
   check_enabled: True
   min_buffer_ratio: 1.1
+
+# ----------------------------------------------------------------
+# OPENAI CONFIG
+# ----------------------------------------------------------------
+openai:
+  keyring_openai: false             # NOT IMPLEMENTED IN 1.1.0
+  keyring_service_name: openai_kr   # NOT IMPLEMENTED IN 1.1.0
+  api_key: <YOUR OPENAI API KEY>    # NOT IMPLEMENTED IN 1.1.0
+  model: "gpt-4o"                   # NOT IMPLEMENTED IN 1.1.0
