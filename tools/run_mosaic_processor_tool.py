@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          RunMosaicProcessorTool
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.0.0
+# Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
+# Last Updated:       2025-05-14
 #
 # Description:
 #   ArcPy Tool class that wraps the Mosaic Processor command-line tool to render 360° video imagery
@@ -15,10 +16,11 @@
 # File Location:      /tools/run_mosaic_processor_tool.py
 # Uses:
 #   - utils/mosaic_processor.py
-#   - utils/config_loader.py
+#   - utils/manager/config_manager.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/run_mosaic_processor.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
 #   - Project Folder {project_folder} (Folder): Root folder for the Mosaic 360 project. Logs and imagery will be saved here.
@@ -36,7 +38,7 @@
 
 import arcpy
 from utils.mosaic_processor import run_mosaic_processor
-from utils.config_loader import get_default_config_path
+from utils.manager.config_manager import ConfigManager
 
 
 class RunMosaicProcessorTool(object):
@@ -93,21 +95,6 @@ class RunMosaicProcessorTool(object):
         config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
-        # Mosaic GRP template file
-        grp_param = arcpy.Parameter(
-            displayName="Mosaic GRP Template Path (optional)",
-            name="grp_path",
-            datatype="DEFile",
-            parameterType="Optional",
-            direction="Input"
-        )
-        grp_param.description = (
-            "Camera-specific GRP file provided by Mosaic for use with Mosaic Processor. "
-            "Defines calibration parameters for stitching imagery. "
-            "If not provided, the path from config.yaml will be used."
-        )
-        params.append(grp_param)
-
         # Optional start frame
         start_param = arcpy.Parameter(
             displayName="Start Frame (optional)",
@@ -141,17 +128,19 @@ class RunMosaicProcessorTool(object):
         """
         project_folder = parameters[0].valueAsText
         input_dir = parameters[1].valueAsText
-        config_file = parameters[2].valueAsText or get_default_config_path()
-        grp_path = parameters[3].valueAsText
-        start_frame = parameters[4].valueAsText
-        end_frame = parameters[5].valueAsText
+        config_file = parameters[2].valueAsText
+        start_frame = parameters[3].valueAsText
+        end_frame = parameters[4].valueAsText
+
+        cfg = ConfigManager.from_file(
+            path=config_file,  # may be None
+            project_base=project_folder,
+            messages=messages
+        )
 
         run_mosaic_processor(
-            project_folder=project_folder,
+            cfg=cfg,
             input_dir=input_dir,
-            grp_path=grp_path or None,
             start_frame=start_frame or None,
-            end_frame=end_frame or None,
-            config_file=config_file,
-            messages=messages
+            end_frame=end_frame or None
         )

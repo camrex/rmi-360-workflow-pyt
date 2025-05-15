@@ -46,10 +46,10 @@
 - ✅utils/update_linear_and_custom.py 
 - ✅utils/enhance_images.py 
 - ✅utils/rename_images.py	<- _Needs to handle if Enhance Images = False (From here and beyond)_
-- utils/apply_exif_metadata.py 
-- utils/geocode_images.py 
-- utils/build_oid_footprints.py 
-- utils/deploy_lambda_monitor.py 
-- utils/copy_to_aws.py 
-- utils/aws_utils.py 
-- utils/generate_oid_service.py
+- ✅utils/apply_exif_metadata.py 
+- ✅utils/geocode_images.py 
+- ✅utils/build_oid_footprints.py 
+- ✅utils/deploy_lambda_monitor.py 
+- ✅utils/copy_to_aws.py 
+- ✅utils/aws_utils.py 
+- ✅utils/generate_oid_service.py

@@ -1,3 +1,4 @@
+from __future__ import annotations
 # =============================================================================
 # ✅ Config Validator & Tool Schema Enforcer (utils/validate_full_config.py)
 # -----------------------------------------------------------------------------
@@ -14,7 +15,7 @@
 #   Raises `ConfigValidationError` for invalid structures, missing fields, or improper expressions.
 #
 # File Location:        /utils/validate_full_config.py
-# Called By:            config_loader.py, orchestrator, CLI validation entrypoint
+# Called By:            orchestrator, CLI validation entrypoint
 # Int. Dependencies:    arcpy_utils, expression_utils, path_resolver, config_loader, schema_paths
 # Ext. Dependencies:    shutil, string, typing, pathlib
 #
@@ -31,62 +32,79 @@ from utils.validators.common_validators import (
     validate_config_section,
     validate_expression_block
 )
-from utils.manager.config_manager import ConfigManager, SUPPORTED_SCHEMA_VERSIONS
 from utils.exceptions import ConfigValidationError
 
 
-def validate_full_config(cfg: ConfigManager):
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
+def validate_full_config(cfg: 'ConfigManager', logger=None) -> bool:
     """
     Validates the entire configuration for the orchestrator workflow.
-    
-    Checks schema version support, required top-level sections, and key types. Validates spatial reference expressions
-    and delegates to all tool-specific validators. Logs errors for any validation failures and reports success if all
-    checks pass.
-    """
-    schema_version = cfg.get("schema_version")
 
-    logger = cfg.get_logger()
-    error_count = 0
+    Checks schema version support, required top-level sections, and key types. Validates spatial reference expressions
+    and delegates to all tool-specific validators. Collects and logs all validation errors, reporting success only if
+    all checks pass.
+
+    Args:
+        cfg (ConfigManager): The configuration manager instance.
+        logger: Optional logger for testing; defaults to cfg.get_logger().
+
+    Returns:
+        True if validation passes, False otherwise.
+    """
+    from utils.manager.config_manager import SUPPORTED_SCHEMA_VERSIONS
+    logger = logger or cfg.get_logger()
+    errors = []
+
+    schema_version = cfg.get("schema_version")
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        msg = (f"Unsupported schema_version '{schema_version}'. Supported versions: "
+               f"{sorted(SUPPORTED_SCHEMA_VERSIONS)}")
+        logger.error(msg, error_type=ConfigValidationError)
+        errors.append(msg)
 
     try:
-        if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
-            logger.error(f"Unsupported schema_version '{schema_version}'. Supported versions: "
-                        f"{sorted(SUPPORTED_SCHEMA_VERSIONS)}", error_type=ConfigValidationError)
-            error_count += 1
-
         validate_type(cfg.get("debug_messages"), "debug_messages", bool, cfg)
-
-        required_sections = [
-            "logs", "project", "camera", "camera_offset", "spatial_ref", "executables", "oid_schema_template",
-            "gps_smoothing", "image_output.filename_settings", "image_output.metadata_tags", "aws", "portal",
-            "geocoding"
-        ]
-
-        for section in required_sections:
-            validate_config_section(cfg, section, cfg)
-
-        validate_expression_block(cfg["spatial_ref"],
-                                  ["gcs_horizontal_wkid", "vcs_vertical_wkid", "pcs_horizontal_wkid"],
-                                  cfg, int, "spatial_ref")
-
-        # Tool-specific validation
-        for tool in cfg.TOOL_VALIDATORS:
-            cfg.TOOL_VALIDATORS[tool](cfg)
-            error_count += 1
-
     except ConfigValidationError as e:
-        logger.error(f"[Config Validation] {e}", error_type=ConfigValidationError)
-        return False
+        logger.error(str(e), error_type=ConfigValidationError)
+        errors.append(str(e))
 
-    if error_count == 0:
+    required_sections = [
+        "logs", "project", "camera", "camera_offset", "spatial_ref", "executables", "oid_schema_template",
+        "gps_smoothing", "image_output.filename_settings", "image_output.metadata_tags", "aws", "portal",
+        "geocoding"
+    ]
+    for section in required_sections:
+        try:
+            validate_config_section(cfg, section, cfg)
+        except ConfigValidationError as e:
+            logger.error(str(e), error_type=ConfigValidationError)
+            errors.append(str(e))
+
+    try:
+        spatial_ref = cfg.get("spatial_ref")
+        validate_expression_block(
+            spatial_ref,
+            ["gcs_horizontal_wkid", "vcs_vertical_wkid", "pcs_horizontal_wkid"],
+            cfg, int, "spatial_ref"
+        )
+    except ConfigValidationError as e:
+        logger.error(str(e), error_type=ConfigValidationError)
+        errors.append(str(e))
+
+    # Tool-specific validation
+    for tool, validator in getattr(cfg, 'TOOL_VALIDATORS', {}).items():
+        try:
+            validator(cfg)
+        except ConfigValidationError as e:
+            logger.error(f"[{tool} validation] {e}", error_type=ConfigValidationError)
+            errors.append(f"{tool}: {e}")
+
+    if not errors:
         logger.info("✅ Full config validation passed.")
         return True
-    return False
-
-
-if __name__ == "__main__":
-    import sys
-    from utils.config_loader import load_config
-    config_path = sys.argv[1] if len(sys.argv) > 1 else "../configs/config.yaml"
-    config = load_config(config_path)
-    validate_full_config(config)
+    else:
+        logger.error(f"Config validation failed with {len(errors)} error(s).", error_type=ConfigValidationError)
+        return False

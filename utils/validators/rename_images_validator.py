@@ -1,5 +1,5 @@
 import string
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
@@ -8,7 +8,8 @@ from utils.validators.common_validators import (
 )
 
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the image renaming tool's filename settings.
 

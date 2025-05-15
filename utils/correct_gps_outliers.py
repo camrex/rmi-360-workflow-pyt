@@ -33,6 +33,56 @@ import arcpy
 from utils.manager.config_manager import ConfigManager
 
 
+from typing import List, Dict, Set, Tuple
+
+def interpolate_gps_outliers(
+    rows: List[Dict],
+    default_h_wkid: int,
+    default_v_wkid: int,
+    logger=None
+) -> Tuple[List[Dict], Set[int]]:
+    """
+    Pure logic for detecting and interpolating GPS outlier sequences in a list of row dicts.
+    Returns updated rows and the set of corrected OIDs.
+    """
+    corrected_oids = set()
+    i = 0
+    while i < len(rows):
+        if rows[i]["qcflag"] != "GPS_OUTLIER":
+            i += 1
+            continue
+        # Start of outlier sequence
+        start_idx = i
+        while i < len(rows) and rows[i]["qcflag"] == "GPS_OUTLIER":
+            i += 1
+        end_idx = i - 1
+        # Find anchor points
+        if start_idx == 0 or end_idx == len(rows) - 1:
+            if logger:
+                logger.warning(f"Skipping outlier sequence at index {start_idx}-{end_idx} (no anchors)")
+            continue
+        p0 = rows[start_idx - 1]
+        p1 = rows[end_idx + 1]
+        num = end_idx - start_idx + 2
+        dx = (p1["x"] - p0["x"]) / num
+        dy = (p1["y"] - p0["y"]) / num
+        for j, idx in enumerate(range(start_idx, end_idx + 1), start=1):
+            new_x = p0["x"] + dx * j
+            new_y = p0["y"] + dy * j
+            z = rows[idx]["z"]
+            heading = rows[idx]["heading"]
+            pitch = rows[idx]["pitch"]
+            roll = rows[idx]["roll"]
+            orientation = f"1|{default_h_wkid}|{default_v_wkid}|{new_x:.6f}|{new_y:.6f}|{z:.3f}|{heading:.1f}|{pitch:.1f}|{roll:.1f}"
+            rows[idx].update({
+                "xy": (new_x, new_y),
+                "x": new_x,
+                "y": new_y,
+                "orientation": orientation,
+            })
+            corrected_oids.add(rows[idx]["oid"])
+    return rows, corrected_oids
+
 def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
     """
     Identifies and corrects GPS outlier points in a feature class by interpolating their positions.
@@ -73,53 +123,20 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
                 "y": row[9],
             })
 
-    # Identify sequences of outliers
-    corrected_oids = set()
-    i = 0
-    while i < len(rows):
-        if rows[i]["qcflag"] != "GPS_OUTLIER":
-            i += 1
-            continue
-
-        # Start of outlier sequence
-        start_idx = i
-        while i < len(rows) and rows[i]["qcflag"] == "GPS_OUTLIER":
-            i += 1
-        end_idx = i - 1
-
-        # Find anchor points
-        if start_idx == 0 or end_idx == len(rows) - 1:
-            continue
-
-        p0 = rows[start_idx - 1]
-        p1 = rows[end_idx + 1]
-        num = end_idx - start_idx + 2  # num of segments between points
-
-        dx = (p1["x"] - p0["x"]) / num
-        dy = (p1["y"] - p0["y"]) / num
-
-        for j, idx in enumerate(range(start_idx, end_idx + 1), start=1):
-            new_x = p0["x"] + dx * j
-            new_y = p0["y"] + dy * j
-            z = rows[idx]["z"]
-            heading = rows[idx]["heading"]
-            pitch = rows[idx]["pitch"]
-            roll = rows[idx]["roll"]
-            orientation = f"1|{default_h_wkid}|{default_v_wkid}|{new_x:.6f}|{new_y:.6f}|{z:.3f}|{heading:.1f}|{pitch:.1f}|{roll:.1f}"
-
-            rows[idx].update({
-                "xy": (new_x, new_y),
-                "x": new_x,
-                "y": new_y,
-                "orientation": orientation,
-            })
-            corrected_oids.add(rows[idx]["oid"])
+    # Interpolate and correct outliers using pure logic helper
+    rows, corrected_oids = interpolate_gps_outliers(
+        rows,
+        default_h_wkid=default_h_wkid,
+        default_v_wkid=default_v_wkid,
+        logger=logger
+    )
 
     if not corrected_oids:
         logger.info("No GPS outliers found or corrected.")
         return
 
-    # Apply updates
+    # Apply updates with error handling
+    failed_oids = set()
     with cfg.get_progressor(total=len(corrected_oids), label="Correcting GPS outliers") as progressor:
         with arcpy.da.UpdateCursor(oid_fc, fields) as cursor:
             for row in cursor:
@@ -127,12 +144,21 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
                 if oid in corrected_oids:
                     r = next((r for r in rows if r["oid"] == oid), None)
                     if r:
-                        row[2] = r["xy"]
-                        row[3] = r["orientation"]
-                        row[7] = r["z"]  # unchanged
-                        row[8] = r["x"]
-                        row[9] = r["y"]
-                        cursor.updateRow(row)
-                        progressor.update(1)
+                        try:
+                            row[2] = r["xy"]
+                            row[3] = r["orientation"]
+                            row[7] = r["z"]  # unchanged
+                            row[8] = r["x"]
+                            row[9] = r["y"]
+                            cursor.updateRow(row)
+                            progressor.update(1)
+                        except Exception as e:
+                            failed_oids.add(oid)
+                            logger.error(f"Failed to update OID {oid}: {e}")
 
-    logger.info(f"✅ Corrected {len(corrected_oids)} GPS outlier point(s).")
+    logger.info(f"✅ Corrected {len(corrected_oids) - len(failed_oids)} GPS outlier point(s)." + (f" Failed to update {len(failed_oids)} OIDs." if failed_oids else ""))
+    if corrected_oids:
+        logger.debug(f"Corrected OIDs: {sorted(corrected_oids - failed_oids)}")
+    if failed_oids:
+        logger.warning(f"Failed OIDs: {sorted(failed_oids)}")
+

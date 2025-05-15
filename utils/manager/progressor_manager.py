@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Provides unified progress tracking for ArcGIS Pro and CLI contexts
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Defines a context-managed ProgressorManager class that attempts to initialize ArcGIS Pro's progressor
@@ -19,6 +20,7 @@
 #
 # Documentation:
 #   See: docs_legacy/UTILITIES.md
+#   (Ensure this doc is current; update if needed.)
 #
 # Notes:
 #   - Resets ArcGIS progressor on exit if used

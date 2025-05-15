@@ -1,4 +1,4 @@
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
@@ -8,7 +8,8 @@ from utils.validators.common_validators import (
 )
 from utils.expression_utils import load_field_registry
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for building an OID schema template.
 

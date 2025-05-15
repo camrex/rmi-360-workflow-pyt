@@ -201,26 +201,53 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
     with cfg.get_progressor(total=row_count, label="Enriching OID attributes") as progressor:
         with arcpy.da.UpdateCursor(oid_fc_path, fields) as cursor:
             for i, row in enumerate(cursor, start=1):
-                x, y, z = row[field_to_index["SHAPE@X"]], row[field_to_index["SHAPE@Y"]], row[field_to_index["SHAPE@Z"]]
+                # Safely access required fields
+                try:
+                    x = row[field_to_index["SHAPE@X"]]
+                    y = row[field_to_index["SHAPE@Y"]]
+                    z = row[field_to_index["SHAPE@Z"]]
+                except KeyError:
+                    logger.warning(f"Missing SHAPE@X/Y/Z fields on row {i}, skipping row.")
+                    continue
                 adjusted_z = z + z_offset if adjust_z else z
-                heading = row[field_to_index["CameraHeading"]]
-                image_path = row[field_to_index["ImagePath"]].strip()
+
+                heading = row[field_to_index["CameraHeading"]] if "CameraHeading" in field_to_index else None
+                if heading is None:
+                    logger.warning(f"Missing CameraHeading for row {i}, skipping row.")
+                    continue
+
+                image_path = row[field_to_index["ImagePath"]].strip() if "ImagePath" in field_to_index and row[field_to_index["ImagePath"]] else None
+                if not image_path:
+                    logger.warning(f"Missing ImagePath for row {i}, skipping row.")
+                    continue
 
                 orientation = f"1|{h_wkid}|{v_wkid}|{x:.6f}|{y:.6f}|{adjusted_z:.3f}|{heading:.1f}|{pitch:.1f}|{roll:.1f}"
                 reel = extract_reel_from_path(image_path) or reel_from_info
                 frame = extract_frame_from_filename(image_path)
 
-                row[field_to_index["CameraPitch"]] = pitch
-                row[field_to_index["CameraRoll"]] = roll
-                row[field_to_index["NearDistance"]] = near
-                row[field_to_index["FarDistance"]] = far
-                row[field_to_index["X"]] = x
-                row[field_to_index["Y"]] = y
-                row[field_to_index["Z"]] = adjusted_z
-                row[field_to_index["SHAPE@Z"]] = adjusted_z
-                row[field_to_index["SRS"]] = f"{h_wkid},{v_wkid}"
-                row[field_to_index["CameraHeight"]] = camera_height
-                row[field_to_index["CameraOrientation"]] = orientation
+                # Only assign to fields that exist in the schema
+                if "CameraPitch" in field_to_index:
+                    row[field_to_index["CameraPitch"]] = pitch
+                if "CameraRoll" in field_to_index:
+                    row[field_to_index["CameraRoll"]] = roll
+                if "NearDistance" in field_to_index:
+                    row[field_to_index["NearDistance"]] = near
+                if "FarDistance" in field_to_index:
+                    row[field_to_index["FarDistance"]] = far
+                if "X" in field_to_index:
+                    row[field_to_index["X"]] = x
+                if "Y" in field_to_index:
+                    row[field_to_index["Y"]] = y
+                if "Z" in field_to_index:
+                    row[field_to_index["Z"]] = adjusted_z
+                if "SHAPE@Z" in field_to_index:
+                    row[field_to_index["SHAPE@Z"]] = adjusted_z
+                if "SRS" in field_to_index:
+                    row[field_to_index["SRS"]] = f"{h_wkid},{v_wkid}"
+                if "CameraHeight" in field_to_index:
+                    row[field_to_index["CameraHeight"]] = camera_height
+                if "CameraOrientation" in field_to_index:
+                    row[field_to_index["CameraOrientation"]] = orientation
                 if "Reel" in field_to_index:
                     row[field_to_index["Reel"]] = reel
                 if "Frame" in field_to_index:
@@ -229,5 +256,7 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
                 cursor.updateRow(row)
                 updated += 1
                 progressor.update(i)
+
+            # Note: All ArcPy and file dependencies are patchable for unit tests.
 
     logger.info(f"✅ OID enrichment complete. Updated {updated} image(s) with orientation, Z, and mosaic fields.")

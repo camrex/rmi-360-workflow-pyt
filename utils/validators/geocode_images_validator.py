@@ -1,11 +1,12 @@
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     check_file_exists
 )
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the geocoding configuration for the image geocoding tool.
 

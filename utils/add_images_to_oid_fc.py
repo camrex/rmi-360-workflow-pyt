@@ -72,7 +72,7 @@ def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str) -> None:
         if not arcpy.Exists(oid_fc_path):
             logger.error(f"OID does not exist at path: {oid_fc_path}", error_type=FileNotFoundError)
 
-        if not image_folder.is_dir(image_folder):
+        if not image_folder.is_dir():
             logger.error(f"Image folder not found: {image_folder}", error_type=FileNotFoundError)
 
         # Use pathlib to collect all .jpg files recursively

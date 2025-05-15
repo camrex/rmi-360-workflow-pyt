@@ -13,22 +13,30 @@
 # =============================================================================
 
 import pytest
+import tempfile
+import shutil
 from pathlib import Path
 from utils.manager.config_manager import ConfigManager
 
 # === Configurable Inputs ===
-CONFIG_FILE = r"D:\RMI Valuation LLC\RMI - Development\RMI Mosaic 360 Tools Test AGP\Project\config2.yaml"
-PROJECT_FOLDER = r"D:\RMI Valuation LLC\RMI - Development\RMI Mosaic 360 Tools Test AGP\Project"
+from pathlib import Path
+CONFIG_FILE = str(Path(__file__).parent.parent / "configs" / "config.sample.yaml")
+
+@pytest.fixture
+def temp_dir():
+    dir = tempfile.mkdtemp()
+    yield dir
+    shutil.rmtree(dir)
 
 @pytest.mark.integration
-def test_config_manager_full():
+def test_config_manager_full(temp_dir):
     messages = []
 
     # Initialize
-    cfg = ConfigManager.from_file(CONFIG_FILE, project_base=PROJECT_FOLDER, messages=messages, debug=True)
+    cfg = ConfigManager.from_file(CONFIG_FILE, project_base=temp_dir, messages=messages)
 
     # --- Schema Validation ---
-    cfg.validate(tool="enhance_images", messages=messages)
+    cfg.validate(tool="enhance_images")
 
     # --- Key Resolution ---
     assert isinstance(cfg.get("logs.process_log"), str)
@@ -63,3 +71,33 @@ def test_config_manager_full():
         print("\nMessages:")
         for m in messages:
             print("-", m)
+
+@pytest.mark.integration
+def test_config_manager_invalid_config(temp_dir):
+    messages = []
+    invalid_config = Path(temp_dir) / "invalid_config.yaml"
+    with open(invalid_config, "w") as f:
+        f.write("Invalid YAML")
+
+    with pytest.raises(Exception):
+        ConfigManager.from_file(invalid_config, project_base=temp_dir, messages=messages)
+
+@pytest.mark.integration
+def test_config_manager_missing_config(temp_dir):
+    messages = []
+    missing_config = Path(temp_dir) / "missing_config.yaml"
+
+    with pytest.raises(FileNotFoundError):
+        ConfigManager.from_file(missing_config, project_base=temp_dir, messages=messages)
+
+@pytest.mark.integration
+def test_config_manager_invalid_schema(temp_dir):
+    messages = []
+    invalid_schema_config = Path(temp_dir) / "invalid_schema_config.yaml"
+    with open(invalid_schema_config, "w") as f:
+        f.write("schema: invalid")
+
+    cfg = ConfigManager.from_file(invalid_schema_config, project_base=temp_dir, messages=messages)
+
+    with pytest.raises(RuntimeError):
+        cfg.validate(tool="enhance_images")

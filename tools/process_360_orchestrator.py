@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          Process360Workflow
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.0.0
+# Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
+# Last Updated:       2025-05-14
 #
 # Description:
 #   Orchestrates the full end-to-end Mosaic 360 image processing pipeline within ArcGIS Pro.
@@ -17,7 +18,7 @@
 # Uses:
 #   - utils/build_step_funcs.py
 #   - utils/step_runner.py
-#   - utils/config_loader.py
+#   - utils/manager/config_manager.py
 #   - utils/report_data_builder.py
 #   - utils/folder_stats.py
 #   - utils/gather_metrics.py
@@ -26,6 +27,7 @@
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
 #   - Start From Step (Optional) {start_step} (String): Step label to start from. Skips earlier steps if selected.
@@ -50,12 +52,11 @@
 import arcpy
 import time
 import os
+from typing import Optional, Any, Callable, Dict, List
 
 from utils.manager.config_manager import ConfigManager
 from utils.arcpy_utils import str_to_bool
 from utils.generate_report import generate_report_from_json
-
-# Import report generation functions
 from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
 from utils.gather_metrics import collect_oid_metrics, summarize_oid_metrics
@@ -64,6 +65,63 @@ from utils.report_data_builder import initialize_report_data, save_report_json, 
 
 
 class Process360Workflow(object):
+    def __init__(
+        self,
+        arcpy_mod: Any = None,
+        os_mod: Any = None,
+        time_mod: Any = None,
+        collect_oid_metrics_fn: Optional[Callable] = None,
+        summarize_oid_metrics_fn: Optional[Callable] = None,
+        folder_stats_fn: Optional[Callable] = None,
+        build_step_funcs_fn: Optional[Callable] = None,
+        get_step_order_fn: Optional[Callable] = None,
+        run_steps_fn: Optional[Callable] = None,
+        initialize_report_data_fn: Optional[Callable] = None,
+        save_report_json_fn: Optional[Callable] = None,
+        load_report_json_if_exists_fn: Optional[Callable] = None,
+        generate_report_from_json_fn: Optional[Callable] = None
+    ):
+        """
+        Allows injection of dependencies for testability.
+        Defaults to real modules/functions if not provided.
+        """
+        self.arcpy_mod = arcpy_mod or arcpy
+        self.os_mod = os_mod or os
+        self.time_mod = time_mod or time
+        self.collect_oid_metrics_fn = collect_oid_metrics_fn or collect_oid_metrics
+        self.summarize_oid_metrics_fn = summarize_oid_metrics_fn or summarize_oid_metrics
+        self.folder_stats_fn = folder_stats_fn or folder_stats
+        self.build_step_funcs_fn = build_step_funcs_fn or build_step_funcs
+        self.get_step_order_fn = get_step_order_fn or get_step_order
+        self.run_steps_fn = run_steps_fn or run_steps
+        self.initialize_report_data_fn = initialize_report_data_fn or initialize_report_data
+        self.save_report_json_fn = save_report_json_fn or save_report_json
+        self.load_report_json_if_exists_fn = load_report_json_if_exists_fn or load_report_json_if_exists
+        self.generate_report_from_json_fn = generate_report_from_json_fn or generate_report_from_json
+
+    @staticmethod
+    def parameters_to_dict(parameters: List[Any]) -> Dict[str, Any]:
+        """
+        Converts ArcPy tool parameters to a dictionary keyed by parameter name.
+        """
+        return {param.name: param.valueAsText for param in parameters}
+
+    def _compute_and_store_folder_stats(self, labels: List[str], paths: Any, report_data: dict, logger: Any):
+        """
+        Helper to compute and store folder stats for the given labels.
+        """
+        for label in labels:
+            try:
+                folder_path = getattr(paths, label)
+                count, size = self.folder_stats_fn(folder_path)
+                report_data.setdefault("paths", {})[f"{label}_images"] = str(folder_path)
+                report_data.setdefault("metrics", {})[f"{label}_count"] = count
+                report_data.setdefault("metrics", {})[f"{label}_size"] = size
+            except Exception as e:
+                report_data.setdefault("metrics", {})[f"{label}_count"] = 0
+                report_data.setdefault("metrics", {})[f"{label}_size"] = "0 B"
+                logger.warning(f"Failed to compute folder stats for {label}: {e}")
+
     label = "Process Full Mosaic 360 Workflow"
     description = (
         "Runs the full Mosaic 360 image processing pipeline including:\n"
@@ -125,39 +183,43 @@ class Process360Workflow(object):
         start_step_param.value = "--SELECT STEP--"
         params.append(start_step_param)
 
-        params.append(arcpy.Parameter(
+        project_folder_param = arcpy.Parameter(
             displayName="Project Folder",
             name="project_folder",
             datatype="DEFolder",
             parameterType="Required",
             direction="Input"
-        ))
+        )
+        params.append(project_folder_param)
 
-        params.append(arcpy.Parameter(
+        input_reels_folder_param = arcpy.Parameter(
             displayName="Input Reels Folder",
             name="input_reels_folder",
             datatype="DEFolder",
             parameterType="Required",
             direction="Input"
-        ))
+        )
+        params.append(input_reels_folder_param)
 
-        params.append(arcpy.Parameter(
+        oid_fc_input_param = arcpy.Parameter(
             displayName="OID Dataset - Input (used in most steps)",
             name="oid_fc_input",
             datatype="DEFeatureClass",
             parameterType="Optional",
-            direction="Input",
-            enabled=False
-        ))
+            direction="Input"
+        )
+        oid_fc_input_param.enabled = False
+        params.append(oid_fc_input_param)
 
-        params.append(arcpy.Parameter(
+        oid_fc_output_param = arcpy.Parameter(
             displayName="OID Dataset - Output (used only for 'Run Mosaic Processor' or 'Create OID')",
             name="oid_fc_output",
             datatype="DEFeatureClass",
             parameterType="Optional",
-            direction="Output",
-            enabled=False
-        ))
+            direction="Output"
+        )
+        oid_fc_output_param.enabled = False
+        params.append(oid_fc_output_param)
 
         centerline_param = arcpy.Parameter(
             displayName="Centerline (M-enabled, used for GPS smoothing and linear referencing)",
@@ -288,16 +350,13 @@ class Process360Workflow(object):
         elif oid_out.enabled and not oid_out.valueAsText:
             oid_out.setErrorMessage("⚠️ Please specify the output path for the new OID dataset.")
 
-    def execute(self, parameters, messages):
+    def execute(self, parameters: list, messages: Any) -> None:
         """
         Executes the full Mosaic 360 image processing workflow and generates reports.
-        
-        Runs the configured pipeline steps from the selected start point, manages parameter resolution, collects
-        metrics, and saves progress and results to a report JSON. Optionally generates an HTML summary report upon
-        completion. Handles error conditions gracefully, logging warnings for recoverable issues and continuing
-        execution where possible.
+        Allows dependency injection for testability. Compatible with ArcGIS Pro GUI.
         """
-        p = {param.name: param.valueAsText for param in parameters}
+        # Map parameters to dict
+        p = self.parameters_to_dict(parameters)
         # Determine which OID param was enabled and populate p["oid_fc"]
         if parameters[4].enabled:
             p["oid_fc"] = parameters[4].valueAsText  # oid_fc_output
@@ -317,26 +376,26 @@ class Process360Workflow(object):
         if cfg.get("debug_messages", False):
             logger.debug("🔍 Debug mode enabled from config")
 
-        cfg.validate(messages=messages)
+        cfg.validate()
 
         logger.info("--- Starting Mosaic 360 Workflow ---")
         logger.debug(f"Using config: {cfg.source_path}")
         logger.debug(f"Project root: {cfg.get('__project_root__')}")
 
         # Build steps + order
-        step_funcs = build_step_funcs(p, cfg)
-        step_order = get_step_order(step_funcs)
+        step_funcs = self.build_step_funcs_fn(p, cfg)
+        step_order = self.get_step_order_fn(step_funcs)
 
         # Initialize report data
-        report_data = load_report_json_if_exists(cfg)
+        report_data = self.load_report_json_if_exists_fn(cfg)
         if report_data is None:
-            report_data = initialize_report_data(p, cfg)
-            save_report_json(report_data, cfg)
+            report_data = self.initialize_report_data_fn(p, cfg)
+            self.save_report_json_fn(report_data, cfg)
         else:
             logger.info("🔁 Loaded existing report JSON — appending new steps")
 
         # Execute steps and capture results
-        t_start = time.time()
+        t_start = self.time_mod.time()
         start_step = p.get("start_step") or step_order[0]
         if start_step not in step_order:
             logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.")
@@ -344,19 +403,19 @@ class Process360Workflow(object):
         start_index = step_order.index(start_step)
 
         wait_config = cfg.get("orchestrator", {})
-        run_steps(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
+        self.run_steps_fn(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
 
         # After the OID has been created (via run_steps), describe its GDB path
         try:
-            report_data.setdefault("paths", {})["oid_gdb"] = arcpy.Describe(p["oid_fc"]).path
+            report_data.setdefault("paths", {})["oid_gdb"] = self.arcpy_mod.Describe(p["oid_fc"]).path
         except Exception as e:
             logger.warning(f"Could not describe OID FC yet: {e}")
             report_data.setdefault("paths", {})["oid_gdb"] = "Unavailable"
 
         # OID-based metrics
         try:
-            raw_metrics = collect_oid_metrics(p["oid_fc"])
-            summary, reels = summarize_oid_metrics(raw_metrics)
+            raw_metrics = self.collect_oid_metrics_fn(p["oid_fc"])
+            summary, reels = self.summarize_oid_metrics_fn(raw_metrics)
             report_data["metrics"].update(summary)
             report_data["reels"] = reels
         except Exception as e:
@@ -364,34 +423,18 @@ class Process360Workflow(object):
 
         # Reel folder count
         try:
-            reel_folders = [f for f in os.listdir(p["input_reels_folder"]) if
-                            os.path.isdir(os.path.join(p["input_reels_folder"], f))]
+            reel_folders = [f for f in self.os_mod.listdir(p["input_reels_folder"]) if
+                            self.os_mod.path.isdir(self.os_mod.path.join(p["input_reels_folder"], f))]
             report_data["metrics"]["reel_count"] = len(reel_folders)
         except Exception as e:
             report_data["metrics"]["reel_count"] = "—"
             logger.warning(f"Failed to count reel folders: {e}")
 
         # Folder stats for original/enhanced/renamed
-        for label in ["original", "enhanced", "renamed"]:
-            try:
-                # Get the folder path directly from PathManager
-                folder_path = getattr(paths, label)
-
-                # Run stats
-                count, size = folder_stats(folder_path)
-
-                # Save path and metrics to report_data
-                report_data.setdefault("paths", {})[f"{label}_images"] = str(folder_path)
-                report_data.setdefault("metrics", {})[f"{label}_count"] = count
-                report_data.setdefault("metrics", {})[f"{label}_size"] = size
-
-            except Exception as e:
-                report_data.setdefault("metrics", {})[f"{label}_count"] = 0
-                report_data.setdefault("metrics", {})[f"{label}_size"] = "0 B"
-                logger.warning(f"Failed to compute folder stats for {label}: {e}")
+        self._compute_and_store_folder_stats(["original", "enhanced", "renamed"], paths, report_data, logger)
 
         # Elapsed time
-        elapsed_total = time.time() - t_start
+        elapsed_total = self.time_mod.time() - t_start
         report_data["metrics"]["elapsed"] = f"{elapsed_total:.1f} sec"
         total_images = report_data["metrics"].get("total_images", 0)
         if total_images:
@@ -402,15 +445,15 @@ class Process360Workflow(object):
         report_data["paths"]["report_dir"] = str(report_dir)
 
         # Save report data to JSON for future recovery/report generation
-        save_report_json(report_data, cfg)
+        self.save_report_json_fn(report_data, cfg)
 
         if generate_report_flag:
             try:
                 report_data["config"] = cfg
                 slug = cfg.get("project.slug", "unknown")
-                json_path = os.path.join(paths.report, f"report_data_{slug}.json")
+                json_path = self.os_mod.path.join(paths.report, f"report_data_{slug}.json")
 
-                generate_report_from_json(
+                self.generate_report_from_json_fn(
                     json_path=json_path,
                     cfg=cfg
                 )

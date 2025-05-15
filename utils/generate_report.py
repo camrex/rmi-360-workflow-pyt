@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Generates an HTML report with charts and branding from pipeline run data
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Loads report data from JSON, attaches config if needed, and uses Jinja2 templates to render
@@ -19,6 +20,7 @@
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/generate_report.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Automatically locates and injects logo and templates from the config directory
@@ -186,10 +188,7 @@ def plot_time_per_step(steps, output_path, logger):
     plt.close()
 
 
-def generate_report_from_json(
-    json_path: str,
-    cfg: ConfigManager,
-):
+def generate_report_from_json(cfg: ConfigManager, json_path: str):
     """
     Generates a process report from a JSON file.
     

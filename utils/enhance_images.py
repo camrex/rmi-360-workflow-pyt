@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Loads enhancement configuration, checks disk space, and processes all images in an OID
@@ -20,6 +21,7 @@
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Automatically determines parallelism via available CPU cores unless overridden
@@ -380,21 +382,51 @@ def enhance_single_image(original_path: Path, cfg: ConfigManager, logger):
     return (str(original_path), str(out_path), log_row, not copied), None
 
 
-def enhance_images_in_oid(cfg: ConfigManager, oid_fc_path: str):
+def process_images_in_parallel(paths, cfg, logger, max_workers, progressor):
+    log_rows = []
+    path_map = {}
+    brightness_deltas = []
+    contrast_deltas = []
+    failed_exif_copies = []
+    with ThreadPoolExecutor(max_workers) as executor:
+        futures = [
+            executor.submit(enhance_single_image, p, cfg, logger)
+            for p in paths
+        ]
+        for idx, future in enumerate(as_completed(futures), start=1):
+            result, error = future.result()
+            if error:
+                logger.warning(error)
+                continue
+            original_path_str, out_path_str, log_row, exif_failed = result
+            logger.debug(f"Enhanced image saved: {Path(out_path_str).name}")
+            path_map[original_path_str] = out_path_str
+            log_rows.append(log_row)
+            if exif_failed:
+                failed_exif_copies.append((Path(original_path_str), Path(out_path_str)))
+            b_before = float(log_row[1])
+            c_before = float(log_row[2])
+            b_after = float(log_row[7])
+            c_after = float(log_row[8])
+            brightness_deltas.append(b_after - b_before)
+            contrast_deltas.append(c_after - c_before)
+            progressor.update(idx)
+    return path_map, log_rows, brightness_deltas, contrast_deltas, failed_exif_copies
 
+
+def enhance_images_in_oid(cfg: ConfigManager, oid_fc_path: str):
     """
     Enhances all images referenced in an ArcGIS ObjectID feature class using configurable image processing steps.
-    
     This function loads enhancement configuration, checks disk space, retrieves image paths from the specified feature
     class, and processes each image in parallel. Enhancements may include white balance, contrast adjustment, saturation
     boost, and sharpening. Enhanced images are saved according to the configured output mode, and EXIF metadata is
     copied from originals. The function updates the feature class with new image paths if not overwriting originals,
     writes a CSV log of enhancement details, and logs summary statistics.
-    
+
     Args:
         cfg:
         oid_fc_path: Path to the ArcGIS ObjectID feature class containing image paths.
-    
+
     Returns:
         A dictionary mapping original image paths to enhanced image paths.
     """
@@ -406,7 +438,6 @@ def enhance_images_in_oid(cfg: ConfigManager, oid_fc_path: str):
         return {}
 
     check_sufficient_disk_space(oid_fc_path, cfg)
-
     output_mode = cfg.get("image_enhancement.output.mode", "directory")
 
     with arcpy.da.SearchCursor(oid_fc_path, ["ImagePath"]) as cursor:
@@ -424,33 +455,9 @@ def enhance_images_in_oid(cfg: ConfigManager, oid_fc_path: str):
         max_workers = max(4, int(cpu_cores * 0.75))
 
     with cfg.get_progressor(total=len(paths), label=f"Enhancing {len(paths)} image(s)") as progressor:
-        with ThreadPoolExecutor(max_workers) as executor:
-            futures = [
-                executor.submit(enhance_single_image, p, cfg, logger)
-                for p in paths
-            ]
-            for idx, future in enumerate(as_completed(futures), start=1):
-                result, error = future.result()
-                if error:
-                    logger.warning(error)
-                    continue
-                original_path_str, out_path_str, log_row, exif_failed = result  # still same if `log_row` just expanded
-
-                logger.debug(f"Enhanced image saved: {Path(out_path_str).name}")
-                path_map[original_path_str] = out_path_str
-                log_rows.append(log_row)
-                if exif_failed:
-                    failed_exif_copies.append((Path(original_path_str), Path(out_path_str)))
-
-                # Collect deltas for summary stats
-                b_before = float(log_row[1])
-                c_before = float(log_row[2])
-                b_after = float(log_row[7])
-                c_after = float(log_row[8])
-                brightness_deltas.append(b_after - b_before)
-                contrast_deltas.append(c_after - c_before)
-
-                progressor.update(idx)
+        path_map, log_rows, brightness_deltas, contrast_deltas, failed_exif_copies = process_images_in_parallel(
+            paths, cfg, logger, max_workers, progressor
+        )
 
     write_log(log_rows, cfg, logger)
 

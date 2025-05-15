@@ -3,9 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Retrieves AWS credentials from keyring or config for use in S3/Lambda clients
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
-# Created:             2025-05-08
+# Created:             2025-05-14
+# Last Updated:        2025-05-14
 #
 # Description:
 #   Provides a utility function to retrieve AWS credentials required by boto3 clients.
@@ -19,6 +20,7 @@
 #
 # Documentation:
 #   See: docs_legacy/UTILITIES.md and docs_legacy/AWS_SETUP_GUIDE.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Compatible with AWS CLI–configured profiles or keyring service
@@ -26,8 +28,16 @@
 # =============================================================================
 
 import keyring
+from utils.manager.config_manager import ConfigManager
 
-def get_aws_credentials(config):
+from typing import Tuple, Optional, Any
+
+def get_aws_credentials(
+    cfg: ConfigManager,
+    *,
+    keyring_mod=None,
+    logger: Optional[Any] = None
+) -> Tuple[str, str]:
     """
     Retrieves AWS credentials from keyring or configuration.
 
@@ -35,27 +45,31 @@ def get_aws_credentials(config):
     service name. Otherwise, credentials are read directly from the config dictionary.
 
     Args:
-        config: Configuration dictionary containing AWS credential settings.
-
+        cfg: Instance of ConfigManager to retrieve settings.
+        keyring_mod: Optional keyring module for dependency injection/testing.
+        logger: Optional logger for dependency injection/testing.
     Returns:
-        A tuple of (access_key, secret_key).
-
+        (access_key, secret_key): Tuple of AWS credentials as strings.
     Raises:
-        RuntimeError: If keyring usage is enabled but credentials are missing.
+        RuntimeError: If required credentials are missing.
     """
-    use_keyring = config.get("aws", {}).get("keyring_aws", False)
-    service_name = config.get("aws", {}).get("keyring_service_name", "rmi_s3")
+    keyring_mod = keyring_mod or keyring
+    logger = logger or cfg.get_logger()
+    use_keyring = cfg.get("aws.keyring_aws", False)
+    service_name = cfg.get("aws.keyring_service_name", "rmi_s3")
     if use_keyring:
-        access_key = keyring.get_password(service_name, "aws_access_key_id")
-        secret_key = keyring.get_password(service_name, "aws_secret_access_key")
+        access_key = keyring_mod.get_password(service_name, "aws_access_key_id")
+        secret_key = keyring_mod.get_password(service_name, "aws_secret_access_key")
         if not access_key or not secret_key:
-            raise RuntimeError(f"❌ AWS credentials not found in keyring for service '{service_name}'.")
+            logger.error(f"AWS credentials not found in keyring for service '{service_name}'.")
+            raise RuntimeError(f"AWS credentials not found in keyring for service '{service_name}'.")
+        logger.debug("Retrieved AWS credentials from keyring.")
         return access_key, secret_key
     else:
-        aws_cfg = config.get("aws", {})
-        access_key = aws_cfg.get("access_key")
-        secret_key = aws_cfg.get("secret_key")
+        access_key = cfg.get("aws.access_key")
+        secret_key = cfg.get("aws.secret_key")
         if not access_key or not secret_key:
-            raise RuntimeError("❌ AWS credentials not found in config. Please check your aws.access_key and "
-                               "aws.secret_key settings.")
+            logger.error("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key settings.")
+            raise RuntimeError("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key settings.")
+        logger.debug("Retrieved AWS credentials from config.")
         return access_key, secret_key

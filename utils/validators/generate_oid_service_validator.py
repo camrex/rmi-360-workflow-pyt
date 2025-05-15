@@ -1,4 +1,4 @@
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
@@ -7,7 +7,8 @@ from utils.validators.common_validators import (
 )
 
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the OID service generation tool.
 

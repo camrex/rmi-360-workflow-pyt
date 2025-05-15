@@ -3,22 +3,24 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          GeocodeImagesTool
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.0.0
+# Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
+# Last Updated:       2025-05-14
 #
 # Description:
-#   Implements ArcPy Tool class that geotags images from an Oriented Imagery Dataset (OID)
+#   ArcPy Tool class that geotags images from an Oriented Imagery Dataset (OID)
 #   using GPS metadata and ExifTool. Adds XMP geolocation data to image files in-place and
 #   supports project-specific geolocation configuration files.
 #
 # File Location:      /tools/geocode_images_tool.py
 # Uses:
 #   - utils/geocode_images.py
-#   - utils/config_loader.py
+#   - utils/manager/config_manager.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/geocode_images.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
 #   - Oriented Imagery Feature Class {oid_fc} (Feature Class): The OID containing images to geotag.
@@ -31,7 +33,7 @@
 
 import arcpy
 from utils.geocode_images import geocode_images
-from utils.config_loader import get_default_config_path
+from utils.manager.config_manager import ConfigManager
 
 
 class GeocodeImagesTool:
@@ -43,6 +45,19 @@ class GeocodeImagesTool:
 
     def getParameterInfo(self):
         params = []
+
+        # Project Folder
+        project_param = arcpy.Parameter(
+            displayName="Project Folder",
+            name="project_folder",
+            datatype="DEFolder",
+            parameterType="Required",
+            direction="Input"
+        )
+        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
+                                     "organized under this folder.")
+        params.append(project_param)
+
         oid_param = arcpy.Parameter(
             displayName="Oriented Imagery Feature Class",
             name="oid_fc",
@@ -67,11 +82,17 @@ class GeocodeImagesTool:
         return params
 
     def execute(self, parameters, messages):
-        oid_fc = parameters[0].valueAsText
-        config_file = parameters[1].valueAsText or get_default_config_path()
+        project_folder = parameters[0].valueAsText
+        oid_fc = parameters[1].valueAsText
+        config_file = parameters[2].valueAsText
+
+        cfg = ConfigManager.from_file(
+            path=config_file,  # may be None
+            project_base=project_folder,
+            messages=messages
+        )
 
         geocode_images(
-            oid_fc=oid_fc,
-            config_file=config_file,
-            messages=messages,
+            cfg=cfg,
+            oid_fc=oid_fc
         )

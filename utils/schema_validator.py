@@ -33,68 +33,97 @@ from utils.build_oid_schema import create_oid_schema_template
 from utils.manager.config_manager import ConfigManager
 
 
-def validate_oid_template_schema(cfg: ConfigManager):
+from typing import Callable, Any, Optional, Set
+
+def _extract_required_field_names(cfg: 'ConfigManager', registry: dict) -> Set[str]:
     """
-    Validates that the OID schema template feature class exists and contains all required fields.
-    
-    Checks the existence of the OID schema template and verifies that it includes all fields required by the
-    configuration, including ESRI default, mosaic, group index, linear reference, and custom fields. Logs an error and
-    raises a ConfigValidationError if any required fields are missing.
+    Helper to extract required field names from config and registry.
     """
-    logger = cfg.get_logger()
-    paths = cfg.paths
-    template_fc = paths.oid_schema_template_path
-
-    if not arcpy.Exists(template_fc):
-        logger.error(f"OID schema template not found at: {template_fc}", error_type=FileNotFoundError)
-
-    existing_fields = {f.name for f in arcpy.ListFields(template_fc)}
-    registry = load_field_registry(cfg=cfg)
-
     required_names = set()
-
-    # ESRI standard + not_applicable (if enabled)
     not_applicable_enabled = cfg.get("oid_schema_template.esri_default.not_applicable", False)
     for _key, field in registry.items():
         cat = field.get("category")
         if cat == "standard" or (cat == "not_applicable" and not_applicable_enabled):
             required_names.add(field["name"])
-
-    # Schema-based fields using flat access
     for section in ["mosaic_fields", "grp_idx_fields", "linear_ref_fields", "custom_fields"]:
         fields = cfg.get(f"oid_schema_template.{section}", {})
         for f in fields.values():
             required_names.add(f["name"])
+    return required_names
 
-    # Compare
+def validate_oid_template_schema(
+    cfg: 'ConfigManager',
+    *,
+    arcpy_mod=None,
+    registry_loader: Optional[Callable[..., dict]] = None,
+    logger: Optional[Any] = None
+) -> bool:
+    """
+    Validates that the OID schema template feature class exists and contains all required fields.
+
+    Args:
+        cfg (ConfigManager): Configuration manager.
+        arcpy_mod: Optional arcpy module for test injection.
+        registry_loader: Optional loader for field registry.
+        logger: Optional logger for test injection.
+    Returns:
+        True if validation passes (raises on error).
+    Raises:
+        FileNotFoundError: If the template does not exist.
+        ConfigValidationError: If required fields are missing.
+    """
+    arcpy_mod = arcpy_mod or arcpy
+    registry_loader = registry_loader or load_field_registry
+    logger = logger or cfg.get_logger()
+    paths = cfg.paths
+    template_fc = paths.oid_schema_template_path
+
+    if not arcpy_mod.Exists(template_fc):
+        logger.error(f"OID schema template not found at: {template_fc}", error_type=FileNotFoundError)
+        raise FileNotFoundError(f"OID schema template not found at: {template_fc}")
+
+    existing_fields = {f.name for f in arcpy_mod.ListFields(template_fc)}
+    registry = registry_loader(cfg=cfg)
+    required_names = _extract_required_field_names(cfg, registry)
+
     missing = required_names - existing_fields
     if missing:
         logger.error(f"OID template is missing {len(missing)} required field(s): {sorted(missing)}",
                      error_type=ConfigValidationError)
+        raise ConfigValidationError(f"OID template is missing required fields: {sorted(missing)}")
 
     return True
 
-
-def ensure_valid_oid_schema_template(cfg: ConfigManager) -> None:
+def ensure_valid_oid_schema_template(
+    cfg: 'ConfigManager',
+    *,
+    arcpy_mod=None,
+    registry_loader: Optional[Callable[..., dict]] = None,
+    logger: Optional[Any] = None
+) -> None:
     """
     Ensures the OID schema template exists and meets all required field specifications.
-    
+
     If the template is missing or invalid and automatic creation is enabled in the configuration, attempts to
     regenerate the template and revalidate it. Logs errors and raises a ConfigValidationError if the schema remains
     invalid after regeneration.
-    
+
     Args:
         cfg (ConfigManager): Configuration manager with paths, logging, and template access.
-    
+        arcpy_mod: Optional arcpy module for test injection.
+        registry_loader: Optional loader for field registry.
+        logger: Optional logger for test injection.
     Raises:
         ConfigValidationError: If the schema template is invalid after a rebuild attempt.
     """
-    logger = cfg.get_logger()
+    arcpy_mod = arcpy_mod or arcpy
+    registry_loader = registry_loader or load_field_registry
+    logger = logger or cfg.get_logger()
     auto_create = cfg.get("oid_schema_template.template.auto_create_oid_template", False)
 
     with cfg.get_progressor(total=2, label="Validating OID Schema Template") as progressor:
         try:
-            validate_oid_template_schema(cfg)
+            validate_oid_template_schema(cfg, arcpy_mod=arcpy_mod, registry_loader=registry_loader, logger=logger)
             progressor.update(2)
             return  # ✅ Schema is valid, done
         except (FileNotFoundError, ConfigValidationError):

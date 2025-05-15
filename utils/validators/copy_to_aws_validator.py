@@ -1,4 +1,4 @@
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     try_resolve_config_expression,
@@ -6,7 +6,8 @@ from utils.validators.common_validators import (
 )
 
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
+    from utils.manager.config_manager import ConfigManager
     """
     Validates the AWS configuration section for the copy-to-AWS tool.
 

@@ -1,11 +1,11 @@
-from utils.manager.config_manager import ConfigManager
+
 from utils.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     try_resolve_config_expression
 )
 
-def validate(cfg: ConfigManager) -> bool:
+def validate(cfg: "ConfigManager") -> bool:
     """
     Validates the configuration for applying EXIF metadata to images.
 
