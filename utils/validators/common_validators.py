@@ -19,8 +19,11 @@
 
 from __future__ import annotations
 import shutil
-from typing import Union, Tuple, Type
+from typing import Union, Tuple, Type, Literal, get_args, TYPE_CHECKING
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 from utils.shared.exceptions import ConfigValidationError
 from utils.shared.expression_utils import resolve_expression
@@ -188,11 +191,13 @@ def try_resolve_config_expression(expr: str, context: str, cfg: ConfigManager, e
         return None
 
 
-VALID_FIELD_TYPES = {
+EsriFieldType = Literal[
     "SHORT", "LONG", "BIGINTEGER", "FLOAT", "DOUBLE", "TEXT",
     "DATE", "DATEHIGHPRECISION", "DATEONLY", "TIMEONLY", "TIMESTAMPOFFSET",
-    "BLOB", "GUID", "RASTER", "Integer", "SmallInteger", "String"
-}
+    "BLOB", "GUID", "RASTER"
+]
+
+VALID_FIELD_TYPES = set(get_args(EsriFieldType))  # auto-derived at runtime
 
 
 def validate_field_block(field_block: dict, cfg: ConfigManager, context: str = "field"):

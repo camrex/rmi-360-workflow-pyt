@@ -39,6 +39,7 @@
 # =============================================================================
 
 import arcpy
+
 from utils.add_images_to_oid_fc import add_images_to_oid
 from utils.calculate_oid_attributes import enrich_oid_attributes
 from utils.assign_group_index import assign_group_index

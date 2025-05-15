@@ -16,6 +16,11 @@
 # Called By:            OID creation and update workflows
 # Notes:                Used for schema and value validation when ingesting new images into an OID.
 # =============================================================================
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 from utils.shared.exceptions import ConfigValidationError
 from utils.shared.expression_utils import load_field_registry

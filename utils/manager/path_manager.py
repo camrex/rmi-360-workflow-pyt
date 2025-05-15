@@ -1,4 +1,3 @@
-from __future__ import annotations
 # =============================================================================
 # 📂 Path Manager Utility (utils/manager/path_manager.py)
 # -----------------------------------------------------------------------------
@@ -28,11 +27,16 @@ from __future__ import annotations
 #   - Verifies presence of rmi_360_workflow.pyt to validate repo structure.
 #   - Integrates with ConfigManager and LogManager for coordinated path management.
 # =============================================================================
+
+from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
 import yaml
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 
 __all__ = ["PathManager"]
@@ -228,6 +232,7 @@ class PathManager:
         return self.script_base / deactivator_rel_path
 
     def get_log_file_path(self, log_key: str, cfg: Optional["ConfigManager"] = None) -> Path:
+        from utils.shared.expression_utils import resolve_expression
         """
         Constructs the full path for a log file with optional prefix.
 
@@ -257,8 +262,6 @@ class PathManager:
             pm.get_log_file_path("enhance_log")
                 Path("/project/logs/20230510_enhance_log.txt")
         """
-        from utils.manager.config_manager import ConfigManager
-        from utils.expression_utils import resolve_expression
         logs_cfg = self.cfg.get("logs", {})
         log_dir = self.logs
         log_file = logs_cfg.get(log_key)
@@ -427,4 +430,4 @@ class PathManager:
         """
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
-        return cls(project_base=project_base, cfg=config, script_base=script_base)
+        return cls(project_base=project_base, config=config, script_base=script_base)

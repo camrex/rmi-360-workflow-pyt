@@ -27,13 +27,20 @@
 #   - Supports .get(), .resolve(), and .validate() access patterns
 #   - Integrates tool-specific validators for robust schema enforcement
 # =============================================================================
+
 import os
 import yaml
-from typing import Any, Optional, Union, Dict, List
+from typing import Any, Optional, Union, Dict, List, TYPE_CHECKING
 from pathlib import Path
-from utils.validate_full_config import validate_full_config
-from utils.exceptions import ConfigValidationError
-from utils.expression_utils import resolve_expression
+
+if TYPE_CHECKING:
+    from utils.manager.path_manager import PathManager
+    from utils.manager.log_manager import LogManager
+    from utils.manager.progressor_manager import ProgressorManager
+
+from utils.validators.validate_full_config import validate_full_config
+from utils.shared.exceptions import ConfigValidationError
+from utils.shared.expression_utils import resolve_expression
 
 from utils.validators import (
     mosaic_processor_validator,
@@ -55,7 +62,7 @@ from utils.validators import (
     generate_oid_service_validator
 )
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.0.1"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.1.0"}
 
 
 class ConfigManager:
@@ -213,14 +220,15 @@ class ConfigManager:
         Raises:
             ValueError: If the configuration fails validation.
         """
-        if tool:
-            result = self.validate_tool_config(tool)
-            if result is False:
-                raise ValueError(f"Validation failed for tool: {tool}")
-        else:
-            result = validate_full_config(self)
-            if result is False:
-                raise ValueError("Full config validation failed.")
+        try:
+            if tool:
+                self.validate_tool_config(tool)
+            else:
+                result = validate_full_config(self)
+                if result is False:
+                    raise ValueError("Full config validation failed.")
+        except ConfigValidationError as e:
+            raise ValueError(f"Validation failed for tool '{tool}': {e}") from e
 
     def has_section(self, section: str) -> bool:
         """

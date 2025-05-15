@@ -73,56 +73,56 @@ def run_steps(
         if "steps" not in report or not isinstance(report["steps"], list):
             report["steps"] = []
 
-    def append_step_result(report: Dict[str, Any], step_result: Dict[str, Any]) -> None:
+    def append_step_result(report: Dict[str, Any], result: Dict[str, Any]) -> None:
         ensure_report_steps(report)
-        report["steps"].append(step_result)
+        report["steps"].append(result)
 
-    def should_skip_step(step: Dict[str, Any], param_values: Dict[str, Any]) -> Optional[str]:
-        skip_fn = step.get("skip")
+    def should_skip_step(stp: Dict[str, Any], params: Dict[str, Any]) -> Optional[str]:
+        skip_fn = stp.get("skip")
         if skip_fn:
             try:
-                return skip_fn(param_values)
+                return skip_fn(params)
             except Exception as e:
-                logger.warning(f"Skip-check for '{step.get('label', '')}' failed: {e}")
+                logger.warning(f"Skip-check for '{stp.get('label', '')}' failed: {e}")
                 return None
         return None
 
-    def perform_oid_backup(step_key: str, param_values: Dict[str, Any], cfg: ConfigManager, wait_config: Optional[dict]) -> bool:
-        if wait_config and wait_config.get("backup_oid_between_steps", False):
-            backup_steps = wait_config.get("backup_before_step", [])
-            if step_key in backup_steps:
-                if "oid_fc" not in param_values:
+    def perform_oid_backup(stp_key: str, params: Dict[str, Any], config: ConfigManager, wait_cfg: Optional[dict]) -> bool:
+        if wait_cfg and wait_cfg.get("backup_oid_between_steps", False):
+            backup_steps = wait_cfg.get("backup_before_step", [])
+            if stp_key in backup_steps:
+                if "oid_fc" not in params:
                     logger.warning("`oid_fc` not supplied skipping OID backup")
                 else:
                     try:
-                        backup_oid(param_values["oid_fc"], step_key, cfg)
+                        backup_oid(params["oid_fc"], stp_key, config)
                         return True
                     except Exception as e:
-                        logger.warning(f"Failed to back up OID before step '{step_key}': {e}")
+                        logger.warning(f"Failed to back up OID before step '{stp_key}': {e}")
         return False
 
-    def perform_wait(step_key: str, label: str, wait_config: Optional[dict]):
-        if wait_config and wait_config.get("wait_between_steps", False):
-            wait_steps = wait_config.get("wait_before_step", [])
-            wait_seconds = wait_config.get("wait_duration_sec", 60)
-            if step_key in wait_steps:
-                logger.info(f"⏳ Waiting {wait_seconds} seconds before running step: {label}")
+    def perform_wait(stp_key: str, lbl: str, wait_cfg: Optional[dict]):
+        if wait_cfg and wait_cfg.get("wait_between_steps", False):
+            wait_steps = wait_cfg.get("wait_before_step", [])
+            wait_seconds = wait_cfg.get("wait_duration_sec", 60)
+            if stp_key in wait_steps:
+                logger.info(f"⏳ Waiting {wait_seconds} seconds before running step: {lbl}")
                 time.sleep(wait_seconds)
 
-    def execute_step(label: str, func, report_data: Dict[str, Any]):
-        step_start = datetime.now(timezone.utc)
+    def execute_step(lbl: str, function, rpt_data: Dict[str, Any]):
+        stp_start = datetime.now(timezone.utc)
         try:
-            with logger.step(label):
-                func(report_data=report_data)
-            status = "✅"
-            notes = "Success"
+            with logger.step(lbl):
+                function(report_data=rpt_data)
+            stts = "✅"
+            note = "Success"
         except Exception as e:
-            status = "❌"
+            stts = "❌"
             tb = traceback.format_exc()
-            notes = f"{e}\n{tb}"
-        step_end = datetime.now(timezone.utc)
-        elapsed = f"{(step_end - step_start).total_seconds():.1f} sec"
-        return status, notes, step_start, step_end, elapsed
+            note = f"{e}\n{tb}"
+        stp_end = datetime.now(timezone.utc)
+        elpsd = f"{(stp_end - stp_start).total_seconds():.1f} sec"
+        return stts, note, stp_start, stp_end, elpsd
 
     for step_key in step_order[start_index:]:
         if step_key not in step_funcs:

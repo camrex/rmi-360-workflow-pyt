@@ -17,7 +17,7 @@
 # Validator:            /utils/validators/add_images_to_oid_validator.py
 # Called By:            tools/add_images_to_oid_tool.py
 # Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils
-# Ext. Dependencies:    arcpy, os, pathlib
+# Ext. Dependencies:    arcpy, pathlib
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/add_images_to_oid.md
@@ -31,7 +31,6 @@
 __all__ = ["add_images_to_oid"]
 
 import arcpy
-import os
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager

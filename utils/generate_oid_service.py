@@ -117,7 +117,6 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
 
     # Step 4: Check/create portal folder
     try:
-        from arcgis.gis import GIS
         gis = GIS("pro")
         ensure_portal_folder(gis, portal_folder, logger)
     except Exception as e:
