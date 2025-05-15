@@ -16,6 +16,10 @@
 # Called By:            EXIF metadata application workflows
 # Notes:                Ensures all required EXIF tags and tool paths are set for downstream processing.
 # =============================================================================
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (

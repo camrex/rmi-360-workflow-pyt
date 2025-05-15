@@ -38,7 +38,7 @@ import arcpy
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
-from utils.shread.arcpy_utils import validate_fields_exist
+from utils.shared.arcpy_utils import validate_fields_exist
 
 
 def _extract_required_fields(tags):
@@ -54,17 +54,17 @@ def _extract_required_fields(tags):
     return required_fields
 
 
-def _resolve_tags(tags, row_dict):
+def _resolve_tags(cfg, tags, row_dict):
     resolved_tags = {}
     for tag_name, expression in tags.items():
         try:
             if isinstance(expression, str):
-                value = resolve_expression(expression, row_dict=row_dict)
+                value = resolve_expression(expression, cfg, row=row_dict)
                 resolved_tags[tag_name] = value
             elif isinstance(expression, list):
                 keywords = []
                 for item in expression:
-                    value = resolve_expression(item, row_dict=row_dict)
+                    value = resolve_expression(item, cfg, row=row_dict)
                     keywords.append(value)
                 resolved_tags[tag_name] = ";".join(keywords)
         except Exception as e:
@@ -84,7 +84,7 @@ def _write_exiftool_args(cfg, tags, rows):
             print(f"Image path does not exist: {path}")
             continue
 
-        resolved_tags = _resolve_tags(tags, row_dict)
+        resolved_tags = _resolve_tags(cfg, tags, row_dict)
         for tag_name, value in resolved_tags.items():
             lines.append(f"-{tag_name}={value}")
 
@@ -114,14 +114,15 @@ def _write_exiftool_args(cfg, tags, rows):
 
 
 def _run_exiftool(cfg, args_file):
+    logger = cfg.get_logger()
     exe_path = cfg.paths.exiftool_exe
     if not cfg.paths.check_exiftool_available():
-        print(f"ExifTool not found or not working at: {exe_path}", error_type=RuntimeError)
+        logger.error(f"ExifTool not found or not working at: {exe_path}", error_type=RuntimeError)
     try:
         subprocess.run([exe_path, "-@", args_file], check=True)
-        print("✅ Metadata tagging completed.")
+        logger.info("✅ Metadata tagging completed.")
     except subprocess.CalledProcessError as e:
-        print(f"ExifTool failed: {e}", error_type=RuntimeError)
+        logger.error(f"ExifTool failed: {e}", error_type=RuntimeError)
 
 
 def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):

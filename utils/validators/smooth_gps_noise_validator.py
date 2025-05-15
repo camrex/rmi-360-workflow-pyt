@@ -17,6 +17,10 @@
 # Called By:            GPS smoothing workflows
 # Notes:                Used for validation of smoothing and outlier detection settings for GPS data.
 # =============================================================================
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (

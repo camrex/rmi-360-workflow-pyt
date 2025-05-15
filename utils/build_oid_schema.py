@@ -33,10 +33,11 @@ __all__ = ["create_oid_schema_template"]
 import arcpy
 import os
 from datetime import datetime
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, cast
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import load_field_registry
+from utils.validators.common_validators import EsriFieldType
 
 
 def _field_tuple(f: dict) -> tuple[str, str, Optional[int], str]:
@@ -88,6 +89,7 @@ def create_oid_schema_template(
             logger.info(f"Existing schema template found and backed up as: {backup_name}")
         arcpy_mod.management.CreateTable(paths.oid_schema_gdb, paths.oid_schema_template_path)
         fields: list[tuple[str, str, Optional[int], str]] = []
+
         # Load registry-defined fields (assumes prior validation)
         for category in ("standard", "not_applicable"):
             if esri_cfg.get(category, True):
@@ -96,6 +98,7 @@ def create_oid_schema_template(
                     logger.debug(f"No fields loaded for category: {category}")
                 for f in entries.values():
                     fields.append(_field_tuple(f))
+
         # Add config-defined fields
         for group in ["mosaic_fields", "grp_idx_fields", "linear_ref_fields", "custom_fields"]:
             block = cfg.get(f"oid_schema_template.{group}", {})
@@ -103,12 +106,13 @@ def create_oid_schema_template(
                 fields.append(_field_tuple(f))
         added_fields = 0
         for name, ftype, length, alias in fields:
+            field_type = cast(EsriFieldType, ftype)
             if not arcpy_mod.ListFields(paths.oid_schema_template_path, name):
                 try:
                     arcpy_mod.management.AddField(
                         in_table=paths.oid_schema_template_path,
                         field_name=name,
-                        field_type=ftype,
+                        field_type=field_type,
                         field_length=length,
                         field_alias=alias,
                         field_is_nullable="NULLABLE"

@@ -15,6 +15,10 @@
 # Called By:            Mosaic processor workflows
 # Notes:                Used for validation of mosaic processor settings and executable paths.
 # =============================================================================
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 from utils.validators.common_validators import validate_type
 from utils.shared.exceptions import ConfigValidationError

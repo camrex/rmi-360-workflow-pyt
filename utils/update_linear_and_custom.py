@@ -102,6 +102,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
 from typing import List, Dict, Any, Tuple
 
 def compute_linear_and_custom_updates(
+    cfg: ConfigManager,
     row: List[Any],
     update_fields: List[str],
     linear_fields: Dict,
@@ -125,7 +126,6 @@ def compute_linear_and_custom_updates(
             mp_value = loc.get("mp_value")
         for key, field_def in linear_fields.items():
             field_name = field_def.get("name")
-            value = None
             if key == "route_identifier":
                 value = route_id
             elif key == "route_measure":
@@ -146,7 +146,7 @@ def compute_linear_and_custom_updates(
     for key, target_field, expression, field_type in custom_field_defs:
         try:
             # resolve_expression may raise
-            value = resolve_expression(expression, None, row=context)
+            value = resolve_expression(expression, cfg, row=context)
             if field_type == "DOUBLE":
                 try:
                     value = float(value)
@@ -206,7 +206,6 @@ def update_linear_and_custom(
         oid_to_loc = get_located_points(oid_fc_path, centerline_fc, route_id_field, logger)
 
     row_count = int(arcpy.management.GetCount(oid_fc_path)[0])
-    updated = 0
 
     # Update records
     updated_oids = set()
@@ -217,6 +216,7 @@ def update_linear_and_custom(
                 oid = row[0]
                 try:
                     new_row, update = compute_linear_and_custom_updates(
+                        cfg=cfg,
                         row=list(row),
                         update_fields=update_fields,
                         linear_fields=linear_fields,

@@ -16,6 +16,10 @@
 # Called By:            OID schema and group assignment workflows
 # Notes:                Used for validation of group index fields in OID creation and updates.
 # =============================================================================
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 from utils.validators.common_validators import (
     validate_type,
