@@ -83,7 +83,7 @@ def run_steps(
             try:
                 return skip_fn(params)
             except Exception as e:
-                logger.warning(f"Skip-check for '{stp.get('label', '')}' failed: {e}")
+                logger.warning(f"Skip-check for '{stp.get('label', '')}' failed: {e}", 0)
                 return None
         return None
 
@@ -92,13 +92,13 @@ def run_steps(
             backup_steps = wait_cfg.get("backup_before_step", [])
             if stp_key in backup_steps:
                 if "oid_fc" not in params:
-                    logger.warning("`oid_fc` not supplied skipping OID backup")
+                    logger.warning("`oid_fc` not supplied skipping OID backup", 1)
                 else:
                     try:
                         backup_oid(params["oid_fc"], stp_key, config)
                         return True
                     except Exception as e:
-                        logger.warning(f"Failed to back up OID before step '{stp_key}': {e}")
+                        logger.warning(f"Failed to back up OID before step '{stp_key}': {e}", 1)
         return False
 
     def perform_wait(stp_key: str, lbl: str, wait_cfg: Optional[dict]):
@@ -106,13 +106,13 @@ def run_steps(
             wait_steps = wait_cfg.get("wait_before_step", [])
             wait_seconds = wait_cfg.get("wait_duration_sec", 60)
             if stp_key in wait_steps:
-                logger.info(f"⏳ Waiting {wait_seconds} seconds before running step: {lbl}")
+                logger.custom(f"Waiting {wait_seconds} seconds before running step: {lbl}", 0, "⏳")
                 time.sleep(wait_seconds)
 
-    def execute_step(lbl: str, function, rpt_data: Dict[str, Any]):
+    def execute_step(lbl: str, function, rpt_data: Dict[str, Any], step_key=None):
         stp_start = datetime.now(timezone.utc)
         try:
-            with logger.step(lbl):
+            with logger.step(lbl, context={"step_key": step_key} if step_key else None):
                 function(report_data=rpt_data)
             stts = "✅"
             note = "Success"
@@ -134,7 +134,7 @@ def run_steps(
         skip_reason = should_skip_step(step, param_values)
 
         if skip_reason:
-            logger.info(f"⏭️ {label} — {skip_reason}")
+            logger.custom(f"{label} — {skip_reason}", 0, "⏭️")
             step_result = {
                 "name": label,
                 "status": "⏭️",
@@ -148,7 +148,7 @@ def run_steps(
 
         backup_occurred = perform_oid_backup(step_key, param_values, cfg, wait_config)
         perform_wait(step_key, label, wait_config)
-        status, notes, step_start, step_end, elapsed = execute_step(label, func, report_data)
+        status, notes, step_start, step_end, elapsed = execute_step(label, func, report_data, step_key=step_key)
 
         step_result = {
             "name": label,

@@ -152,7 +152,7 @@ def backup_oid(
         timestamp = datetime_mod.now().strftime("%Y%m%d_%H%M")
         out_fc_name = f"{oid_name}_before_{step_key}_{timestamp}"
         out_fc_path = str(gdb_path / out_fc_name)
-        logger.info(f"📁 Backing up OID before step '{step_key}' → {out_fc_name}")
+        logger.custom(f"Backing up OID before step '{step_key}' → {out_fc_name}", 0, "💾")
         arcpy_mod.management.Copy(oid_fc, out_fc_path)
     except Exception as e:
         logger.warning(f"OID backup before step '{step_key}' failed: {e}")
