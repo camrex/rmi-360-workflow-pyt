@@ -1,9 +1,28 @@
+# =============================================================================
+# 🌍 Geocode Images Validator (utils/validators/geocode_images_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for image geocoding tools
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures geocoding method and database selection are valid, checks for required config paths and ExifTool
+#   executable, and validates all geocoding-related configuration for image processing.
+#
+# File Location:        /utils/validators/geocode_images_validator.py
+# Called By:            Image geocoding workflows
+# Notes:                Used for validation of geocoding method, database, and ExifTool path.
+# =============================================================================
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     check_file_exists
 )
+
 
 def validate(cfg: "ConfigManager") -> bool:
     from utils.manager.config_manager import ConfigManager

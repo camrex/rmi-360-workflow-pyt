@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Applies default and derived values to fields in an OID feature class, including
@@ -16,11 +17,12 @@
 # File Location:        /utils/calculate_oid_attributes.py
 # Validator:            /utils/validators/calculate_oid_attributes_validator.py
 # Called By:            tools/add_images_to_oid_tool.py
-# Int. Dependencies:    config_loader, arcpy_utils, expression_utils
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils
 # Ext. Dependencies:    arcpy, os, json, re, typing
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/add_images_to_oid.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Integrates reel_info.json if present to supplement reel assignment
@@ -36,7 +38,7 @@ import json
 from typing import Optional, Tuple
 
 from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import load_field_registry
+from utils.shared.expression_utils import load_field_registry
 
 
 def _safe_float(value, default=0.0) -> float:

@@ -1,12 +1,12 @@
 # =============================================================================
 # 🗾 Log Manager Utility (utils/manager/log_manager.py)
 # -----------------------------------------------------------------------------
-# Purpose:             Provides structured logging across CLI, ArcGIS, and web output
+# Purpose:             Provides structured logging across CLI, ArcGIS, and web output.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Centralized logging framework that supports text, HTML, and JSON output.
@@ -17,16 +17,17 @@
 # File Location:        /utils/manager/log_manager.py
 # Called By:            Tools, orchestrators, testing pipelines
 # Int. Dependencies:    utils/manager/path_manager
-# Ext. Dependencies:    json, time, html, contextlib, typing
+# Ext. Dependencies:    json, time, html, contextlib, typing, datetime
 #
 # Documentation:
 #   See: docs_legacy/LOG_MANAGER.md
 #   (Ensure this doc is current; update if needed.)
 #
 # Notes:
-#   - HTML logs are collapsible with toggleable timestamps
-#   - JSON output includes metadata for downstream automation
-#   - Supports playful methods like .party(), .fireworks(), and .success()
+#   - HTML logs are collapsible with toggleable timestamps.
+#   - JSON output includes metadata for downstream automation.
+#   - Supports playful methods like .party(), .fireworks(), and .success().
+#   - Integrates with PathManager for file output and log organization.
 # =============================================================================
 
 from datetime import datetime

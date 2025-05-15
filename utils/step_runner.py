@@ -6,6 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Iterates through workflow step functions, checking for skip conditions, handling wait intervals,
@@ -15,8 +16,8 @@
 #
 # File Location:        /utils/step_runner.py
 # Called By:            tools/process_360_orchestrator.py
-# Int. Dependencies:    arcpy_utils, report_data_builder
-# Ext. Dependencies:    time, datetime, typing
+# Int. Dependencies:    utils/shared/arcpy_utils, utils/shared/report_data_builder, utils/manager/config_manager
+# Ext. Dependencies:    time, datetime, typing, traceback
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md
@@ -27,10 +28,12 @@
 # =============================================================================
 
 import time
+import traceback
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
-from utils.arcpy_utils import backup_oid
-from utils.report_data_builder import save_report_json
+
+from utils.shared.arcpy_utils import backup_oid
+from utils.shared.report_data_builder import save_report_json
 from utils.manager.config_manager import ConfigManager
 
 
@@ -63,7 +66,6 @@ def run_steps(
     Returns:
         A list of dictionaries, each summarizing the outcome of a step, including status, timing, and notes.
     """
-    import traceback
     logger = cfg.get_logger()
     results: List[Dict[str, Any]] = []
 

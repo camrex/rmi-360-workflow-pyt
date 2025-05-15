@@ -1,3 +1,22 @@
+# =============================================================================
+# 🆕 Create OID Validator (utils/validators/create_oid_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for creating Oriented Imagery Datasets (OIDs)
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of spatial reference keys, validates WKID values and types for OID creation
+#   workflows.
+#
+# File Location:        /utils/validators/create_oid_validator.py
+# Called By:            OID creation tools
+# Notes:                Used for validation of spatial reference and WKID settings in OID creation.
+# =============================================================================
+
 from utils.validators.common_validators import (
     validate_config_section,
     validate_expression_block

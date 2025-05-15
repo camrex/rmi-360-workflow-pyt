@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Iterates through images referenced in an OID feature class and uses ExifTool to copy GPSPosition into the
@@ -15,8 +16,8 @@
 # File Location:        /utils/geocode_images.py
 # Validator:            /utils/validators/geocode_images_validator.py
 # Called By:            tools/geocode_images_tool.py, process_360_orchestrator.py
-# Int. Dependencies:    config_loader, arcpy_utils, path_utils
-# Ext. Dependencies:    arcpy, subprocess, os, typing
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/arcpy_utils
+# Ext. Dependencies:    arcpy, subprocess, os
 # External Tools:       ExifTool (must be installed and available via PATH or config path)
 #
 # Documentation:
@@ -34,8 +35,7 @@ import subprocess
 import arcpy
 
 from utils.manager.config_manager import ConfigManager
-from utils.arcpy_utils import validate_fields_exist
-
+from utils.shared.arcpy_utils import validate_fields_exist
 
 
 def get_exiftool_cmd(cfg, logger):

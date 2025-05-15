@@ -6,19 +6,19 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class to rename images based on project metadata and EXIF/XMP tagging rules
 #   defined in a YAML configuration file. Updates both filenames and embedded metadata, and optionally
-#   deletes original images post-renaming.
+#   deletes original images post-renaming. Integrates with Core Utils for batch renaming, metadata updating,
+#   and configuration management.
 #
 # File Location:      /tools/rename_and_tag_tool.py
-# Uses:
+# Core Utils:
 #   - utils/rename_images.py
 #   - utils/apply_exif_metadata.py
 #   - utils/manager/config_manager.py
-#   - utils/arcpy_utils.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_and_tag.md
@@ -30,8 +30,9 @@
 #   - Config File {config_file} (File): Optional YAML config file defining metadata tags and naming convention.
 #
 # Notes:
-#   - Renaming logic supports dynamic filename expression resolution
-#   - EXIF metadata updates are performed using ExifTool via batch mode
+#   - Renaming logic supports dynamic filename expression resolution.
+#   - EXIF metadata updates are performed using ExifTool via batch mode.
+#   - Ensure config file and ExifTool installation are correct for successful renaming and tagging.
 # =============================================================================
 
 import arcpy

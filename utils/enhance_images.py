@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Loads enhancement configuration, checks disk space, and processes all images in an OID
@@ -16,8 +16,8 @@
 #
 # File Location:        /utils/enhance_images.py
 # Called By:            tools/enhance_images_tool.py, tools/process_360_orchestrator.py
-# Int. Dependencies:    config_loader, arcpy_utils, check_disk_space, path_utils
-# Ext. Dependencies:    cv2, numpy, arcpy, csv, os, pathlib, typing, subprocess, concurrent.futures
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/check_disk_space
+# Ext. Dependencies:    cv2, numpy, arcpy, csv, os, pathlib, subprocess, concurrent.futures
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md
@@ -38,7 +38,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from utils.manager.config_manager import ConfigManager
-from utils.check_disk_space import check_sufficient_disk_space
+from utils.shared.check_disk_space import check_sufficient_disk_space
 
 
 def compute_image_stats(img):

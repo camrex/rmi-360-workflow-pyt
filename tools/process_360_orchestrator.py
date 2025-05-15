@@ -6,24 +6,25 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   Orchestrates the full end-to-end Mosaic 360 image processing pipeline within ArcGIS Pro.
 #   Executes a configurable series of steps, including image rendering, OID creation, image
 #   enrichment, geolocation, cloud upload, and service publishing. Tracks progress and logs
-#   results to a persistent report JSON for dashboard and reporting use.
+#   results to a persistent report JSON for dashboard and reporting use. Integrates with Core Utils
+#   for all workflow, configuration, and reporting steps.
 #
 # File Location:      /tools/process_360_orchestrator.py
-# Uses:
+# Core Utils:
 #   - utils/build_step_funcs.py
 #   - utils/step_runner.py
-#   - utils/manager/config_manager.py
-#   - utils/report_data_builder.py
-#   - utils/folder_stats.py
-#   - utils/gather_metrics.py
-#   - utils/arcpy_utils.py
 #   - utils/generate_report.py
+#   - utils/manager/config_manager.py
+#   - utils/shared/report_data_builder.py
+#   - utils/shared/folder_stats.py
+#   - utils/shared/gather_metrics.py
+#   - utils/shared/arcpy_utils.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md
@@ -44,9 +45,10 @@
 #   - Generate HTML Summary Report? {generate_report} (Boolean): Whether to generate a visual summary at the end.
 #
 # Notes:
-#   - Uses a step dispatcher to execute ordered functions defined in build_step_funcs
-#   - Skipped steps are safely logged and retained in the report JSON
-#   - Can resume from an existing report if rerun on the same project
+#   - Uses a step dispatcher to execute ordered functions defined in build_step_funcs.
+#   - Skipped steps are safely logged and retained in the report JSON.
+#   - Can resume from an existing report if rerun on the same project.
+#   - Ensure all Core Utils and config files are up-to-date for workflow success.
 # =============================================================================
 
 import arcpy
@@ -55,13 +57,13 @@ import os
 from typing import Optional, Any, Callable, Dict, List
 
 from utils.manager.config_manager import ConfigManager
-from utils.arcpy_utils import str_to_bool
-from utils.generate_report import generate_report_from_json
+from utils.shared.arcpy_utils import str_to_bool
+from utils.shared.generate_report import generate_report_from_json
 from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
-from utils.gather_metrics import collect_oid_metrics, summarize_oid_metrics
-from utils.folder_stats import folder_stats
-from utils.report_data_builder import initialize_report_data, save_report_json, load_report_json_if_exists
+from utils.shared.gather_metrics import collect_oid_metrics, summarize_oid_metrics
+from utils.shared.folder_stats import folder_stats
+from utils.shared.report_data_builder import initialize_report_data, save_report_json, load_report_json_if_exists
 
 
 class Process360Workflow(object):

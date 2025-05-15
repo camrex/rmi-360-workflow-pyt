@@ -1,71 +1,70 @@
-# 🌐 Tool: Generate OID Service
+# 🛠️ Tool: Generate OID Service
 
-## 🧰 Tool Name
-**10 – Generate OID Service**
-
----
-
-## 🧭 Purpose
-
-This tool publishes a **web-accessible Oriented Imagery Service** by:
-
-1. Duplicating an existing OID feature class  
-2. Rewriting the `ImagePath` field to use AWS-hosted URLs  
-3. Publishing the modified OID as a **hosted item** to ArcGIS Online or Portal  
-
-It supports public/private sharing, adds a summary and tags, and places the service in a specified folder.
+## 🧑‍💻 Tool Name
+**Generate OID Service**
 
 ---
 
-## 🔧 Parameters (ArcGIS Toolbox)
+## 📝 Purpose
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Oriented Imagery Dataset` | ✅ | Input OID feature class (must already contain populated attributes) |
-| `Config File` | ⬜️ | Optional override path to `config.yaml` |
+Publishes an Oriented Imagery Dataset (OID) as a web service, enabling access in ArcGIS Pro, web apps, and other clients. Automates configuration, registration, and deployment to ArcGIS Enterprise or Online, including setting permissions and logging.
 
 ---
 
-## 🧩 Script Components
+## 🧰 Parameters
 
-| Script | Responsibility |
-|--------|----------------|
-| `generate_oid_service_tool.py` | ArcGIS Toolbox UI for parameter collection |
-| `generate_oid_service.py` | Core logic: duplicates OID, rewrites paths, publishes via ArcPy |
-| `validate_config.py` | Verifies required `aws` and `portal` blocks are present and valid |
-
----
-
-## 🔁 Workflow Summary
-
-```text
-1. Load OID and config
-2. Create a copy of the OID (e.g., OID_AWS)
-3. Update each ImagePath to its AWS public URL
-4. Publish using arcpy.oi.GenerateServiceFromOrientedImageryDataset()
-```
-
-Example ImagePath:
-```text
-https://rmi-orient-img-test.s3.us-east-2.amazonaws.com/RMI25100/Filename.jpg
-```
+| Parameter            | Required | Description                                      |
+|----------------------|----------|--------------------------------------------------|
+| OID Feature Class    | ✅       | Input OID to publish                             |
+| Config File          | ✅       | Path to `config.yaml` with service settings       |
+| Project Folder       | ✅       | Project root for resolving outputs                |
 
 ---
 
-## 🔧 AWS and Portal Config
+## 🗂️ Scripts & Components
 
-From `config.yaml → aws` and `portal`:
+| Script                                  | Role/Responsibility                |
+|-----------------------------------------|------------------------------------|
+| `tools/generate_oid_service_tool.py`    | ArcGIS Toolbox wrapper             |
+| `utils/generate_oid_service.py`         | Core publishing logic              |
+| `utils/manager/config_manager.py`       | Loads and validates configuration  |
+
+---
+
+## ⚙️ Behavior / Logic
+
+1. Loads service parameters from config.
+2. Registers OID with ArcGIS Enterprise/Online.
+3. Publishes as a web service.
+4. Sets sharing and access permissions.
+5. Logs results and errors.
+
+---
+
+## 🗃️ Inputs
+
+- OID feature class
+- Project YAML config with service settings
+
+---
+
+## 📤 Outputs
+
+- Published OID web service
+- Service URL and logs
+
+---
+
+## 🗝️ Configuration / Notes
+
+From `config.yaml`:
 
 ```yaml
-aws:
-  s3_bucket: "rmi-orient-img-test"
-  region: "us-east-2"
-  s3_bucket_folder: "config.project.slug"
-
-portal:
-  project_folder: "config.project.number"
-  share_with: "PRIVATE"
-  add_footprint: "FOOTPRINT"
+generate_oid_service:
+  portal_url: "https://myportal.domain.com/portal"
+  service_name: "project_oid_service"
+  sharing: "public"
+  folder: "OID Services"
   portal_tags:
     - "config.project.number"
     - "Oriented Imagery"
@@ -86,7 +85,7 @@ portal:
 
 ## ✅ Validation
 
-Tool-level validator: `validate_tool_generate_oid_service()`:
+Validation is performed by `validate_tool_generate_oid_service()` in `utils/validators`:
 
 - Checks:
   - `portal.project_folder`, `portal.share_with`, and `portal_tags` are defined

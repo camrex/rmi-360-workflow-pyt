@@ -17,58 +17,34 @@ This step ensures imagery records are **milepost-referenced and metadata-enriche
 
 ---
 
-## 🔧 Parameters (ArcGIS Toolbox)
+## 🧰 Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `OID Feature Class` | ✅ | Oriented Imagery Dataset with geometry populated |
-| `M-Enabled Centerline` | ✅ | Polyline with route calibration (M values) |
-| `Route ID Field` | ✅ | Unique identifier for each route in the centerline |
-| `Enable Linear Referencing` | ⬜️ | If checked, updates `MP_Pre` and `MP_Num` |
-| `Config File` | ✅ | YAML config with field and expression definitions |
+| Parameter            | Required | Description                                      |
+|----------------------|----------|--------------------------------------------------|
+| OID Feature Class    | ✅       | Input OID to update                              |
+| Config File          | ✅       | Path to `config.yaml` with field rules           |
+| Project Folder       | ✅       | Project root for resolving outputs               |
 
 ---
 
-## 🧩 Components & Logic
+## 🗂️ Scripts & Components
 
-| Script | Responsibility |
-|--------|----------------|
-| `update_linear_and_custom_tool.py` | ArcGIS Pro toolbox tool definition |
-| `update_linear_and_custom.py` | Main update logic: field population, config resolution |
-| `resolve_expression()` | Applies string-based dynamic expressions using config or field context |
-| `get_located_points()` | Runs `LocateFeaturesAlongRoutes` to assign `route_id` and `mp_value` |
+| Script                                  | Role/Responsibility                |
+|-----------------------------------------|------------------------------------|
+| `tools/update_linear_and_custom_tool.py`| ArcGIS Toolbox wrapper             |
+| `utils/update_linear_and_custom.py`     | Core update logic                  |
+| `utils/manager/config_manager.py`       | Loads and validates configuration  |
 
 ---
 
-## 🗂️ Field Sources from `config.yaml`
+## ⚙️ Behavior / Logic
 
-### Linear Referencing Fields (if enabled)
-```yaml
-linear_ref_fields:
-  route_identifier:
-    name: "MP_Pre"
-    type: "TEXT"
-    length: 6
-    alias: "Prefix"
-  route_measure:
-    name: "MP_Num"
-    type: "DOUBLE"
-    alias: "Milepost"
-```
+1. Loads field calculation rules from config.
+2. Calculates linear referencing fields (e.g., MP_Pre, MP_Num, Offset).
+3. Applies custom project-specific field logic.
+4. Updates OID attributes.
+5. Logs changes and errors.
 
-### Custom Metadata Fields
-```yaml
-custom_fields:
-  custom1:
-    name: "RR"
-    type: "TEXT"
-    length: 6
-    alias: "Railroad Code"
-    expression: "config.project.rr_mark"
-  custom2:
-    name: "MP_Label"
-    type: "TEXT"
-    length: 12
     alias: "MP Label"
     expression: "field.MP_Pre + '-' + field.MP_Num.float(3)"
 ```

@@ -1,7 +1,7 @@
 
 # 🧰 RMI 360 Imaging Workflow Python Toolbox
 
-![Version](https://img.shields.io/badge/version-v1.0.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4%2B-green)
+![Version](https://img.shields.io/badge/version-v1.1.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4%2B-green)
 
 A modular, camera-agnostic workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
 
@@ -44,9 +44,13 @@ rmi-360-workflow-pyt/
 │   └── esri_oid_fields_registry.yaml   # ESRI OID field definitions
 ├── tools/                              # ArcGIS tool wrappers
 ├── utils/                              # Reusable logic
+│   ├── manager/                        # Managers (ConfigManager, LogManager, PathManager, ProgressorManager)
+│   ├── shared/                         # Shared utilities
+│   └── validators/                     # Validators
 ├── aws_lambdas/                        # Lambda upload status functions
 ├── templates/                          # HTML report templates
-├── docs/                               # Full documentation set
+├── legacy_docs/                        # Full documentation set
+├── docs/                               # Updated documentation set
 ├── dev_docs/                           # Future development documentation
 ```
 

@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Resolves dynamic filename parts from config expressions (e.g., reel, MP, timestamp),
@@ -15,8 +16,8 @@
 # File Location:        /utils/rename_images.py
 # Validator:            /utils/validators/rename_images_validator.py
 # Called By:            tools/rename_and_tag_tool.py, tools/process_360_orchestrator.py
-# Int. Dependencies:    config_loader, arcpy_utils, expression_utils, check_disk_space, path_utils
-# Ext. Dependencies:    arcpy, os, shutil, csv, pathlib, typing
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/arcpy_utils, utils/shared/expression_utils, utils/shared/check_disk_space
+# Ext. Dependencies:    arcpy, os, shutil, csv, pathlib
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_images.md
@@ -35,9 +36,9 @@ import csv
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
-from utils.arcpy_utils import validate_fields_exist
-from utils.expression_utils import resolve_expression
-from utils.check_disk_space import check_sufficient_disk_space
+from utils.shared.arcpy_utils import validate_fields_exist
+from utils.shared.expression_utils import resolve_expression
+from utils.shared.check_disk_space import check_sufficient_disk_space
 
 
 def _resolve_fields(cfg, row_dict, parts):

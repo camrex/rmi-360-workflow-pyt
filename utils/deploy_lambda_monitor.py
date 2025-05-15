@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Deploys and configures AWS Lambda functions for monitoring upload progress to S3. Sets up a CloudWatch
@@ -15,11 +16,12 @@
 # File Location:        /utils/deploy_lambda_monitor.py
 # Validator:            /utils/validators/deploy_lambda_monitor_validator.py
 # Called By:            tools/copy_to_aws_tool.py, tools/process_360_orchestrator.py
-# Int. Dependencies:    config_loader, expression_utils, arcpy_utils, aws_utils, path_resolver
-# Ext. Dependencies:    boto3, botocore, json, zipfile, io, contextlib, datetime, typing
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils, utils/shared/aws_utils
+# Ext. Dependencies:    boto3, json, zipfile, io, contextlib, datetime, pathlib
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md, docs_legacy/tools/copy_to_aws.md, and AWS_SETUP_GUIDE.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Deploys both progress monitor and auto-disable Lambda functions
@@ -37,8 +39,8 @@ from pathlib import Path
 from boto3 import Session
 
 from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import resolve_expression
-from utils.aws_utils import get_aws_credentials
+from utils.shared.expression_utils import resolve_expression
+from utils.shared.aws_utils import get_aws_credentials
 
 
 def zip_lambda(source_path: str, arcname: str) -> bytes:

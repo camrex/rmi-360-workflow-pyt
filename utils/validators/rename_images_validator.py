@@ -1,6 +1,25 @@
+# =============================================================================
+# 🏷️ Rename Images Validator (utils/validators/rename_images_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for image renaming tools
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures filename format string and parts dictionary are present and correct, validates placeholders, and checks
+#   that all expressions resolve to strings for renaming images.
+#
+# File Location:        /utils/validators/rename_images_validator.py
+# Called By:            Image renaming workflows
+# Notes:                Used for validation of filename formats and dynamic parts for output images.
+# =============================================================================
+
 import string
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     validate_type,

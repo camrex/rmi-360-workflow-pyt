@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Identifies sequences of features flagged as GPS outliers (`QCFlag = GPS_OUTLIER`) in an
@@ -15,11 +16,12 @@
 # File Location:        /utils/correct_gps_outliers.py
 # Validator:            /utils/validators/correct_gps_outliers_validator.py
 # Called By:            tools/smooth_gps_noise_tool.py
-# Int. Dependencies:    config_loader, arcpy_utils
+# Int. Dependencies:    utils/manager/config_manager
 # Ext. Dependencies:    arcpy, typing
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/smooth_gps_noise.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Skips outliers at the beginning or end of the dataset (no anchors available)
@@ -29,11 +31,10 @@
 __all__ = ["correct_gps_outliers"]
 
 import arcpy
+from typing import List, Dict, Set, Tuple
 
 from utils.manager.config_manager import ConfigManager
 
-
-from typing import List, Dict, Set, Tuple
 
 def interpolate_gps_outliers(
     rows: List[Dict],

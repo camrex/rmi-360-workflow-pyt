@@ -6,29 +6,33 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
-#   ArcPy Tool class for generating a BUFFER-style footprint feature class from
-#   an Oriented Imagery Dataset (OID). Uses ArcGIS BuildOrientedImageryFootprint and supports
-#   optional config input for custom spatial reference or transformation logic.
+#   ArcPy Tool class for generating a BUFFER-style footprint feature class from an Oriented Imagery Dataset (OID).
+#   Utilizes ArcGIS BuildOrientedImageryFootprint and supports optional configuration input for custom spatial reference
+#   or transformation logic. Integrates with project config for workflow consistency and is designed for seamless use
+#   within the RMI 360 workflow.
 #
 # File Location:      /tools/build_oid_footprints_tool.py
-# Uses:
+# Core Utils:
 #   - utils/build_oid_footprints.py
+#   - utils/manager/config_manager.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/build_oid_footprints.md
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
-#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Path to an existing OID feature class.
-#   - Config File {config_file} (File): Path to the project config.yaml containing spatial reference settings (optional).
+#   - Project Folder {project_folder} (Folder): Root folder for the project; used for resolving logs and asset paths.
+#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Path to an existing OID feature class to generate footprints from.
+#   - Config File {config_file} (File): Path to the project config.yaml containing spatial reference and transformation settings (optional).
 #
 # Notes:
-#   - Can run standalone or as part of the orchestrator workflow
-#   - Respects config overrides for spatial reference and geographic transformation
-#   - Sets canRunInBackground = False due to ArcPy environment handling
+#   - Can run standalone or as part of the orchestrator workflow.
+#   - Respects config overrides for spatial reference and geographic transformation.
+#   - Sets canRunInBackground = False due to ArcPy environment handling.
+#   - Ensure configuration is up-to-date for accurate spatial output.
 # =============================================================================
 
 import arcpy

@@ -1,64 +1,87 @@
-# 🧭 Tool: Build OID Footprints
+# 🛠️ Tool: Build OID Footprints
 
-## 🧰 Tool Name
+## 🧑‍💻 Tool Name
 **08 – Build OID Footprints**
 
 ---
 
-## 📌 Purpose
+## 📝 Purpose
 
-This tool creates **buffer-style multipoint footprints** for each image in an Oriented Imagery Dataset (OID) using ArcGIS Pro’s `Build Oriented Imagery Footprint` geoprocessing tool.
-
-The output is a feature class (e.g., `OID_Footprint`) stored in the same geodatabase or dataset as the original OID. These footprints are used to:
-
-- Visualize camera fields of view
-- Generate OID services with visible geometry
-- Support spatial queries in ArcGIS Pro and web apps
+Generates buffer-style multipoint footprints for each image in an Oriented Imagery Dataset (OID) using ArcGIS Pro's `BuildOrientedImageryFootprint` tool. These footprints are used to visualize camera fields of view, support spatial queries, and enable downstream OID service publishing.
 
 ---
 
-## 🔧 Parameters (ArcGIS Toolbox)
+## 🧰 Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Oriented Imagery Dataset` | ✅ | Input OID feature class |
-| `Config File` | ⬜️ | Optional override path to `config.yaml` |
-
----
-
-## 🧩 Script Components
-
-| Script | Responsibility |
-|--------|----------------|
-| `build_oid_footprints_tool.py` | ArcGIS Toolbox interface |
-| `build_oid_footprints.py` | Core logic using `arcpy.oi.BuildOrientedImageryFootprint` |
-| `config.yaml` | Supplies spatial reference, naming logic, and optional transformation |
-| `validate_config.py` | Verifies that the spatial reference is valid and resolvable |
+| Parameter                   | Required | Description                                                         |
+|-----------------------------|----------|---------------------------------------------------------------------|
+| Project Folder              | ✅       | Root folder for the project; used for resolving logs and asset paths |
+| Oriented Imagery Dataset    | ✅       | Input OID feature class                                             |
+| Config File                 | ⬜️      | Optional path to `config.yaml` for spatial reference/transformation  |
 
 ---
 
-## ⚙️ Behavior
+## 🗂️ Scripts & Components
 
-The tool performs the following:
-
-1. Loads `pcs_horizontal_wkid` from `config.spatial_ref`
-2. Optionally uses `spatial_ref.transformation` for accurate projection
-3. Creates the output footprint feature class named `OID_Footprint` (e.g., `Imagery_Footprint`)
-4. Outputs in the same geodatabase or dataset as the input OID
+| Script                                   | Role/Responsibility                                            |
+|------------------------------------------|---------------------------------------------------------------|
+| `tools/build_oid_footprints_tool.py`     | ArcGIS Toolbox wrapper, parameter handling                     |
+| `utils/build_oid_footprints.py`          | Core logic using ArcPy's BuildOrientedImageryFootprint         |
+| `utils/manager/config_manager.py`        | Loads and validates configuration                             |
 
 ---
 
-## 📐 Spatial Reference Handling
+## ⚙️ Behavior / Logic
 
-From `config.yaml`:
+1. Loads spatial reference (`pcs_horizontal_wkid`) and optional transformation from `config.yaml`.
+2. Validates input OID feature class.
+3. Runs ArcPy's `BuildOrientedImageryFootprint` to generate a footprint feature class alongside the OID.
+4. Applies config overrides for spatial reference and transformation if provided.
+5. Logs warnings for spatial reference issues or output failures.
+
+---
+
+## 🗃️ Inputs
+
+- Oriented Imagery Dataset (OID)
+- Project YAML config with spatial reference definitions
+
+---
+
+## 📤 Outputs
+
+- Footprint feature class (e.g., `OID_Footprint`) in the same geodatabase or dataset as the input OID
+
+---
+
+## 🗝️ Configuration / Notes
+
+- Spatial reference and transformation are defined in `config.yaml`:
 
 ```yaml
 spatial_ref:
-  pcs_horizontal_wkid: "config.project.local_proj_wkid"  # e.g., 6492
+  pcs_horizontal_wkid: 6492
   transformation: null  # Optional; may be set for datum conversions
 ```
 
-These values are resolved using expression evaluation and passed to `arcpy.env.outputCoordinateSystem`.
+- The output feature class name is derived from the OID (e.g., `OID_Footprint`).
+- Environment settings are restored after footprint creation.
+
+---
+
+## 🧩 Dependencies
+
+- ArcGIS Pro
+- Python with `arcpy`
+- Project YAML config
+
+---
+
+## 🔗 Related Tools
+
+- Add Images to OID
+- Create OID Schema Template
+- Generate OID Service
 
 ---
 

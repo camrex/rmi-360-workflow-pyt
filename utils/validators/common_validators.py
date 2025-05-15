@@ -1,9 +1,29 @@
+# =============================================================================
+# 🛠️ Common Validators (utils/validators/common_validators.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Provides reusable validation functions for configuration and schema checks
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Contains utility functions for type checking, config section validation, field validation, expression resolution,
+#   duplicate detection, and file existence checks. Used by all validator scripts in the toolbox.
+#
+# File Location:        /utils/validators/common_validators.py
+# Called By:            All validation scripts in utils/validators
+# Notes:                Centralizes validation logic for consistency and maintainability.
+# =============================================================================
+
 from __future__ import annotations
 import shutil
 from typing import Union, Tuple, Type
 from pathlib import Path
-from utils.exceptions import ConfigValidationError
-from utils.expression_utils import resolve_expression
+
+from utils.shared.exceptions import ConfigValidationError
+from utils.shared.expression_utils import resolve_expression
 
 
 def validate_type(value, context: str, expected_type: Union[Type, Tuple[Type, ...]], cfg: ConfigManager):

@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Duplicates an existing OID feature class and updates its ImagePath values to point to
@@ -16,7 +17,7 @@
 # File Location:        /utils/generate_oid_service.py
 # Validator:            /utils/validators/generate_oid_service_validator.py
 # Called By:            tools/generate_oid_service_tool.py, tools/process_360_orchestrator.py
-# Int. Dependencies:    config_loader, arcpy_utils, expression_utils
+# Int. Dependencies:    utils/manager/config_manager
 # Ext. Dependencies:    arcpy, arcgis.gis, os, typing
 #
 # Documentation:

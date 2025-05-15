@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Analyzes GPS tracks in an OID feature class to identify potential outlier points based on
@@ -15,7 +16,7 @@
 # File Location:        /utils/smooth_gps_noise.py
 # Validator:            /utils/validators/smooth_gps_noise_validator.py
 # Called By:            tools/smooth_gps_noise_tool.py, orchestrator
-# Int. Dependencies:    config_loader, arcpy_utils, path_utils
+# Int. Dependencies:    utils/manager/config_manager
 # Ext. Dependencies:    arcpy, csv, math, typing
 #
 # Documentation:

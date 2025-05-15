@@ -6,29 +6,30 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class that creates a reusable schema table for Oriented Imagery Datasets (OIDs),
-#   based on the structure defined in the project configuration file. This schema is used during feature class
-#   creation to ensure consistent field definitions.
+#   based on the structure defined in the project configuration file. Ensures consistent field definitions
+#   for OID feature classes and supports robust integration with RMI 360 workflow CORE utils.
 #
 # File Location:      /tools/create_oid_template_tool.py
-# Uses:
+# Core Utils:
 #   - utils/build_oid_schema.py
 #   - utils/manager/config_manager.py
-#   - utils/arcpy_utils.py
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
-#   - Config File {config_file} (File): Path to the project-specific YAML configuration file defining schema and paths.
+#   - Project Folder {project_folder} (Folder): Root folder for the project; used for resolving logs and asset paths.
+#   - Config File {config_file} (File): Path to the project-specific YAML configuration file defining schema and paths. If not provided, defaults to project config location.
 #
 # Notes:
-#   - Generates a geodatabase table named in config["oid_schema_template"]["template"]["template_name"]
-#   - Falls back to default config path if no parameter is provided
+#   - Generates a geodatabase table named in config["oid_schema_template"]["template"]["template_name"].
+#   - Falls back to default config path if no parameter is provided.
+#   - Ensure the configuration accurately reflects the required schema for downstream OID operations.
 # =============================================================================
 
 import arcpy

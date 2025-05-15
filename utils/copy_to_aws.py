@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Recursively uploads enhanced or renamed images from a local directory to a configured
@@ -16,8 +16,8 @@
 # File Location:        /utils/copy_to_aws.py
 # Validator:            /utils/validators/copy_to_aws_validator.py
 # Called By:            tools/copy_to_aws_tool.py, orchestrator pipeline
-# Int. Dependencies:    config_loader, arcpy_utils, aws_utils, path_utils, expression_utils, progressor_utils
-# Ext. Dependencies:    boto3, botocore, threading, multiprocessing, csv, time, os, pathlib
+# Int. Dependencies:    utils/manager/config_manager, utils/shared/aws_utils
+# Ext. Dependencies:    boto3, botocore, threading, multiprocessing, csv, time, os, pathlib, datetime, typing
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/copy_to_aws.md
@@ -43,7 +43,7 @@ from botocore.config import Config
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
-from utils.aws_utils import get_aws_credentials
+from utils.shared.aws_utils import get_aws_credentials
 
 
 def collect_upload_tasks(local_dir, include_extensions, bucket_folder):

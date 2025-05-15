@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Runs the Mosaic Processor in three sequential stages:
@@ -18,7 +18,7 @@
 # File Location:        /utils/mosaic_processor.py
 # Validator:            /utils/validators/mosaic_processor_validator.py
 # Called By:            tools/run_mosaic_processor_tool.py, tools/process_360_orchestrator.py
-# Int. Dependencies:    utils.manager.config_manager, path_manager, log_manager, progressor_manager
+# Int. Dependencies:    utils/manager/config_manager
 # Ext. Dependencies:    subprocess, json, re, os, typing, pathlib
 # External Tools:       Mosaic Processor CLI, MistikaVR (external dependency)
 #
@@ -185,9 +185,6 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
     Returns:
         Number of files renamed.
     """
-    import os
-    import re
-
     renamed_count = 0
     logger.debug(f"Checking for frame number padding in: {output_dir}")
 

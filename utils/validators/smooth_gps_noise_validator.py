@@ -1,5 +1,24 @@
 
-from utils.exceptions import ConfigValidationError
+# =============================================================================
+# 🛰️ Smooth GPS Noise Validator (utils/validators/smooth_gps_noise_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for GPS noise smoothing tools
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of the 'gps_smoothing' configuration section, validates required keys and types,
+#   and checks angle bounds structure for GPS smoothing tools.
+#
+# File Location:        /utils/validators/smooth_gps_noise_validator.py
+# Called By:            GPS smoothing workflows
+# Notes:                Used for validation of smoothing and outlier detection settings for GPS data.
+# =============================================================================
+
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     validate_keys_with_types

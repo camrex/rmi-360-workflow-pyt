@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Performs linear referencing of image points against an M-enabled centerline using LocateFeaturesAlongRoutes.
@@ -15,7 +16,7 @@
 # File Location:        /utils/update_linear_and_custom.py
 # Validator:            /utils/validators/update_linear_and_custom_validator.py
 # Called By:            tools/update_linear_and_custom_tool.py, orchestrator
-# Int. Dependencies:    config_loader, arcpy_utils, expression_utils
+# Int. Dependencies:    utils.manager.config_manager, utils.shared.expression_utils
 # Ext. Dependencies:    arcpy, typing
 #
 # Documentation:
@@ -32,7 +33,7 @@ import arcpy
 from typing import Optional
 
 from utils.manager.config_manager import ConfigManager
-from utils.expression_utils import resolve_expression
+from utils.shared.expression_utils import resolve_expression
 
 
 def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logger) -> dict:

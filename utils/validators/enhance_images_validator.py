@@ -1,8 +1,26 @@
+# =============================================================================
+# 🖼️ Enhance Images Validator (utils/validators/enhance_images_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for image enhancement tools
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of the 'image_enhancement' configuration section and its required keys/types.
+#
+# File Location:        /utils/validators/enhance_images_validator.py
+# Called By:            Image enhancement workflows
+# Notes:                Used for validation of enhancement parameters for image processing.
+# =============================================================================
+
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     check_required_keys
 )
-from utils.exceptions import ConfigValidationError
 
 
 def validate(cfg: "ConfigManager") -> bool:

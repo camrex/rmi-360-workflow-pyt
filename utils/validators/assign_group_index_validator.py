@@ -1,3 +1,22 @@
+# =============================================================================
+# 🏷️ Assign Group Index Validator (utils/validators/assign_group_index_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for assigning group index fields in OID schema
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures the 'grp_idx_fields' block exists and is valid, and that each group index field is correctly structured
+#   for use in OID schema generation and workflows.
+#
+# File Location:        /utils/validators/assign_group_index_validator.py
+# Called By:            OID schema and group assignment workflows
+# Notes:                Used for validation of group index fields in OID creation and updates.
+# =============================================================================
+
 from utils.validators.common_validators import (
     validate_type,
     validate_field_block

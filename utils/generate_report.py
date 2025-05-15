@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Loads report data from JSON, attaches config if needed, and uses Jinja2 templates to render
@@ -15,7 +15,7 @@
 #
 # File Location:        /utils/generate_report.py
 # Called By:            tools/generate_report_tool.py, process_360_orchestrator.py
-# Int. Dependencies:    arcpy_utils, schema_paths
+# Int. Dependencies:    utils/manager/config_manager
 # Ext. Dependencies:    jinja2, matplotlib, json, os, re, pathlib, datetime, typing
 #
 # Documentation:

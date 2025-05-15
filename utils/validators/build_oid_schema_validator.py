@@ -1,12 +1,31 @@
+# =============================================================================
+# 🏗️ Build OID Schema Validator (utils/validators/build_oid_schema_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for building OID schema templates
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Checks the presence and structure of the 'oid_schema_template' block, validates required keys, field registry,
+#   and ensures all fields and blocks are correct for OID schema generation.
+#
+# File Location:        /utils/validators/build_oid_schema_validator.py
+# Called By:            OID schema building workflows
+# Notes:                Used for validation of schema blocks, templates, and field registries in OID tools.
+# =============================================================================
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
+from utils.shared.expression_utils import load_field_registry
 from utils.validators.common_validators import (
     validate_type,
     check_required_keys,
     validate_field_block,
     check_duplicate_field_names
 )
-from utils.expression_utils import load_field_registry
+
 
 def validate(cfg: "ConfigManager") -> bool:
     from utils.manager.config_manager import ConfigManager

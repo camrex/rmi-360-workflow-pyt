@@ -1,89 +1,103 @@
-# ☁️ Tool: Copy to AWS (+ Set AWS Keyring Credentials)
+# 🛠️ Tool: Copy to AWS (and Set AWS Keyring Credentials)
 
-## 🧰 Tool Name
+## 🧑‍💻 Tool Name
 **09 – Copy To AWS**  
 **(includes: Set AWS Keyring Credentials)**
 
 ---
 
-## 🧭 Purpose
+## 📝 Purpose
 
-This tool uploads **final, renamed, and metadata-tagged images** to an AWS S3 bucket using multithreaded parallel uploads. It supports:
-
-- Pulling credentials from system keyring or `config.yaml`
-- Uploading only new or updated files
-- Logging upload results
-- Preview-only dry run mode
-- Flexible project-level path resolution
-
-This workflow also includes the **Set AWS Keyring Credentials** tool, which securely stores AWS credentials for use by the Copy to AWS process.
+Uploads final, renamed, and metadata-tagged images to an AWS S3 bucket using multithreaded parallel uploads. Supports credentials from system keyring or config, uploads only new/updated files, logs results, supports dry-run, and can deploy a Lambda monitor for progress tracking. Includes tool for securely storing AWS credentials.
 
 ---
 
-## 🔧 Parameters
+## 🧰 Parameters
 
-### Copy To AWS
+| Parameter                   | Required | Description                                                         |
+|-----------------------------|----------|---------------------------------------------------------------------|
+| Input Folder for Images     | ✅       | Folder containing `.jpg` images to upload                           |
+| Skip Existing Files in S3?  | ⬜️      | If checked, skips images already present in S3                      |
+| Project Folder              | ✅       | Root folder for the project (for logs, assets)                      |
+| Config File                 | ✅       | Path to `config.yaml` with AWS and project settings                 |
+| Deploy Upload Monitor?      | ⬜️      | Whether to deploy AWS Lambda monitor before transfer                |
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Input Folder for Images` | ✅ | Folder containing the `.jpg` images to upload |
-| `Dry Run AWS` | ⬜️ | If checked, performs a no-op simulation of the upload |
-| `Skip Existing Files in S3?` | ⬜️ | If checked, skips already existing images in the bucket |
-| `Config File` | ✅ | Path to the project’s `config.yaml` |
-| `Project Folder` | ✅ | Project root used for resolving relative paths |
+**Set AWS Keyring Credentials** (sub-tool):
 
-### Set AWS Keyring Credentials
-
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `AWS Access Key ID` | ✅ | Your AWS access key ID |
-| `AWS Secret Access Key` | ✅ | Your AWS secret key (stored securely) |
+| Parameter             | Required | Description                     |
+|----------------------|----------|---------------------------------|
+| AWS Access Key ID    | ✅       | Your AWS access key ID          |
+| AWS Secret Access Key| ✅       | Your AWS secret key (stored securely) |
 
 ---
 
-## 🧩 Script Components
+## 🗂️ Scripts & Components
 
-| Script | Role |
-|--------|------|
-| `copy_to_aws_tool.py` | Toolbox wrapper for AWS upload |
-| `copy_to_aws.py` | Handles upload logic, retry, logging |
-| `set_aws_keyring_tool.py` | Secure credential entry and keyring storage |
-| `validate_config.py` | Verifies AWS config block for correctness |
+| Script                              | Role/Responsibility                                |
+|-------------------------------------|----------------------------------------------------|
+| `tools/copy_to_aws_tool.py`         | ArcGIS Toolbox wrapper, parameter handling          |
+| `utils/copy_to_aws.py`              | Handles upload logic, retry, logging                |
+| `utils/deploy_lambda_monitor.py`    | Deploys AWS Lambda monitor for upload tracking      |
+| `utils/manager/config_manager.py`   | Loads and validates configuration                  |
 
 ---
 
-## 🔐 Credential Handling
+## ⚙️ Behavior / Logic
 
-Configured in `config.yaml → aws`:
+1. Loads AWS credentials from keyring or config.
+2. Scans the input folder for `.jpg` images.
+3. Optionally skips files already present in S3.
+4. Uploads files in parallel using TransferManager.
+5. Writes detailed logs and summary CSV.
+6. Optionally deploys Lambda monitor for progress tracking.
+
+---
+
+## 🗃️ Inputs
+
+- Folder of renamed and tagged images
+- Project YAML config with AWS credentials and S3 settings
+
+---
+
+## 📤 Outputs
+
+- Images uploaded to target S3 bucket/folder
+- Upload logs and summary CSV in the project folder
+
+---
+
+## 🗝️ Configuration / Notes
+
+- AWS credentials and S3 settings are defined in `config.yaml`:
 
 ```yaml
 aws:
   keyring_aws: true
-  keyring_service_name: rmi_s3
-  access_key: "..."       # Only used if keyring_aws = false
-  secret_key: "..."
+  access_key_id: "..."  # Only if keyring_aws is false
+  secret_access_key: "..."  # Only if keyring_aws is false
+  s3_bucket: "rmi-orient-img-test"
+  s3_folder: "project_name"
 ```
 
-- When `keyring_aws: true`, credentials are securely stored using the keyring.
-- Use **Set AWS Keyring Credentials** before uploading.
-- If `keyring_aws: false`, the tool falls back to config-stored credentials.
+- If `keyring_aws: true`, credentials are securely stored in the system keyring.
+- Supports resumable uploads, concurrency, and cancel triggers.
 
 ---
 
-## 📤 Output
+## 🧩 Dependencies
 
-| Output | Description |
-|--------|-------------|
-| `aws_upload_log.csv` | Log of all files uploaded / skipped / failed |
-| `ArcGIS Progress Bar` | Live progress updates or CLI logging |
-| `S3 Folder` | Files uploaded to: `s3://bucket/project_slug/...` structure |
+- Python with `boto3`, `botocore`
+- ArcGIS Pro
+- Project YAML config
 
-Example config snippet:
-```yaml
-aws:
-  s3_bucket: rmi-orient-img-test
-  s3_bucket_folder: "config.project.slug"
-```
+---
+
+## 🔗 Related Tools
+
+- Rename and Tag Images
+- Add Images to OID
+- Generate OID Service
 
 ---
 

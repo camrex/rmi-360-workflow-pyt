@@ -6,6 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Loads features from an OID feature class, sorts by AcquisitionDate, and assigns a
@@ -15,14 +16,16 @@
 # File Location:        /utils/assign_group_index.py
 # Validator:            /utils/validators/assign_group_index_validator.py
 # Called By:            tools/add_images_to_oid_tool.py
-# Int. Dependencies:    config_loader, arcpy_utils
-# Ext. Dependencies:    arcpy, typing
+# Int. Dependencies:    utils/manager/config_manager
+# Ext. Dependencies:    arcpy
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/assign_group_index.md
+#   (Ensure these docs are current; update if needed.)
 #
 # Notes:
 #   - Raises if GroupIndex field is missing or AcquisitionDate is null
+#   - Supports configurable group size for flexible display
 # =============================================================================
 
 __all__ = ["assign_group_index"]

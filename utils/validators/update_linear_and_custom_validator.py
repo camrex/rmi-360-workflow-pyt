@@ -1,5 +1,23 @@
+# =============================================================================
+# 🔄 Update Linear and Custom Validator (utils/validators/update_linear_and_custom_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates linear reference and custom fields in the OID schema template
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures that the 'linear_ref_fields' and 'custom_fields' sections exist, are dictionaries, and that all field
+#   blocks are valid. Checks that the 'route_measure' field in 'linear_ref_fields' has type 'DOUBLE'.
+#
+# File Location:        /utils/validators/update_linear_and_custom_validator.py
+# Called By:            OID schema update and field validation workflows
+# Notes:                Used for validation of schema changes and custom field additions to OID templates.
+# =============================================================================
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     validate_field_block

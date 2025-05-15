@@ -1,5 +1,24 @@
 
-from utils.exceptions import ConfigValidationError
+# =============================================================================
+# 🆔 Generate OID Service Validator (utils/validators/generate_oid_service_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for generating OID services (portal and AWS)
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures presence and correctness of required portal and AWS configuration sections and keys, including validation
+#   of S3 bucket folder expressions and portal project folder settings.
+#
+# File Location:        /utils/validators/generate_oid_service_validator.py
+# Called By:            OID service generation workflows
+# Notes:                Used for validation of portal and AWS configuration for OID service deployment.
+# =============================================================================
+
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     try_resolve_config_expression,

@@ -1,6 +1,25 @@
+# =============================================================================
+# 🗺️ Build OID Footprints Validator (utils/validators/build_oid_footprints_validator.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Validates configuration for building OID footprints
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.0.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-05-08
+# Last Updated:        2025-05-15
+#
+# Description:
+#   Ensures the presence and correctness of the spatial reference block, validates WKID and transformation fields,
+#   and checks that all required configuration is present for OID footprint generation.
+#
+# File Location:        /utils/validators/build_oid_footprints_validator.py
+# Called By:            OID footprint building workflows
+# Notes:                Used for validation of spatial reference and transformation settings in OID tools.
+# =============================================================================
+
 from typing import Optional
 
-from utils.exceptions import ConfigValidationError
+from utils.shared.exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
     try_resolve_config_expression

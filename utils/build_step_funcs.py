@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-14
+# Last Updated:        2025-05-15
 #
 # Description:
 #   Maps each pipeline step in the 360° imagery workflow to a labeled function. Supports conditional
@@ -15,8 +15,8 @@
 #
 # File Location:        /utils/build_step_funcs.py
 # Called By:            tools/process_360_orchestrator.py
-# Int. Dependencies:    All workflow utils (mosaic_processor, enhance_images, copy_to_aws, etc.)
-# Ext. Dependencies:    None
+# Int. Dependencies:    All workflow utils (mosaic_processor, enhance_images, copy_to_aws, etc.), utils/shared/arcpy_utils
+# Ext. Dependencies:    collections
 #
 # Documentation:
 #   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/TOOL_OVERVIEW.md
@@ -26,6 +26,8 @@
 #   - Controls step label mapping, execution logic, and skip conditions
 #   - Central entry point for orchestrator workflow automation
 # =============================================================================
+
+from collections import namedtuple
 
 from utils.mosaic_processor import run_mosaic_processor
 from utils.create_oid_feature_class import create_oriented_imagery_dataset
@@ -44,10 +46,7 @@ from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
 from utils.generate_oid_service import generate_oid_service
 
-from utils.arcpy_utils import str_to_bool
-
-
-from collections import namedtuple
+from utils.shared.arcpy_utils import str_to_bool
 
 StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
 

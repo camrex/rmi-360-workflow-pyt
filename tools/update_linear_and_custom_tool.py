@@ -6,15 +6,16 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class to assign Milepost (MP) values and route identifiers via linear referencing
 #   against an M-enabled centerline. Also supports applying user-defined attribute fields based on config
 #   expressions. Can selectively enable or skip linear referencing while always applying custom fields.
+#   Integrates with Core Utils for attribute enrichment and configuration management.
 #
 # File Location:      /tools/update_linear_and_custom_tool.py
-# Uses:
+# Core Utils:
 #   - utils/update_linear_and_custom.py
 #   - utils/manager/config_manager.py
 #
@@ -23,6 +24,7 @@
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
+#   - Project Folder {project_folder} (Folder): Root folder for the project; used for resolving logs and asset paths.
 #   - Oriented Imagery Dataset (OID) {oid_fc} (Feature Class): OID feature class containing image points to enrich.
 #   - M-Enabled Centerline {centerline_fc} (Feature Class): Line feature class with calibrated M-values for referencing.
 #   - Route ID Field {route_id_field} (Field): Field in the centerline that uniquely identifies each route.
@@ -30,8 +32,9 @@
 #   - Config File {config_file} (File): Path to the project config.yaml file with custom field logic.
 #
 # Notes:
-#   - Linear referencing can be toggled independently of custom attribute updates
-#   - Supports complex config-driven field population with modifiers and formatting
+#   - Linear referencing can be toggled independently of custom attribute updates.
+#   - Supports complex config-driven field population with modifiers and formatting.
+#   - Ensure config file and Core Utils are up-to-date for accurate attribute enrichment.
 # =============================================================================
 
 import arcpy

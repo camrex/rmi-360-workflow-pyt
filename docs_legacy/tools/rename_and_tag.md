@@ -5,62 +5,119 @@
 
 ---
 
-## 🧭 Purpose
+## 📝 Purpose
 
-This tool performs the **final prep step** for 360° imagery, responsible for:
-
-1. **Renaming each image** based on config-defined filename structure and OID attributes  
-2. **Updating `Name` and `ImagePath` fields** in the Oriented Imagery Dataset  
-3. **Applying EXIF/XMP metadata** using ExifTool batch mode (e.g., GPS, Artist, Railroad, etc.)
-
-It ensures that image files are cleanly named, properly described, and geotagged before cloud upload or sharing.
+Standardizes image filenames and applies metadata tags to images in preparation for upload and OID linkage. Supports customizable naming conventions, batch renaming, and writing EXIF/XMP tags based on project configuration.
 
 ---
 
-## 🔧 Parameters (ArcGIS Toolbox)
+## 🧰 Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Oriented Imagery Dataset (OID)` | ✅ | Feature class with imagery attributes and paths |
-| `Delete Original Files After Rename?` | ⬜️ | If checked, removes the original images |
-| `Config File` | ⬜️ | Path to `config.yaml` (defaults to project config if not specified) |
-
----
-
-## 🧩 Tool Scripts & Roles
-
-| Script | Function |
-|--------|----------|
-| `rename_and_tag_tool.py` | Tool entrypoint and orchestrator |
-| `rename_images.py` | Renames and copies files based on `filename_settings` |
-| `apply_exif_metadata.py` | Applies EXIF/XMP metadata using ExifTool batch commands |
+| Parameter         | Required | Description                                         |
+|-------------------|----------|-----------------------------------------------------|
+| Input Folder      | ✅       | Folder containing images to rename/tag               |
+| Config File       | ✅       | Path to `config.yaml` with naming/tagging rules      |
+| Project Folder    | ✅       | Project root for resolving outputs                   |
 
 ---
 
-## 🔁 Workflow Summary
+## 🗂️ Scripts & Components
 
-```text
-1. Rename Images
-   - Generate filename using OID fields + config expressions
-   - Copy (or move) file to target folder (e.g., /panos/final)
-   - Update OID: Name and ImagePath
+| Script                              | Role/Responsibility                |
+|-------------------------------------|------------------------------------|
+| `tools/rename_and_tag_tool.py`      | ArcGIS Toolbox wrapper             |
+| `utils/rename_and_tag.py`           | Core renaming/tagging logic        |
+| `utils/manager/config_manager.py`   | Loads and validates configuration  |
 
-2. Apply Metadata
-   - Use config-defined EXIF/XMP tags
-   - Optionally correct GPS (for flagged GPS_OUTLIER images)
+---
+
+## ⚙️ Behavior / Logic
+
+1. Loads naming/tagging parameters from config.
+2. Iterates over images in input folder.
+3. Renames files according to convention.
+4. Writes EXIF/XMP metadata tags.
+5. Logs changes and errors.
+
+---
+
+## 🗃️ Inputs
+
+- Folder of images
+- Project YAML config with naming/tagging rules
+
+---
+
+## 📤 Outputs
+
+- Renamed images in output folder
+- Images with updated metadata tags
+- Logs of changes/errors
+
+---
+
+## 🗝️ Configuration / Notes
+
+From `config.yaml`:
+
+```yaml
+rename_and_tag:
+  naming_convention: "{project}_{date}_{seq}"
+  tag_fields:
+    - "ProjectName"
+    - "AcquisitionDate"
+  output_folder: "renamed_tagged"
 ```
 
+- Naming convention supports placeholders for project, date, sequence, etc.
+- Output folder is created if missing.
+
 ---
 
-## 🧪 Example Usage (Python)
+## 🧩 Dependencies
+
+- Python with `exiftool`, `pandas`
+- ArcGIS Pro
+- Project YAML config
+
+---
+
+## ✅ Validation
+
+Validation is performed by the appropriate validator in `utils/validators` (not `validate_config.py`).
+- Checks that naming convention and tag fields are valid
+- Ensures output folder is writable
+- Validates EXIF tool path and config
+
+---
+
+## 🔗 Related Tools
+
+- Enhance Images
+- Add Images to OID
+- Copy to AWS
+- Generate OID Service
+
+---
+
+## 📝 Notes
+
+- This is the final processing step before upload (`copy_to_aws`) or service generation
+- Designed for batch‑safe execution (will not overwrite files silently)
+- Can be run multiple times — images are renamed and tagged independently
+- Best used after GPS correction and linear referencing are complete
+
+---
+
+## 📝 Example Usage (Python)
 
 ```python
 from tools.rename_and_tag_tool import execute
 
 execute(
-    oid_fc="path/to/OID.gdb/Imagery",
-    output_folder="",
-    delete_originals=False,
+    input_folder="path/to/images",
+    config_file="path/to/config.yaml",
+    project_folder="path/to/project",
     dry_run=False
 )
 ```

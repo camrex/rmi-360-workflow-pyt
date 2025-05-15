@@ -6,16 +6,16 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-14
+# Last Updated:       2025-05-15
 #
 # Description:
 #   ArcPy Tool class that publishes an Oriented Imagery Dataset (OID) as a hosted
 #   feature service on ArcGIS Online. Duplicates the OID with updated S3-based ImagePaths and
 #   invokes ArcGIS's GenerateServiceFromOrientedImageryDataset tool. Optionally creates a portal
-#   folder if it does not exist.
+#   folder if it does not exist. Integrates with Core Utils for configuration and publishing logic.
 #
 # File Location:      /tools/generate_oid_service_tool.py
-# Uses:
+# Core Utils:
 #   - utils/generate_oid_service.py
 #   - utils/manager/config_manager.py
 #
@@ -24,13 +24,15 @@
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
+#   - Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project. All imagery and logs will be organized under this folder.
 #   - Oriented Imagery Dataset {oid_fc} (Feature Class): Existing OID feature class to be duplicated and published.
 #   - Config File {config_file} (File): YAML config file containing AWS bucket, portal, and S3 path details.
 #
 # Notes:
-#   - Automatically updates ImagePaths to public S3 URLs
-#   - Attempts to create portal folder if it does not exist
-#   - Requires authenticated ArcGIS Pro session with sharing privileges
+#   - Automatically updates ImagePaths to public S3 URLs.
+#   - Attempts to create portal folder if it does not exist.
+#   - Requires authenticated ArcGIS Pro session with sharing privileges.
+#   - Ensure config file is up-to-date and user has required portal privileges.
 # =============================================================================
 
 import arcpy
