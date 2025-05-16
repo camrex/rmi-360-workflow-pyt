@@ -39,21 +39,21 @@ from utils.shared.expression_utils import resolve_expression
 def resolve_spatial_reference(cfg, logger):
     sr_expr = cfg.get("spatial_ref.pcs_horizontal_wkid")
     if sr_expr is None:
-        logger.error("`spatial_ref.pcs_horizontal_wkid` missing from config.", error_type=KeyError)
+        logger.error("`spatial_ref.pcs_horizontal_wkid` missing from config.", error_type=KeyError, indent=2)
         return None
     try:
         wkid = int(resolve_expression(sr_expr, cfg))
-        logger.info(f"📐 Using projected coordinate system: WKID {wkid}")
+        logger.custom(f"Using projected coordinate system: WKID {wkid}", indent=2, emoji="📐")
         return arcpy.SpatialReference(wkid)
     except Exception as e:
-        logger.error(f"Failed to resolve spatial_ref.pcs_horizontal_wkid: {e}", error_type=ValueError)
+        logger.error(f"Failed to resolve spatial_ref.pcs_horizontal_wkid: {e}", error_type=ValueError, indent=2)
         return None
 
 
 def resolve_geographic_transformation(cfg, logger):
     transform = cfg.get("spatial_ref.transformation") or None
     if transform:
-        logger.info(f"🌍 Applying geographic transformation: {transform}")
+        logger.custom(f"Applying geographic transformation: {transform}", indent=2, emoji="🌍")
     return transform
 
 
@@ -77,10 +77,10 @@ def build_footprint_with_env(oid_fc, output_sr, transform, out_dataset_path, out
             out_dataset_name=out_dataset_name,
             footprint_option="BUFFER"
         )
-        logger.info(f"OID footprint successfully created at: {output_path}")
+        logger.success(f"OID footprint successfully created at: {output_path}", indent=1)
         return output_path
     except Exception as e:
-        logger.warning(f"Failed to build OID footprints: {e}. Footprint creation can be done post-process.")
+        logger.warning(f"Failed to build OID footprints: {e}. Footprint creation can be done post-process.", indent=1)
         return None
     finally:
         arcpy.env.outputCoordinateSystem = prev_sr
@@ -111,10 +111,10 @@ def build_oid_footprints(cfg: ConfigManager, oid_fc: str) -> Optional[str]:
     logger = cfg.get_logger()
     cfg.validate(tool="build_oid_footprints")
 
-    logger.info("Starting OID footprint generation...")
+    logger.info("Starting OID footprint generation...", indent=1)
 
     if not arcpy.Exists(oid_fc):
-        logger.error(f"Input OID does not exist: {oid_fc}", error_type=FileNotFoundError)
+        logger.error(f"Input OID does not exist: {oid_fc}", error_type=FileNotFoundError, indent=2)
         return None
 
     output_sr = resolve_spatial_reference(cfg, logger)

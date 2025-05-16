@@ -41,10 +41,10 @@ from utils.shared.arcpy_utils import validate_fields_exist
 def get_exiftool_cmd(cfg, logger):
     method = cfg.get("geocoding.method", "").lower()
     if method != "exiftool":
-        logger.warning("🔕 Geocoding skipped (unsupported method)")
+        logger.warning("Geocoding skipped (unsupported method)", indent=1)
         return None
     db_choice = cfg.get("geocoding.exiftool_geodb", "default").lower()
-    logger.info(f"🌍 Using geolocation DB: {db_choice}")
+    logger.custom(f"Using geolocation DB: {db_choice}", indent=1, emoji="🌍")
     exiftool_cmd = ["exiftool"]
     if db_choice == "geolocation500":
         config_path = cfg.paths.geoloc500_config_path
@@ -61,7 +61,7 @@ def build_geocode_args_and_log(rows, logger):
     log_entries = []
     for oid, path, x, y in rows:
         if not os.path.exists(path):
-            logger.warning(f"Image path does not exist: {path}")
+            logger.warning(f"Image path does not exist: {path}", indent=1)
             continue
         lines.extend([
             "-overwrite_original_in_place",
@@ -83,9 +83,9 @@ def run_exiftool(cmd, args_file, logger):
     cmd = list(cmd) + ["-@", args_file]
     try:
         subprocess.run(cmd, check=True)
-        logger.info("✅ Reverse geocoding completed.")
+        logger.success("Reverse geocoding completed.", indent=1)
     except subprocess.CalledProcessError as e:
-        logger.error(f"ExifTool geocoding failed: {e}")
+        logger.error(f"ExifTool geocoding failed: {e}", indent=1)
 
 def geocode_images(cfg: ConfigManager, oid_fc: str) -> None:
     """

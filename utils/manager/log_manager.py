@@ -63,6 +63,8 @@ class LogManager:
     }
     # When True, show [indent] after emoji in log output if debug_messages is True
     SHOW_INDENT_LEVEL_IN_DEBUG = True
+    # When True, show context in log output if debug_messages is True
+    SHOW_CONTEXT_IN_DEBUG = False
 
     def __init__(
             self,
@@ -79,13 +81,11 @@ class LogManager:
             config (dict, optional): Project-level configuration, including debug flag.
             path_manager (PathManager, optional): Provides log file directories.
             enable_file_output (bool): If True, log to .txt, .html, and .json files.
-            pop_on_error (bool): If True, reduces stack depth and timing on error.
         """
         self.messages = messages
         self.config = config or {}
         self.path_manager = path_manager
         self.enable_file_output = enable_file_output
-        self.pop_on_error = pop_on_error
         self.entries: List[str] = []
         self.html_blocks: List[str] = []
         self.records: List[Dict] = []
@@ -142,8 +142,9 @@ class LogManager:
             prefix = f"{prefix} [{indent}]"
 
         context_str = ""
-        if context:
-            context_str = "  " + " ".join(f"{k}={v}" for k, v in context.items())
+        if context and isinstance(context, dict):
+            if self.config.get("debug_messages", False) and self.SHOW_CONTEXT_IN_DEBUG:
+                context_str = "  " + " ".join(f"{k}={v}" for k, v in context.items())
 
         indent_str = self.indent_char * indent
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -160,8 +161,33 @@ class LogManager:
         })
 
         css_class = level
-        html_line = f'<div class="{css_class}"><span class="ts">[{timestamp}]</span> {prefix} {html.escape(indent_str + msg + context_str)}</div>'
-        self.html_blocks.append(html_line)
+        # Enhanced HTML log generation for indentation and collapsibility
+        # Use <details>/<summary> for steps (indent=0 with separator), .block for indented messages
+        if not hasattr(self, '_open_details'):
+            self._open_details = False
+        html_line = None
+        if indent == 0 and (msg.strip() == '=' * 40 or (level == 'custom' and emoji == '▶️')):
+            # Start or end of a step, use <details>/<summary>
+            if msg.strip() == '=' * 40:
+                # Separator, close previous <details> if open
+                if self._open_details:
+                    self.html_blocks.append('</div></details>')
+                    self._open_details = False
+            else:
+                # Start a new collapsible block for the step
+                if self._open_details:
+                    self.html_blocks.append('</div></details>')
+                summary = html.escape(msg + (context_str if context_str else ''))
+                self.html_blocks.append(f'<details open><summary><span class="ts">[{timestamp}]</span> {prefix} {summary}</summary><div class="block">')
+                self._open_details = True
+            # Do not add the separator/step message as a normal line
+            html_line = None
+        else:
+            block_class = 'block' if indent > 0 else ''
+            html_line = f'<div class="{css_class} {block_class}"><span class="ts">[{timestamp}]</span> {prefix} {html.escape(msg + context_str)}</div>'
+        if html_line:
+            self.html_blocks.append(html_line)
+
 
         if self.messages:
             if level == "warning" and hasattr(self.messages, "addWarningMessage"):
@@ -264,6 +290,10 @@ class LogManager:
         try:
             html_path = self.path_manager.logs / filename
             html_path.parent.mkdir(parents=True, exist_ok=True)
+            # Ensure any open <details> is closed
+            if hasattr(self, '_open_details') and self._open_details:
+                self.html_blocks.append('</div></details>')
+                self._open_details = False
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(HTML_LOG_TEMPLATE_HEAD)
                 for line in self.html_blocks:

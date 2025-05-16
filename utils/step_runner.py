@@ -83,7 +83,7 @@ def run_steps(
             try:
                 return skip_fn(params)
             except Exception as e:
-                logger.warning(f"Skip-check for '{stp.get('label', '')}' failed: {e}", 0)
+                logger.warning(f"Skip-check for '{stp.get('label', '')}' failed: {e}", indent=0)
                 return None
         return None
 
@@ -92,7 +92,7 @@ def run_steps(
             backup_steps = wait_cfg.get("backup_before_step", [])
             if stp_key in backup_steps:
                 if "oid_fc" not in params:
-                    logger.warning("`oid_fc` not supplied skipping OID backup", 1)
+                    logger.warning("`oid_fc` not supplied skipping OID backup", indent=1)
                 else:
                     try:
                         backup_oid(params["oid_fc"], stp_key, config)
@@ -106,7 +106,7 @@ def run_steps(
             wait_steps = wait_cfg.get("wait_before_step", [])
             wait_seconds = wait_cfg.get("wait_duration_sec", 60)
             if stp_key in wait_steps:
-                logger.custom(f"Waiting {wait_seconds} seconds before running step: {lbl}", 0, "⏳")
+                logger.custom(f"Waiting {wait_seconds} seconds before running step: {lbl}", indent=0, emoji="⏳")
                 time.sleep(wait_seconds)
 
     def execute_step(lbl: str, function, rpt_data: Dict[str, Any], step_key=None):
@@ -126,7 +126,7 @@ def run_steps(
 
     for step_key in step_order[start_index:]:
         if step_key not in step_funcs:
-            logger.error(f"Step '{step_key}' not found in step_funcs dictionary", error_type=KeyError)
+            logger.error(f"Step '{step_key}' not found in step_funcs dictionary", error_type=KeyError, indent=0)
             break
         step = step_funcs[step_key]
         label = step.get("label", step_key)
@@ -134,7 +134,7 @@ def run_steps(
         skip_reason = should_skip_step(step, param_values)
 
         if skip_reason:
-            logger.custom(f"{label} — {skip_reason}", 0, "⏭️")
+            logger.custom(f"{label} — {skip_reason}", indent=0, emoji="⏭️")
             step_result = {
                 "name": label,
                 "status": "⏭️",

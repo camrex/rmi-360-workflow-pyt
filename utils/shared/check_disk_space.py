@@ -112,7 +112,7 @@ def check_sufficient_disk_space(
         image_path = next((row[0] for row in cursor if row[0]), None)
 
     if not image_path:
-        logger.error(f"No valid ImagePath found in the OID feature class: {oid_fc}", error_type=ValueError)
+        logger.error(f"No valid ImagePath found in the OID feature class: {oid_fc}", error_type=ValueError, indent=1)
 
     # Determine target folder from ImagePath
     target_dir = os.path.dirname(image_path)
@@ -126,24 +126,25 @@ def check_sufficient_disk_space(
     if not base_dir:
         logger.error(
             f"ImagePath does not include '{original_folder}' or '{enhanced_folder}' folder. Path: {target_dir}",
-            error_type=ValueError)
+            error_type=ValueError, indent=1)
 
     if not os.path.exists(base_dir):
-        logger.error(f"Base folder not found: {base_dir}", error_type=FileNotFoundError)
+        logger.error(f"Base folder not found: {base_dir}", error_type=FileNotFoundError, indent=1)
 
     folder_size = folder_size_func(base_dir, cfg)
     estimated_required = int(folder_size * buffer_ratio)
     free_space = disk_usage_func(drive_root).free
 
-    logger.debug(f"Checking disk space on drive: {drive_root}")
-    logger.debug(f"Checking space in folder: {base_dir}")
-    logger.debug(f"Base folder size (used): {folder_size / 1e9:.2f} GB")
-    logger.debug(f"Estimated required: {estimated_required / 1e9:.2f} GB (with buffer)")
-    logger.debug(f"Available: {free_space / 1e9:.2f} GB")
+    logger.debug(f"Checking disk space on drive: {drive_root}", indent=1)
+    logger.debug(f"Checking space in folder: {base_dir}", indent=1)
+    logger.debug(f"Base folder size (used): {folder_size / 1e9:.2f} GB", indent=1)
+    logger.debug(f"Estimated required: {estimated_required / 1e9:.2f} GB (with buffer)", indent=1)
+    logger.debug(f"Available: {free_space / 1e9:.2f} GB", indent=1)
 
     if free_space < estimated_required:
-        logger.error(f"❌ Insufficient disk space.\n"
-                     f"Needed (with buffer): {estimated_required / 1e9:.2f} GB\n"
-                     f"Available: {free_space / 1e9:.2f} GB", error_type=RuntimeError)
+        logger.error("Insufficient disk space.", indent=1)
+        logger.error(f"Needed (with buffer): {estimated_required / 1e9:.2f} GB", indent=2)
+        logger.error(f"Available: {free_space / 1e9:.2f} GB", indent=2)
+        logger.error("Cannot continue.", indent=1, error_type=RuntimeError)
 
     return True

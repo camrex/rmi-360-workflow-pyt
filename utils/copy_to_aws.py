@@ -70,9 +70,9 @@ def parse_uploaded_keys_from_log(log_file, logger):
                 for row in reader:
                     if row.get("status") == "uploaded":
                         uploaded_keys.add(row.get("s3_key"))
-            logger.info(f"ℹ️ Resuming from previous log, skipping {len(uploaded_keys)} previously uploaded files.")
+            logger.custom(f"Resuming from previous log, skipping {len(uploaded_keys)} previously uploaded files.", emoji="ℹ🔄", indent=1)
         except Exception as e:
-            logger.warning(f"Could not read previous log for resume: {e}")
+            logger.warning(f"Could not read previous log for resume: {e}", indent=1)
     return uploaded_keys
 
 def calculate_summary(log_rows, total, start_time):
@@ -145,10 +145,11 @@ def copy_to_aws(
     logger = cfg.get_logger()
     cfg.validate(tool="copy_to_aws")
 
-    logger.info("⚠️ Upload process cannot be interrupted once started. Use resume mode to safely restart if "
-                "needed.")
+    logger.custom("Upload process cannot be interrupted once started. Use resume mode to safely restart if "
+                "needed.", indent=1, emoji="⚠️")
 
     # AWS Setup
+    logger.info("Verifying AWS credentials...", indent=1)
     access_key, secret_key = get_aws_credentials(cfg)
     bucket = cfg.get("aws.s3_bucket")
     region = cfg.get("aws.region", "us-east-2")
@@ -170,28 +171,30 @@ def copy_to_aws(
     log_file = cfg.paths.get_log_file_path("aws_upload_log", cfg)
     summary_file = cfg.paths.get_log_file_path("aws_upload_summary", cfg)
 
+    logger.info("Starting AWS Upload...", indent=1)
+
     # Concurrency resolution
     cpu_count = multiprocessing.cpu_count() or 4
     worker_limit = cpu_count * 8  # Safety Limit
     if isinstance(max_workers_raw, int):
         max_concurrency = max_workers_raw
-        logger.info(f"🧵 Using max_workers={max_concurrency} (from int config)")
+        logger.custom(f"Using Max Workers = {max_concurrency} (from int config)", indent=2, emoji="🧵")
     elif isinstance(max_workers_raw, str) and max_workers_raw.startswith("cpu"):
         try:
             factor = int(max_workers_raw.split("*")[1]) if "*" in max_workers_raw else 1
             max_concurrency = min(cpu_count * factor, worker_limit)
-            logger.info(f"🧵 Using max_workers={max_concurrency} (cpu_count={cpu_count} × factor={factor})")
+            logger.custom(f"Using Max Workers = {max_concurrency} (cpu_count={cpu_count} × factor={factor})", indent=2, emoji="🧵")
         except Exception as e:
             max_concurrency = cpu_count
-            logger.warning(f"Failed to parse max_workers='{max_workers_raw}': {e}. Defaulting to {cpu_count}.")
+            logger.warning(f"Failed to parse max_workers='{max_workers_raw}': {e}. Defaulting to {cpu_count}.", indent=2)
     else:
         max_concurrency = cpu_count
-        logger.warning(f"Invalid max_workers value: {max_workers_raw}. Using default {cpu_count}.")
+        logger.warning(f"Invalid max_workers value: {max_workers_raw}. Using default {cpu_count}.", indent=2)
 
     # COLLECT ALL TASKS
     all_tasks = collect_upload_tasks(local_dir, include_extensions, bucket_folder)
     if not all_tasks:
-        logger.warning("No matching files found to upload.")
+        logger.warning("No matching files found to upload.", indent=2)
         return {}
 
     # Init AWS session and client
@@ -205,7 +208,9 @@ def copy_to_aws(
     s3 = session.client("s3", config=s3_cfg) if s3_cfg else session.client("s3")
 
     if use_accel:
-        logger.info("🚀 Using S3 Transfer Acceleration endpoint")
+        logger.custom("Using S3 Transfer Acceleration endpoint", indent=2, emoji="🚀")
+    else:
+        logger.info("S3 Transfer Acceleration endpoint disabled", indent=2)
 
     transfer_config = TransferConfig(
         multipart_threshold=16 * 1024 * 1024,
@@ -233,7 +238,7 @@ def copy_to_aws(
 
     total = len(upload_tasks)
     if total == 0:
-        logger.info("✅ No files to upload (all skipped or already uploaded).")
+        logger.custom("No files to upload (all skipped or already uploaded).", indent=1, emoji="❗")
         return {
             "uploaded": 0,
             "skipped": 0,
@@ -306,7 +311,7 @@ def copy_to_aws(
                 # Check for cancel triggers
                 if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
                     cancel_event.set()
-                    logger.info("🛑 Upload canceled by trigger.")
+                    logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
 
                 if cancel_event.is_set():
                     progressor.update(completed["count"], "🛑 Upload canceled — finishing current batch.")
@@ -332,6 +337,7 @@ def copy_to_aws(
                     eta_hr, eta_min = divmod(eta_min, 60)
                     label = f"Uploading {current}/{total} images... ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
                     progressor.update(current, label)
+                    logger.custom(label, indent=3, emoji="☁️")
                     last = current
         finally:
             manager.shutdown()
@@ -340,9 +346,9 @@ def copy_to_aws(
     summary_stats = calculate_summary(log_rows, total, start_time)
     write_summary_file(summary_file, summary_stats)
 
-    logger.info(f"✅ Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.")
-    logger.info(f"📄 Log written to: {log_file}")
-    logger.info(f"📊 Upload summary written to: {summary_file}")
+    logger.success(f"Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.", indent=1)
+    logger.custom(f"Log written to: {log_file}", indent=1, emoji="📄")
+    logger.custom(f"Upload summary written to: {summary_file}", indent=1, emoji="📊")
 
     # Update report_data if passed
     if report_data is not None:

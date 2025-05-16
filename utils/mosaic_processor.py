@@ -142,7 +142,7 @@ def run_processor_stage(
     exe_dir = os.path.dirname(exe_path)
 
     if cfg_path != "DISABLED":
-        logger.warning(f"Note: cfg_path is not yet implemented. Provided value: {cfg_path}", 1)
+        logger.warning(f"Note: cfg_path is not yet implemented. Provided value: {cfg_path}", indent=1)
 
     cmd = build_mosaic_command(
         exe_path=exe_path,
@@ -157,19 +157,19 @@ def run_processor_stage(
         wrap_in_shell=True,
     )
 
-    logger.custom(f"Running command: {cmd}", 1, "🧑🏻‍💻")
+    logger.custom(f"Running command: {cmd}", indent=2, emoji="🧑🏻‍💻")
     log_f.write(f"COMMAND: {cmd}\n\n")
 
     result = subprocess.run(cmd, cwd=exe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
 
-    logger.success(f"=== {stage_name} Complete ===", 0)
+    logger.success(f"=== {stage_name} Complete ===", indent=1)
     log_f.write(f"=== {stage_name} ===\n")
     log_f.write(result.stdout or "")
     log_f.write("\n\n")
 
     if result.returncode != 0:
-        logger.error(f"{stage_name} failed. See log for details.", error_type=RuntimeError)
-        logger.info(f"📄 Log written to: {log_path}")
+        logger.error(f"{stage_name} failed. See log for details.", error_type=RuntimeError, indent=0)
+        logger.info(f"📄 Log written to: {log_path}", indent=1)
         return False
 
     return True
@@ -187,13 +187,13 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
         Number of files renamed.
     """
     renamed_count = 0
-    logger.info(f"Checking for frame number padding in: {output_dir}", 0)
+    logger.info(f"Checking for frame number padding in: {output_dir}", indent=2)
 
     padded = False  # TODO: Add support for checking if frame numbers are padded (Check if any file has a 6-digit frame number)
     if not padded:
-        logger.info("Frame numbers are not padded, padding...", 1)
+        logger.info("Frame numbers are not padded, padding...", indent=3)
     else:
-        logger.info("Frame numbers are padded. Skipping padding.", 1)
+        logger.info("Frame numbers are padded. Skipping padding.", indent=3)
 
     for root, dirs, files in os.walk(output_dir):
         for f in files:
@@ -208,9 +208,10 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
                         new_path = os.path.join(root, new_name)
                         os.rename(old_path, new_path)
                         renamed_count += 1
-                        logger.debug(f"Renamed: {f} → {new_name}", 2)
+                        logger.debug(f"Renamed: {f} → {new_name}", indent=4)
 
-    logger.info(f"Total files padded: {renamed_count}", 1)
+    logger.info(f"Total files padded: {renamed_count}", indent=3)
+    logger.success("=== Pad frame numbers Complete ===", indent=1)
     return renamed_count
 
 
@@ -241,7 +242,7 @@ def run_mosaic_processor(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not os.path.isdir(input_dir):
-        logger.error(f"Input folder does not exist: {input_dir}", error_type=FileNotFoundError)
+        logger.error(f"Input folder does not exist: {input_dir}", error_type=FileNotFoundError, indent=1)
 
     # Optional: write reel_info.json if a reel folder name can be inferred
     reel_match = re.search(r"reel_(\d{4})", os.path.basename(input_dir), re.IGNORECASE)
@@ -251,9 +252,9 @@ def run_mosaic_processor(
         try:
             with open(reel_info_path, "w") as f:
                 json.dump({"reel": reel_number}, f)
-            logger.info(f"Saved reel number {reel_number} to {reel_info_path}")
+            logger.info(f"Saved reel number {reel_number} to {reel_info_path}", indent=1)
         except Exception as e:
-            logger.warning(f"Failed to write reel_info.json to {reel_info_path}: {e}")
+            logger.warning(f"Failed to write reel_info.json to {reel_info_path}: {e}", indent=1)
 
     log_path = cfg.paths.get_log_file_path("mosaic_processor_log", cfg)
 
@@ -262,13 +263,13 @@ def run_mosaic_processor(
                 cfg.get_progressor(total=3, label="Mosaic Processor Workflow") as progressor:
 
             # === Step 1: Render + Reel Fix ===
-            logger.info("=== Render + Reel Fix Started ===", 0)
+            logger.info("=== Render + Reel Fix Started ===", indent=1)
             number_of_reels = len(os.listdir(input_dir))  # TODO: Is this the best way to get the number of reels? (just need to get number of folders in input_dir)
-            logger.info(f"Found {number_of_reels} reel(s) in {input_dir}", 1)
+            logger.info(f"Found {number_of_reels} reel(s) in {input_dir}", indent=2)
 
             # TODO get folder names from input_dir and add logger.info for each folder
             for folder in os.listdir(input_dir):
-                logger.info(f"🎞️ {folder}", 2)
+                logger.info(f"🎞️ {folder}", indent=3)
             if not run_processor_stage(
                     cfg, input_dir, output_dir, start_frame, end_frame,
                     log_f, log_path,
@@ -279,11 +280,12 @@ def run_mosaic_processor(
             progressor.update(1)
 
             # === Step 2: Pad frame numbers ===
+            logger.info("=== Pad frame numbers Started ===", indent=1)
             pad_frame_numbers(str(output_dir), logger)
             progressor.update(2)
 
             # === Step 3: GPX Integration ===
-            logger.info("=== GPX Integration Started ===", 0)
+            logger.info("=== GPX Integration Started ===", indent=1)
             if not run_processor_stage(
                     cfg, input_dir, output_dir, start_frame, end_frame,
                     log_f, log_path,
@@ -295,6 +297,6 @@ def run_mosaic_processor(
             progressor.update(3)
 
     except Exception as e:
-        logger.error(f"Error during Mosaic Processor workflow: {e}", error_type=RuntimeError)
+        logger.error(f"Error during Mosaic Processor workflow: {e}", error_type=RuntimeError, indent=1)
 
-    logger.custom(f"Mosaic Processor log saved to: {log_path}", 0, "📄")
+    logger.custom(f"Mosaic Processor log saved to: {log_path}", indent=1, emoji="📄")

@@ -254,7 +254,7 @@ def enhance_image(img, cfg: ConfigManager, contrast, logger):
         threshold = cfg.get("image_enhancement.brightness.threshold", 110)
         factor = cfg.get("image_enhancement.brightness.factor", 1.15)
         if brightness_after < threshold:
-            logger.info(f"🔧 Brightness {brightness_after:.1f} < {threshold}, applying recovery factor {factor}")
+            logger.info(f"🔧 Brightness {brightness_after:.1f} < {threshold}, applying recovery factor {factor}", indent=2)
             img = np.clip(img.astype(np.float32) * factor, 0, 255).astype(np.uint8)
             # Recompute stats after brightening
             brightness_after = np.mean(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY))
@@ -277,7 +277,7 @@ def update_oid_image_paths(oid_fc: str, path_map: dict[str, str], logger):
             if original in path_map:
                 row[0] = path_map[original]
                 cursor.updateRow(row)
-    logger.info("✅ OID ImagePath updated to reflect enhanced images.")
+    logger.custom("OID ImagePath updated to reflect enhanced images.", indent=1, emoji="✅")
 
 
 def write_log(log_rows, cfg, logger):
@@ -288,7 +288,7 @@ def write_log(log_rows, cfg, logger):
     processed image. Handles permission errors gracefully by logging a warning if the file cannot be written.
     """
     log_path = cfg.paths.get_log_file_path("enhance_log", cfg)
-    logger.debug(f"Attempting to write enhance log to: {log_path}")
+    logger.debug(f"Attempting to write enhance log to: {log_path}", indent=1)
     try:
         with open(log_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -299,9 +299,9 @@ def write_log(log_rows, cfg, logger):
                 "RGBMeansBeforeWB", "RGBMeansAfterWB", "OutputPath"
             ])
             writer.writerows(log_rows)
-        logger.info(f"Enhancement log saved to: {log_path}")
+        logger.info(f"Enhancement log saved to: {log_path}", indent=1)
     except PermissionError as e:
-        logger.warning(f"Failed to write enhance log: {e}")
+        logger.warning(f"Failed to write enhance log: {e}", indent=1)
 
 
 def enhance_single_image(original_path: Path, cfg: ConfigManager, logger):
@@ -327,7 +327,8 @@ def enhance_single_image(original_path: Path, cfg: ConfigManager, logger):
     """
     img = cv2.imread(str(original_path))
     if img is None:
-        return None, f"⚠️ Skipping unreadable image: {original_path}"
+        logger.warning(f"Skipping unreadable image: {original_path}", indent=2)
+        return None
 
     output_mode = cfg.get("image_enhancement.output.mode", "directory")
     suffix = cfg.get("image_enhancement.output.suffix", "_enh")
@@ -349,21 +350,25 @@ def enhance_single_image(original_path: Path, cfg: ConfigManager, logger):
         elif f"\\{original_tag}\\" in path_str:
             out_path = Path(path_str.replace(f"\\{original_tag}\\", f"\\{enhanced_tag}\\", 1))
         else:
-            return None, f"⚠️ Could not locate '{original_tag}' in image path: {original_path}"
+            logger.warning(f"Could not locate '{original_tag}' in image path: {original_path}", indent=2)
+            return None
         out_path.parent.mkdir(parents=True, exist_ok=True)
     else:
-        return None, f"❌ Unknown output_mode: '{output_mode}'. Expected one of: overwrite, suffix, directory"
+        logger.error(f"Unknown output_mode: '{output_mode}'. Expected one of: overwrite, suffix, directory", indent=2)
+        return None
 
     try:
         if not cv2.imwrite(str(out_path), enhanced):
-            return None, f"❌ cv2 failed to write image to {out_path}"
-        # ✅ Copy EXIF metadata from original to enhanced image
+            logger.error(f"cv2 failed to write image to {out_path}", indent=2)
+            return None
+        # Copy EXIF metadata from original to enhanced image
         exiftool_path = cfg.paths.exiftool_exe
         copied = copy_exif_metadata(original_path, out_path, exiftool_path)
         if not copied:
-            logger.warning(f"Failed to copy EXIF metadata from {original_path.name}")
+            logger.warning(f"Failed to copy EXIF metadata from {original_path.name}", indent=3)
     except Exception as e:
-        return None, f"❌ Failed to write image to {out_path}: {e}"
+        logger.error(f"Failed to write image to {out_path}: {e}", indent=2)
+        return None
 
     log_row = [
         original_path.name,
@@ -399,7 +404,7 @@ def process_images_in_parallel(paths, cfg, logger, max_workers, progressor):
                 logger.warning(error)
                 continue
             original_path_str, out_path_str, log_row, exif_failed = result
-            logger.debug(f"Enhanced image saved: {Path(out_path_str).name}")
+            logger.debug(f"Enhanced image saved: {Path(out_path_str).name}", indent=2)
             path_map[original_path_str] = out_path_str
             log_rows.append(log_row)
             if exif_failed:
@@ -434,11 +439,13 @@ def enhance_images_in_oid(cfg: ConfigManager, oid_fc_path: str):
     cfg.validate(tool="enhance_images")
 
     if not cfg.get("image_enhancement.enabled", False):
-        logger.info("Image enhancement is disabled in config. Skipping...")
+        logger.info("Image enhancement is disabled in config. Skipping...", indent=1)
         return {}
 
     check_sufficient_disk_space(oid_fc_path, cfg)
     output_mode = cfg.get("image_enhancement.output.mode", "directory")
+
+    logger.info(f"Enhancing images in OID feature class: {oid_fc_path}", indent=1)
 
     with arcpy.da.SearchCursor(oid_fc_path, ["ImagePath"]) as cursor:
         paths = [Path(row[0]) for row in cursor]
@@ -467,18 +474,18 @@ def enhance_images_in_oid(cfg: ConfigManager, oid_fc_path: str):
     if failed_exif_copies:
         exiftool_path = cfg.paths.exiftool_exe
         retry_successes = 0
-        logger.info(f"🔄 Retrying EXIF metadata copy for {len(failed_exif_copies)} image(s)...")
+        logger.custom(f"Retrying EXIF metadata copy for {len(failed_exif_copies)} image(s)...", indent=2, emoji="🔄")
         for orig, enh in failed_exif_copies:
             if copy_exif_metadata(orig, enh, exiftool_path):
                 retry_successes += 1
             else:
-                logger.error(f"Final EXIF copy failed: {enh.name}")
-        logger.info(f"✅ Retried EXIF copy success count: {retry_successes}/{len(failed_exif_copies)}")
+                logger.error(f"Final EXIF copy failed: {enh.name}", indent=2)
+        logger.custom(f"Retried EXIF copy success count: {retry_successes}/{len(failed_exif_copies)}", indent=2, emoji="✅")
 
     # Summary
     if brightness_deltas:
         mean_bright_delta = np.mean(brightness_deltas)
         mean_contrast_delta = np.mean(contrast_deltas)
-        logger.info(f"📊 Avg Brightness Δ: {mean_bright_delta:.2f} | Avg Contrast Δ: {mean_contrast_delta:.2f}")
+        logger.custom(f"Avg Brightness Δ: {mean_bright_delta:.2f} | Avg Contrast Δ: {mean_contrast_delta:.2f}", indent=1, emoji="📊")
 
     return path_map

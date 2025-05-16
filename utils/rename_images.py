@@ -141,14 +141,14 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
         test_file.touch()
         test_file.unlink()
     except (PermissionError, OSError) as e:
-        logger.error(f"Output directory is not writable: {output_dir}. Error: {e}", error_type=PermissionError)
-
-    logger.debug(f"Writing renamed images to: {output_dir}")
+        logger.error(f"Output directory is not writable: {output_dir}. Error: {e}", error_type=PermissionError, indent=1)
 
     # Prepare CSV log
     rename_log_path = cfg.paths.get_log_file_path("rename_log", cfg)
-    logger.debug(f"Writing rename log to: {rename_log_path}")
+    logger.debug(f"Writing rename log to: {rename_log_path}", indent=1)
     log_rows = []
+
+    logger.info(f"Writing renamed images to: {output_dir}", indent=1)
 
     updated_images = []
 
@@ -159,7 +159,7 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
             old_path = Path(row_dict["ImagePath"])
 
             if not old_path.is_file():
-                logger.warning(f"Image path missing or invalid for OID {oid}: {old_path}")
+                logger.warning(f"Image path missing or invalid for OID {oid}: {old_path}", indent=1)
                 continue
 
             try:
@@ -189,13 +189,13 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
                     "NewName": filename
                 })
 
-                logger.debug(f"✅ Renamed OID {oid} ➜ {filename}")
+                logger.debug(f"Renamed OID {oid} ➜ {filename}", indent=2)
             except Exception as e:
-                logger.warning(f"Failed to rename/copy for OID {oid}: {e}")
+                logger.warning(f"Failed to rename/copy for OID {oid}: {e}", indent=2)
                 continue
 
     _write_rename_log(rename_log_path, log_rows)
-    logger.info(f"📝 Rename log saved to: {rename_log_path}")
+    logger.custom(f"Rename log saved to: {rename_log_path}", indent=1, emoji="📝")
 
-    logger.info(f"✅ {len(updated_images)} image(s) renamed and attributes updated.")
+    logger.success(f"{len(updated_images)} image(s) renamed and attributes updated.", indent=1)
     return updated_images

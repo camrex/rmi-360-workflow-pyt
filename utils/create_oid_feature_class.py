@@ -68,7 +68,7 @@ def create_oriented_imagery_dataset(
     output_gdb, oid_name = os.path.split(output_fc_path)
 
     if arcpy.Exists(output_fc_path):
-        logger.error(f"Output feature class already exists: {output_fc_path}", error_type=FileExistsError)
+        logger.error(f"Output feature class already exists: {output_fc_path}", error_type=FileExistsError, indent=1)
         return output_fc_path
 
     default_xy = cfg.get("spatial_ref.gcs_horizontal_wkid", 4326)
@@ -82,7 +82,7 @@ def create_oriented_imagery_dataset(
         sr = arcpy.SpatialReference(default_xy, default_z)
     else:
         logger.error(f"Invalid spatial_reference: {spatial_reference}. Must be None, WKID (int), or "
-                     f"arcpy.SpatialReference.", error_type=ValueError)
+                     f"arcpy.SpatialReference.", error_type=ValueError, indent=1)
         raise
 
     with cfg.get_progressor(total=2, label="Creating OID...") as progressor:
@@ -90,18 +90,18 @@ def create_oriented_imagery_dataset(
         ensure_valid_oid_schema_template(cfg)
         progressor.update(1)
 
-        logger.info(f"Creating Oriented Imagery Dataset at {output_fc_path}")
+        logger.info(f"Creating Oriented Imagery Dataset at {output_fc_path}", indent=1)
 
         try:
-            logger.debug(f"Calling CreateOrientedImageryDataset with parameters:\n"
-                         f"  out_dataset_path={output_gdb}\n"
-                         f"  out_dataset_name={oid_name}\n"
-                         f"  spatial_reference={sr}\n"
-                         f"  elevation_source='DEM'\n"
-                         f"  dem='https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'\n"
-                         f"  lod='17'\n"
-                         f"  template={str(paths.oid_schema_template_path)}\n"
-                         f"  has_z='ENABLED'")
+            logger.debug("Calling CreateOrientedImageryDataset with parameters:", indent=2)
+            logger.debug(f"out_dataset_path={output_gdb}", indent=3)
+            logger.debug(f"out_dataset_name={oid_name}", indent=3)
+            logger.debug(f"spatial_reference={sr}", indent=3)
+            logger.debug(f"elevation_source='DEM'", indent=3)
+            logger.debug(f"dem='https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'", indent=3)
+            logger.debug(f"lod='17'", indent=3)
+            logger.debug(f"template={str(paths.oid_schema_template_path)}", indent=3)
+            logger.debug(f"has_z='ENABLED'", indent=3)
             arcpy.oi.CreateOrientedImageryDataset(
                 out_dataset_path=output_gdb,
                 out_dataset_name=oid_name,
@@ -113,11 +113,10 @@ def create_oriented_imagery_dataset(
                 has_z="ENABLED"
             )
         except arcpy.ExecuteError as exc:
-            logger.error(f"Arcpy failed while creating OID: {oid_name}: {exc}", error_type=RuntimeError)
-            logger.error(arcpy.GetMessages(2))
+            logger.error(f"Arcpy failed while creating OID: {oid_name}: {exc}", error_type=RuntimeError, indent=1)
 
         progressor.update(2)
 
-    logger.info(f"OID created successfully: {output_fc_path}")
+    logger.success(f"OID created successfully: {output_fc_path}", indent=1)
 
     return output_fc_path

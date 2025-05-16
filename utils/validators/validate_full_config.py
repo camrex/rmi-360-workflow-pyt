@@ -100,13 +100,14 @@ def validate_full_config(cfg: 'ConfigManager', logger=None) -> bool:
     for tool, validator in getattr(cfg, 'TOOL_VALIDATORS', {}).items():
         try:
             validator(cfg)
+            logger.success(f"[{tool} validation] passed.", indent=1)
         except ConfigValidationError as e:
-            logger.error(f"[{tool} validation] {e}", error_type=ConfigValidationError)
+            logger.error(f"[{tool} validation] {e}", error_type=ConfigValidationError, indent=1)
             errors.append(f"{tool}: {e}")
 
     if not errors:
-        logger.info("✅ Full config validation passed.")
+        logger.success("Full config validation passed.", indent=1)
         return True
     else:
-        logger.error(f"Config validation failed with {len(errors)} error(s).", error_type=ConfigValidationError)
+        logger.error(f"Config validation failed with {len(errors)} error(s).", error_type=ConfigValidationError, indent=1)
         return False

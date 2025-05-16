@@ -56,7 +56,7 @@ def validate_fields_exist(
     if missing:
         msg = f"Missing required field(s) in {feature_class}: {', '.join(missing)}"
         if logger:
-            logger.error(msg, error_type=ValueError)
+            logger.error(msg, error_type=ValueError, indent=0)
         else:
             raise ValueError(msg)
 
@@ -108,13 +108,13 @@ def str_to_value(
             return arcpy_mod.SpatialReference(value)
         except exception_types as e:
             if logger:
-                logger.debug(f"Failed to convert '{value}' to spatial_reference: {e}")
+                logger.debug(f"Failed to convert '{value}' to spatial_reference: {e}", indent=1)
             return None
     try:
         return value_type(value)
     except (ValueError, TypeError) as e:
         if logger:
-            logger.debug(f"Failed to convert '{value}' to {value_type}: {e}")
+            logger.debug(f"Failed to convert '{value}' to {value_type}: {e}", indent=1)
         return None
 
 
@@ -152,7 +152,7 @@ def backup_oid(
         timestamp = datetime_mod.now().strftime("%Y%m%d_%H%M")
         out_fc_name = f"{oid_name}_before_{step_key}_{timestamp}"
         out_fc_path = str(gdb_path / out_fc_name)
-        logger.custom(f"Backing up OID before step '{step_key}' → {out_fc_name}", 0, "💾")
+        logger.custom(f"Backing up OID before step '{step_key}' → {out_fc_name}", indent=1, emoji="💾")
         arcpy_mod.management.Copy(oid_fc, out_fc_path)
     except Exception as e:
-        logger.warning(f"OID backup before step '{step_key}' failed: {e}")
+        logger.warning(f"OID backup before step '{step_key}' failed: {e}", indent=1)

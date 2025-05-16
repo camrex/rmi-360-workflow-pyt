@@ -86,7 +86,7 @@ def create_oid_schema_template(
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_name = f"{paths.oid_schema_template_name}_{timestamp}"
             arcpy_mod.management.Rename(paths.oid_schema_template_path, backup_name)
-            logger.info(f"Existing schema template found and backed up as: {backup_name}")
+            logger.info(f"Existing schema template found and backed up as: {backup_name}", indent=0)
         arcpy_mod.management.CreateTable(paths.oid_schema_gdb, paths.oid_schema_template_path)
         fields: list[tuple[str, str, Optional[int], str]] = []
 
@@ -95,7 +95,7 @@ def create_oid_schema_template(
             if esri_cfg.get(category, True):
                 entries = registry_loader(cfg, category_filter=category)
                 if not entries:
-                    logger.debug(f"No fields loaded for category: {category}")
+                    logger.debug(f"No fields loaded for category: {category}", indent=1)
                 for f in entries.values():
                     fields.append(_field_tuple(f))
 
@@ -119,9 +119,9 @@ def create_oid_schema_template(
                     )
                     added_fields += 1
                 except Exception as e:
-                    logger.warning(f"Failed to add field '{name}' (type={ftype}, length={length}) to schema: {e}")
-        logger.info(f"✅ OID schema template table created: {paths.oid_schema_template_path} with {added_fields} fields.")
+                    logger.warning(f"Failed to add field '{name}' (type={ftype}, length={length}) to schema: {e}", indent=1)
+        logger.success(f"OID schema template table created: {paths.oid_schema_template_path} with {added_fields} fields.", indent=0)
         return paths.oid_schema_template_path
     except Exception as e:
-        logger.error(f"Failed to create OID schema template: {e}")
+        logger.error(f"Failed to create OID schema template: {e}", indent=0)
         raise

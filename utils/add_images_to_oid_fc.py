@@ -47,7 +47,7 @@ def warn_if_multiple_reel_info(image_folder, logger):
     if len(reel_info_paths) > 1:
         logger.warning(
             f"Multiple reel_info.json files detected in image folder '{image_folder}':\n"
-            + "\n".join(str(p) for p in reel_info_paths)
+            + "\n".join(str(p) for p in reel_info_paths), indent=1
         )
 
 
@@ -72,20 +72,20 @@ def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str) -> None:
         warn_if_multiple_reel_info(image_folder, logger)
 
         if not arcpy.Exists(oid_fc_path):
-            logger.error(f"OID does not exist at path: {oid_fc_path}", error_type=FileNotFoundError)
+            logger.error(f"OID does not exist at path: {oid_fc_path}", error_type=FileNotFoundError, indent=1)
 
         if not image_folder.is_dir():
-            logger.error(f"Image folder not found: {image_folder}", error_type=FileNotFoundError)
+            logger.error(f"Image folder not found: {image_folder}", error_type=FileNotFoundError, indent=1)
 
         # Use pathlib to collect all .jpg files recursively
         jpg_files = list(Path(image_folder).rglob("*.jpg"))
         if not jpg_files:
-            logger.error(f"No .jpg files found in image folder or its subfolders: {image_folder}", error_type=RuntimeError)
+            logger.error(f"No .jpg files found in image folder or its subfolders: {image_folder}", error_type=RuntimeError, indent=1)
 
         registry = load_field_registry(cfg)
         imagery_type = registry.get("OrientedImageryType", {}).get("oid_default", "360")
 
-        logger.info(f"Adding images from '{image_folder}' (including subfolders) to OID: {oid_fc_path}")
+        logger.info(f"Adding images from '{image_folder}' (including subfolders) to OID: {oid_fc_path}", indent=1)
         progressor.update(1)
 
         try:
@@ -97,7 +97,7 @@ def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str) -> None:
             )
             progressor.update(2)
         except arcpy.ExecuteError as exc:
-            logger.error(f"Failed to add images to OID: {exc}", error_type=RuntimeError)
+            logger.error(f"Failed to add images to OID: {exc}", error_type=RuntimeError, indent=1)
             return
 
-    logger.info("✅ Images successfully added to OID.")
+    logger.success("Images successfully added to OID.", indent=1)

@@ -71,7 +71,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                 max_dist = max(max_dist, min_dist)
         tolerance = round(max_dist + 5, 2)
 
-        logger.info(f"📏 Max distance to nearest route: {round(max_dist, 2)} → Using {round(tolerance, 2)} tolerance")
+        logger.info(f"📏 Max distance to nearest route: {round(max_dist, 2)} → Using {round(tolerance, 2)} tolerance", indent=1)
 
         # Perform location along routes
         oid_table = arcpy.CreateUniqueName("oid_temp_table", arcpy.env.scratchGDB)
@@ -95,7 +95,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
         return oid_to_loc
 
     except Exception as e:
-        logger.warning(f"Linear referencing failed: {e}")
+        logger.warning(f"Linear referencing failed: {e}", indent=1)
         return {}
 
 
@@ -138,7 +138,7 @@ def compute_linear_and_custom_updates(
                     value = float(value)
                 except (ValueError, TypeError):
                     if logger:
-                        logger.warning(f"Could not convert value for {field_name} to float.")
+                        logger.warning(f"Could not convert value for {field_name} to float.", indent=2)
                     value = None
             row[idx] = value
             update = True
@@ -152,13 +152,13 @@ def compute_linear_and_custom_updates(
                     value = float(value)
                 except (ValueError, TypeError):
                     if logger:
-                        logger.warning(f"Could not convert value for {target_field} to float.")
+                        logger.warning(f"Could not convert value for {target_field} to float.", indent=2)
                     continue
             row[update_fields.index(target_field)] = value
             update = True
         except Exception as e:
             if logger:
-                logger.warning(f"Failed to resolve expression for {target_field}: {e}")
+                logger.warning(f"Failed to resolve expression for {target_field}: {e}", indent=2)
     return row, update
 
 def update_linear_and_custom(
@@ -230,11 +230,11 @@ def update_linear_and_custom(
                         updated_oids.add(oid)
                 except Exception as e:
                     failed_oids.add(oid)
-                    logger.error(f"Failed to update OID {oid}: {e}")
+                    logger.error(f"Failed to update OID {oid}: {e}", indent=2)
                 progressor.update(i)
-    logger.info(f"✅ Updated {len(updated_oids)} feature(s) with linear and custom attributes." + (f" Failed to update {len(failed_oids)} OIDs." if failed_oids else ""))
+    logger.success(f"Updated {len(updated_oids)} feature(s) with linear and custom attributes." + (f" Failed to update {len(failed_oids)} OIDs." if failed_oids else ""), indent=1)
     if updated_oids:
-        logger.debug(f"Updated OIDs: {sorted(updated_oids)}")
+        logger.debug(f"Updated OIDs: {sorted(updated_oids)}", indent=2)
     if failed_oids:
-        logger.warning(f"Failed OIDs: {sorted(failed_oids)}")
+        logger.warning(f"Failed OIDs: {sorted(failed_oids)}", indent=2)
 

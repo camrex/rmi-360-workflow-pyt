@@ -64,7 +64,7 @@ def check_oid_fov_defaults(oid_fc_path: str, registry: dict, logger):
             if hfov != expected_hfov or vfov != expected_vfov:
                 logger.error(f"Row {i}: HFOV or VFOV does not match expected values from registry.\n "
                              f"Expected HFOV={expected_hfov}, VFOV={expected_vfov}, but got HFOV={hfov}, VFOV={vfov}",
-                             error_type=ValueError)
+                             error_type=ValueError, indent=1)
 
 
 def load_reel_from_info_file(image_path: str, logger) -> Tuple[Optional[str], Optional[str]]:
@@ -98,9 +98,9 @@ def load_reel_from_info_file(image_path: str, logger) -> Tuple[Optional[str], Op
                 return reel_data.get("reel"), path
 
         if len(reel_info_paths) > 1:
-            logger.warning(f"Multiple reel_info.json files found near: {image_path}\nFiles:\n" + "\n".join(reel_info_paths))
+            logger.warning(f"Multiple reel_info.json files found near: {image_path}\nFiles:\n" + "\n".join(reel_info_paths), indent=1)
     except Exception as e:
-        logger.error(f"Failed to load reel_info.json near: {image_path}\n{e}")
+        logger.error(f"Failed to load reel_info.json near: {image_path}\n{e}", indent=1)
 
     return None, None
 
@@ -152,7 +152,7 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
         z_offset = z_cm / 100.0
         camera_height = height_cm / 100.0
     except Exception as e:
-        logger.error(f"Failed to compute camera offset or height: {e}", error_type=ValueError)
+        logger.error(f"Failed to compute camera offset or height: {e}", error_type=ValueError, indent=1)
         return
 
     h_wkid = cfg.get("spatial_ref.gcs_horizontal_wkid", 4326)
@@ -189,12 +189,12 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
 
     # Handle empty dataset scenario
     if not first_image_path:
-        logger.error("No images found in the OID dataset. Skipping OID attribute calculation.")
+        logger.error("No images found in the OID dataset. Skipping OID attribute calculation.", indent=1)
         return
 
     reel_from_info, reel_info_path_used = load_reel_from_info_file(first_image_path, logger)
     if reel_info_path_used:
-        logger.info(f"📄 Using reel_info.json from: {reel_info_path_used}")
+        logger.info(f"📄 Using reel_info.json from: {reel_info_path_used}", indent=1)
 
     # Count rows to prepare progressor
     row_count = int(arcpy.management.GetCount(oid_fc_path)[0])
@@ -209,18 +209,18 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
                     y = row[field_to_index["SHAPE@Y"]]
                     z = row[field_to_index["SHAPE@Z"]]
                 except KeyError:
-                    logger.warning(f"Missing SHAPE@X/Y/Z fields on row {i}, skipping row.")
+                    logger.warning(f"Missing SHAPE@X/Y/Z fields on row {i}, skipping row.", indent=2)
                     continue
                 adjusted_z = z + z_offset if adjust_z else z
 
                 heading = row[field_to_index["CameraHeading"]] if "CameraHeading" in field_to_index else None
                 if heading is None:
-                    logger.warning(f"Missing CameraHeading for row {i}, skipping row.")
+                    logger.warning(f"Missing CameraHeading for row {i}, skipping row.", indent=2)
                     continue
 
                 image_path = row[field_to_index["ImagePath"]].strip() if "ImagePath" in field_to_index and row[field_to_index["ImagePath"]] else None
                 if not image_path:
-                    logger.warning(f"Missing ImagePath for row {i}, skipping row.")
+                    logger.warning(f"Missing ImagePath for row {i}, skipping row.", indent=2)
                     continue
 
                 orientation = f"1|{h_wkid}|{v_wkid}|{x:.6f}|{y:.6f}|{adjusted_z:.3f}|{heading:.1f}|{pitch:.1f}|{roll:.1f}"
@@ -259,6 +259,4 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
                 updated += 1
                 progressor.update(i)
 
-            # Note: All ArcPy and file dependencies are patchable for unit tests.
-
-    logger.info(f"✅ OID enrichment complete. Updated {updated} image(s) with orientation, Z, and mosaic fields.")
+    logger.success(f"Updated {updated} image(s) with orientation, Z, and mosaic fields.", indent=1)
