@@ -97,7 +97,7 @@ def _write_rename_log(rename_log_path, log_rows):
         raise Exception(f"Failed to write rename log: {e}")
 
 
-def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = False):
+def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = False, enable_linear_ref: bool = True):
     """
     Renames and copies image files for an Oriented Imagery Dataset according to configuration rules.
 
@@ -105,10 +105,15 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
     attributes in the dataset are updated in-place. Optionally deletes original images after copying. A CSV log of
     rename operations is generated. Returns a list of dictionaries with updated image metadata.
 
+    The filename format is selected based on the enable_linear_ref argument (passed at runtime, e.g. from ArcGIS Pro):
+    - If enable_linear_ref is False, uses image_output.filename_settings.format_no_lr
+    - If enable_linear_ref is True, uses image_output.filename_settings.format
+
     Args:
         cfg:
         oid_fc: Path to the feature class containing image records.
         delete_originals: If True, deletes original image files after copying.
+        enable_linear_ref: If False, use the no-linear-referencing filename format.
 
     Returns:
         A list of dictionaries representing updated image records, including OID, new path, filename, QC flag,
@@ -117,10 +122,20 @@ def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = Fals
     logger = cfg.get_logger()
     cfg.validate(tool="rename_images")
 
-    fmt = cfg.get("image_output.filename_settings.format", "{Name}.jpg")
+    # Use format_no_lr if linear referencing is not enabled
+    if not enable_linear_ref:
+        fmt = cfg.get("image_output.filename_settings.format_no_lr", "{Name}.jpg")
+    else:
+        fmt = cfg.get("image_output.filename_settings.format", "{Name}.jpg")
     parts = cfg.get("image_output.filename_settings.parts", {})
 
-    required_fields = ["OID@", "ImagePath", "Name", "QCFlag", "X", "Y"]
+    # QCFlag is optional; check if it exists in the feature class
+
+    oid_fields = {f.name for f in arcpy.ListFields(oid_fc)}
+    base_fields = ["OID@", "ImagePath", "Name", "X", "Y"]
+    required_fields = base_fields.copy()
+    if "QCFlag" in oid_fields:
+        required_fields.append("QCFlag")
     for expr in parts.values():
         if isinstance(expr, str) and expr.startswith("field."):
             field_name = expr.split(".", 1)[1].split(".", 1)[0]

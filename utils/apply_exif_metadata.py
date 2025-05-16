@@ -35,60 +35,97 @@ __all__ = ["update_metadata_from_config"]
 import os
 import subprocess
 import arcpy
+from typing import Dict, Any
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
 from utils.shared.arcpy_utils import validate_fields_exist
 
 
-def _extract_required_fields(tags):
+def _extract_required_fields(tags, oid_fc=None):
     required_fields = set()
-    for v in tags.values():
-        if isinstance(v, str):
-            required_fields.update([part.split('.')[1] for part in v.split() if part.startswith("field.")])
-        elif isinstance(v, list):
-            for item in v:
-                if isinstance(item, str):
-                    required_fields.update([part.split('.')[1] for part in item.split() if part.startswith("field.")])
-    required_fields.update(["X", "Y", "QCFlag"])
+    def recurse_tags(tag_block):
+        if isinstance(tag_block, dict):
+            for v in tag_block.values():
+                recurse_tags(v)
+        elif isinstance(tag_block, list):
+            for item in tag_block:
+                recurse_tags(item)
+        elif isinstance(tag_block, str):
+            required_fields.update([part.split('.')[1] for part in tag_block.split() if part.startswith("field.")])
+    recurse_tags(tags)
+    required_fields.update(["X", "Y"])
+    # Only require QCFlag if it exists in the feature class
+    if oid_fc:
+        oid_fields = {f.name for f in arcpy.ListFields(oid_fc)}
+        if "QCFlag" in oid_fields:
+            required_fields.add("QCFlag")
     return required_fields
 
 
-def _resolve_tags(cfg, tags, row_dict):
-    resolved_tags = {}
-    for tag_name, expression in tags.items():
-        try:
-            if isinstance(expression, str):
-                value = resolve_expression(expression, cfg, row=row_dict)
-                resolved_tags[tag_name] = value
-            elif isinstance(expression, list):
-                keywords = []
-                for item in expression:
-                    value = resolve_expression(item, cfg, row=row_dict)
-                    keywords.append(value)
-                resolved_tags[tag_name] = ";".join(keywords)
-        except Exception as e:
-            print(f"Failed to resolve tag {tag_name}: {e}")
-    return resolved_tags
+def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str, str]:
+    """
+    Recursively flattens nested tag dictionaries for ExifTool, e.g.,
+    {'GPano': {'PoseHeadingDegrees': '...'}} -> {'XMP-GPano:PoseHeadingDegrees': value}
+    """
+    flat: Dict[str, str] = {}
+    for tag_name, value in tags.items():
+        if isinstance(value, dict):
+            # Nested dict (e.g., GPano)
+            new_prefix = f"{prefix}{tag_name}:" if prefix else f"XMP-{tag_name}:"
+            flat.update(_flatten_tags(new_prefix, value, cfg, row_dict))
+        elif isinstance(value, list):
+            # List of expressions (e.g., XPKeywords)
+            keywords = []
+            for item in value:
+                try:
+                    val = resolve_expression(item, cfg, row=row_dict)
+                    if not isinstance(val, str):
+                        val = str(val)
+                    keywords.append(val)
+                except Exception as e:
+                    print(f"Failed to resolve tag {tag_name}: {e}")
+            flat[f"{prefix}{tag_name}"] = ";".join(keywords)
+        else:
+            # String or numeric expression
+            try:
+                val = resolve_expression(value, cfg, row=row_dict)
+                if not isinstance(val, str):
+                    val = str(val)
+                flat[f"{prefix}{tag_name}"] = val
+            except Exception as e:
+                print(f"Failed to resolve tag {tag_name}: {e}")
+    return flat
 
 
-def _write_exiftool_args(cfg, tags, rows):
+def _resolve_tags(cfg: Any, tags: dict, row_dict: dict) -> Dict[str, str]:
+    # Handles both flat and nested tags
+    return _flatten_tags("", tags, cfg, row_dict)
+
+
+def _write_exiftool_args(cfg, tags, rows, cursor_fields):
     args_file = cfg.paths.get_log_file_path("exiftool_args", cfg)
     log_file = cfg.paths.get_log_file_path("exiftool_logs", cfg)
     lines = []
     log_entries = []
-    for row in rows:
-        row_dict = dict(zip(["OID@", "ImagePath", "QCFlag", "X", "Y"] + list(tags.keys()), row))
+    logger = cfg.get_logger()
+    for i, row in enumerate(rows):
+        # Build row_dict from actual cursor_fields
+        row_dict = dict(zip(cursor_fields, row))
         path = row_dict["ImagePath"]
         if not os.path.exists(path):
             print(f"Image path does not exist: {path}")
             continue
 
         resolved_tags = _resolve_tags(cfg, tags, row_dict)
+        if i == 0:
+            logger.debug(f"row_dict for first image: {row_dict}")
+            logger.debug(f"resolved_tags for first image: {resolved_tags}")
         for tag_name, value in resolved_tags.items():
             lines.append(f"-{tag_name}={value}")
 
-        if row_dict["QCFlag"] == "GPS_OUTLIER":
+        # Only add GPS_OUTLIER logic if QCFlag is present
+        if "QCFlag" in row_dict and row_dict["QCFlag"] == "GPS_OUTLIER":
             lat, lon = row_dict["Y"], row_dict["X"]
             lat_ref = "North" if lat >= 0 else "South"
             lon_ref = "East" if lon >= 0 else "West"
@@ -140,11 +177,18 @@ def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
     if not tags:
         logger.error("No metadata_tags defined in config.yaml.", error_type=ValueError, indent=1)
 
-    required_fields = _extract_required_fields(tags)
+    required_fields = _extract_required_fields(tags, oid_fc=oid_fc)
     validate_fields_exist(oid_fc, list(required_fields))
 
-    with arcpy.da.SearchCursor(oid_fc, ["OID@", "ImagePath", "QCFlag", "X", "Y"] + list(required_fields)) as cursor:
+    oid_fields = {f.name for f in arcpy.ListFields(oid_fc)}
+    base_fields = ["OID@", "ImagePath", "X", "Y"]
+    if "QCFlag" in oid_fields:
+        base_fields.append("QCFlag")
+    cursor_fields = base_fields + [f for f in required_fields if f not in base_fields]
+
+    logger.debug(f"Fields used for SearchCursor: {cursor_fields}")
+    with arcpy.da.SearchCursor(oid_fc, cursor_fields) as cursor:
         rows = [row for row in cursor]
 
-    _write_exiftool_args(cfg, tags, rows)
+    _write_exiftool_args(cfg, tags, rows, cursor_fields)
     _run_exiftool(cfg, cfg.paths.get_log_file_path("exiftool_args", cfg))

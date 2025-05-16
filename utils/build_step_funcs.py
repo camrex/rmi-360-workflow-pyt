@@ -51,10 +51,24 @@ from utils.shared.arcpy_utils import str_to_bool
 StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
 
 def skip_enhance_images(params):
-    return "Skipped (enhancement disabled)" if params.get("skip_enhance_images") == "true" else None
+    # New logic: skip if 'enable_enhance_images' is not True
+    return "Skipped (enhancement disabled)" if not params.get("enable_enhance_images", False) else None
 
 def skip_if_copy_to_aws_disabled(params):
-    return "Skipped (disabled by user)" if params.get("copy_to_aws") != "true" else None
+    # New logic: skip if 'enable_copy_to_aws' is not True
+    return "Skipped (disabled by user)" if not params.get("enable_copy_to_aws", False) else None
+
+def skip_if_smooth_gps_disabled(params):
+    return "Skipped (disabled by user)" if not params.get("enable_smooth_gps", False) else None
+
+def skip_if_geocode_disabled(params):
+    return "Skipped (disabled by user)" if not params.get("enable_geocode", False) else None
+
+def skip_if_deploy_lambda_monitor_disabled(params):
+    return "Skipped (disabled by user)" if not params.get("enable_deploy_lambda_monitor", False) else None
+
+def skip_if_generate_service_disabled(params):
+    return "Skipped (disabled by user)" if not params.get("enable_generate_service", False) else None
 
 def build_step_funcs(p, cfg):
     """
@@ -73,27 +87,27 @@ def build_step_funcs(p, cfg):
         StepSpec("enrich_oid", "Calculate OID Attributes",
             lambda params, config: lambda **kwargs: enrich_oid_attributes(oid_fc_path=p["oid_fc"], cfg=cfg), None),
         StepSpec("smooth_gps", "Smooth GPS Noise",
-            lambda params, config: lambda **kwargs: smooth_gps_noise(oid_fc=p["oid_fc"], centerline_fc=p["centerline_fc"], cfg=cfg), None),
+            lambda params, config: lambda **kwargs: smooth_gps_noise(oid_fc=p["oid_fc"], centerline_fc=p["centerline_fc"], cfg=cfg), skip_if_smooth_gps_disabled),
         StepSpec("correct_gps", "Correct Flagged GPS Points",
-            lambda params, config: lambda **kwargs: correct_gps_outliers(oid_fc=p["oid_fc"], cfg=cfg), None),
+            lambda params, config: lambda **kwargs: correct_gps_outliers(oid_fc=p["oid_fc"], cfg=cfg), skip_if_smooth_gps_disabled),
         StepSpec("update_linear_custom", "Update Linear and Custom Attributes",
-            lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=str_to_bool(p["enable_linear_ref"]), cfg=cfg), None),
+            lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg), None),
         StepSpec("enhance_images", "Enhance Images",
             lambda params, config: lambda **kwargs: enhance_images_in_oid(oid_fc_path=p["oid_fc"], cfg=cfg), skip_enhance_images),
         StepSpec("rename_images", "Rename Images",
-            lambda params, config: lambda **kwargs: rename_images(oid_fc=p["oid_fc"], cfg=cfg), None),
+            lambda params, config: lambda **kwargs: rename_images(oid_fc=p["oid_fc"], cfg=cfg, enable_linear_ref=p["enable_linear_ref"]), None),
         StepSpec("update_metadata", "Update EXIF Metadata",
             lambda params, config: lambda **kwargs: update_metadata_from_config(oid_fc=p["oid_fc"], cfg=cfg), None),
         StepSpec("geocode", "Geocode Images",
-            lambda params, config: lambda **kwargs: geocode_images(oid_fc=p["oid_fc"], cfg=cfg), None),
+            lambda params, config: lambda **kwargs: geocode_images(oid_fc=p["oid_fc"], cfg=cfg), skip_if_geocode_disabled),
         StepSpec("build_footprints", "Build OID Footprints",
             lambda params, config: lambda **kwargs: build_oid_footprints(oid_fc=p["oid_fc"], cfg=cfg), None),
         StepSpec("deploy_lambda_monitor", "Deploy Lambda AWS Monitor",
-            lambda params, config: lambda **kwargs: deploy_lambda_monitor(cfg=cfg), skip_if_copy_to_aws_disabled),
+            lambda params, config: lambda **kwargs: deploy_lambda_monitor(cfg=cfg), skip_if_deploy_lambda_monitor_disabled),
         StepSpec("copy_to_aws", "Upload to AWS S3",
             lambda params, config: lambda **kwargs: copy_to_aws(cfg=cfg, **kwargs), skip_if_copy_to_aws_disabled),
         StepSpec("generate_service", "Generate OID Service",
-            lambda params, config: lambda **kwargs: generate_oid_service(oid_fc=p["oid_fc"], cfg=cfg), skip_if_copy_to_aws_disabled),
+            lambda params, config: lambda **kwargs: generate_oid_service(oid_fc=p["oid_fc"], cfg=cfg), skip_if_generate_service_disabled),
     ]
     step_funcs = {}
     for spec in step_specs:
