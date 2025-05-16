@@ -251,9 +251,9 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
                 writer = csv.DictWriter(f, fieldnames=csv_rows[0].keys())
                 writer.writeheader()
                 writer.writerows(csv_rows)
-            logger.info(f"📄 Debug CSV written to: {log_csv_path}")
+            logger.info(f"📄 Debug CSV written to: {log_csv_path}", indent=1)
         except Exception as e:
-            logger.error(f"Could not write debug CSV to {log_csv_path}: {e}")
+            logger.error(f"Could not write debug CSV to {log_csv_path}: {e}", indent=1)
 
     # Add QCFlag if missing
     existing_fields = [f.name for f in arcpy.ListFields(oid_fc)]
@@ -268,9 +268,9 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
                         cursor.updateRow((oid, "GPS_OUTLIER"))
                         update_prog.update(1)
     else:
-        logger.info("No outlier flags to apply.")
+        logger.info("No outlier flags to apply.", indent=1)
 
-    logger.info(f"✅ Detected and flagged {len(outlier_oids)} GPS outlier(s).")
+    logger.success(f"Detected and flagged {len(outlier_oids)} GPS outlier(s).", indent=1)
     logger.info(
-        f"Processed {sum(len(v) for v in points_by_reel.values())} GPS points across {len(points_by_reel)} reel(s).")
+        f"Processed {sum(len(v) for v in points_by_reel.values())} GPS points across {len(points_by_reel)} reel(s).", indent=1)
 

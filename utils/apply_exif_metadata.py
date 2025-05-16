@@ -117,12 +117,12 @@ def _run_exiftool(cfg, args_file):
     logger = cfg.get_logger()
     exe_path = cfg.paths.exiftool_exe
     if not cfg.paths.check_exiftool_available():
-        logger.error(f"ExifTool not found or not working at: {exe_path}", error_type=RuntimeError)
+        logger.error(f"ExifTool not found or not working at: {exe_path}", error_type=RuntimeError, indent=1)
     try:
         subprocess.run([exe_path, "-@", args_file], check=True)
-        logger.info("✅ Metadata tagging completed.")
+        logger.success("Metadata tagging completed.", indent=1)
     except subprocess.CalledProcessError as e:
-        logger.error(f"ExifTool failed: {e}", error_type=RuntimeError)
+        logger.error(f"ExifTool failed: {e}", error_type=RuntimeError, indent=1)
 
 
 def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
@@ -138,7 +138,7 @@ def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
 
     tags = cfg.get("image_output.metadata_tags", {})
     if not tags:
-        logger.error("No metadata_tags defined in config.yaml.", error_type=ValueError)
+        logger.error("No metadata_tags defined in config.yaml.", error_type=ValueError, indent=1)
 
     required_fields = _extract_required_fields(tags)
     validate_fields_exist(oid_fc, list(required_fields))

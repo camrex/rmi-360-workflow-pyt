@@ -445,6 +445,7 @@ image_output:
     renamed: "final"
   filename_settings:
     format: "{project_slug}_{rr}_{mp_pre}{mp_num}_{capture_datetime}_RL{reel}_FR{frame}.jpg"
+    format_no_lr: "{project_slug}_{rr}_{capture_datetime}_RL{reel}_FR{frame}.jpg"
     parts:
       project_slug: "config.project.slug"
       rr: "field.RR"

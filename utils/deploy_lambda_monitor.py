@@ -60,7 +60,7 @@ def zip_lambda(source_path: str, arcname: str) -> bytes:
     path = Path(source_path)
 
     if not path.is_file():
-        raise FileNotFoundError(f"Lambda file not found: {path}")
+        logger.error(f"Lambda file not found: {path}", error_type=FileNotFoundError, indent=2)
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -90,9 +90,9 @@ def count_final_images(cfg):
     image_files = get_final_image_files(final_folder)
     count = len(image_files)
     if count == 0:
-        logger.warning(f"No JPEG images found in {final_folder}")
+        logger.warning(f"No JPEG images found in {final_folder}", indent=2)
     else:
-        logger.info(f"Found {count} JPEG images in {final_folder}")
+        logger.custom(f"Found {count} JPEG images in {final_folder}", indent=2, emoji="📸")
     return count
 
 
@@ -162,9 +162,9 @@ def upload_progress_json(s3_client, progress, bucket, slug, logger):
             Body=json.dumps(progress, indent=2).encode("utf-8"),
             ContentType="application/json"
         )
-        logger.info(f"✅ Uploaded {filename} to s3://{bucket}/status/")
+        logger.success(f"Uploaded {filename} to s3://{bucket}/status/", indent=2)
     except Exception as e:
-        logger.error(f"Failed to upload progress JSON: {e}")
+        logger.error(f"Failed to upload progress JSON: {e}", indent=2)
 
 
 def ensure_lambda_progress_monitor(cfg, lambda_client, role_arn):
@@ -182,15 +182,15 @@ def ensure_lambda_progress_monitor(cfg, lambda_client, role_arn):
 
     try:
         lambda_client.get_function(FunctionName=name)
-        logger.info(f"✅ Lambda '{name}' already exists.")
+        logger.info(f"Lambda '{name}' already exists.", indent=2)
         return
     except lambda_client.exceptions.ResourceNotFoundException:
-        logger.info("🚀 Deploying UploadProgressMonitor Lambda...")
+        logger.custom("Deploying UploadProgressMonitor Lambda...", indent=2, emoji="🚀")
 
     try:
         zipped = zip_lambda(cfg.paths.lambda_pm_path, "lambda_progress_monitor.py")
     except FileNotFoundError as e:
-        logger.error(f"Lambda zip failed: {e}")
+        logger.error(f"Lambda zip failed: {e}", indent=3)
         raise
     lambda_client.create_function(
         FunctionName=name,
@@ -202,7 +202,7 @@ def ensure_lambda_progress_monitor(cfg, lambda_client, role_arn):
         MemorySize=256,
         Publish=True
     )
-    logger.info(f"✅ Lambda '{name}' deployed.")
+    logger.success(f"Lambda '{name}' deployed.", indent=2)
 
 
 def ensure_lambda_deactivator(cfg, lambda_client, role_arn):
@@ -218,17 +218,17 @@ def ensure_lambda_deactivator(cfg, lambda_client, role_arn):
 
     try:
         lambda_client.get_function(FunctionName=name)
-        logger.info(f"✅ Lambda '{name}' already exists.")
+        logger.info(f"Lambda '{name}' already exists.", indent=2)
         return
     except lambda_client.exceptions.ResourceNotFoundException:
-        logger.info("🚀 Deploying DisableUploadMonitorRule Lambda...")
+        logger.custom("Deploying DisableUploadMonitorRule Lambda...", indent=2, emoji="🚀")
 
     # 🔍 Resolve Lambda source files relative to config file
     deactivator_path = cfg.paths.lambda_dr_path
     try:
         zipped = zip_lambda(deactivator_path, "disable_rule.py")
     except FileNotFoundError as e:
-        logger.error(f"Lambda zip failed: {e}")
+        logger.error(f"Lambda zip failed: {e}", indent=3)
         raise
 
     lambda_client.create_function(
@@ -241,7 +241,7 @@ def ensure_lambda_deactivator(cfg, lambda_client, role_arn):
         MemorySize=128,
         Publish=True
     )
-    logger.info(f"✅ Lambda '{name}' deployed.")
+    logger.success(f"Lambda '{name}' deployed.", indent=2)
 
 
 def setup_schedule_and_target(cfg, events_client, lambda_client, expected_total):
@@ -289,10 +289,9 @@ def setup_schedule_and_target(cfg, events_client, lambda_client, expected_total)
             SourceArn=rule_arn
         )
 
-    logger.info(f"✅ CloudWatch rule '{rule_name}' updated with target input.")
+    logger.success(f"CloudWatch rule '{rule_name}' updated with target input.", indent=2)
 
 
-# 🎯 Main entrypoint
 def deploy_lambda_monitor(cfg: ConfigManager):
     """
     Deploys and configures AWS Lambda functions and resources for monitoring image upload progress.
@@ -314,6 +313,7 @@ def deploy_lambda_monitor(cfg: ConfigManager):
 
     # Load credentials from keyring or config and verify AWS credentials
     try:
+        logger.info("Verifying AWS credentials...", indent=1)
         access_key, secret_key = get_aws_credentials(cfg)
         session = Session(
             aws_access_key_id=access_key,
@@ -322,16 +322,17 @@ def deploy_lambda_monitor(cfg: ConfigManager):
         )
         sts = session.client("sts")
         sts.get_caller_identity()
-        logger.info("✅ AWS credentials verified.")
+        logger.custom("AWS credentials verified.", emoji="🔑", indent=2)
     except Exception as e:
-        logger.error(f"AWS credentials verification failed: {e}")
+        logger.error(f"AWS credentials verification failed: {e}", indent=2)
         return
+    
+    logger.info("Preparing to deploy Lambda monitor...", indent=1)
 
     expected_total = count_final_images(cfg)
-    logger.info(f"📸 Found {expected_total} image(s) in final folder.")
 
     if expected_total == 0:
-        logger.warning("Expected_total is 0 — progress tracking will show 0% until images appear.")
+        logger.warning("Expected_total is 0 — progress tracking will show 0% until images appear.", indent=2)
 
     progress = build_progress_json(cfg, expected_total)
 
@@ -343,3 +344,4 @@ def deploy_lambda_monitor(cfg: ConfigManager):
     ensure_lambda_progress_monitor(cfg, lambda_client, role_arn)
     ensure_lambda_deactivator(cfg, lambda_client, role_arn)
     setup_schedule_and_target(cfg, events_client, lambda_client, expected_total)
+    logger.success("Deployed AWS Lambda monitor.", indent=1)

@@ -133,7 +133,7 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
     )
 
     if not corrected_oids:
-        logger.info("No GPS outliers found or corrected.")
+        logger.info("No GPS outliers found or corrected.", indent=1)
         return
 
     # Apply updates with error handling
@@ -157,9 +157,9 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
                             failed_oids.add(oid)
                             logger.error(f"Failed to update OID {oid}: {e}")
 
-    logger.info(f"✅ Corrected {len(corrected_oids) - len(failed_oids)} GPS outlier point(s)." + (f" Failed to update {len(failed_oids)} OIDs." if failed_oids else ""))
+    logger.success(f"Corrected {len(corrected_oids) - len(failed_oids)} GPS outlier point(s)." + (f" Failed to update {len(failed_oids)} OIDs." if failed_oids else ""), indent=1)
     if corrected_oids:
-        logger.debug(f"Corrected OIDs: {sorted(corrected_oids - failed_oids)}")
+        logger.debug(f"Corrected OIDs: {sorted(corrected_oids - failed_oids)}", indent=2)
     if failed_oids:
-        logger.warning(f"Failed OIDs: {sorted(failed_oids)}")
+        logger.warning(f"Failed OIDs: {sorted(failed_oids)}", indent=2)
 

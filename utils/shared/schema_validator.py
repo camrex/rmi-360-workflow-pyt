@@ -129,12 +129,12 @@ def ensure_valid_oid_schema_template(
             return  # ✅ Schema is valid, done
         except (FileNotFoundError, ConfigValidationError):
             if not auto_create:
-                logger.error("❌ OID schema template is invalid and auto_create_oid_template is set to False. "
-                             "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError)
+                logger.error("OID schema template is invalid and auto_create_oid_template is set to False. "
+                             "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError, indent=1)
                 return
 
             # 🚧 Try to rebuild
-            logger.info("⚠️ Schema template invalid — attempting to regenerate with build_oid_schema.py...")
+            logger.custom("Schema template invalid — attempting to regenerate with build_oid_schema.py...", emoji="🚧", indent=1)
             create_oid_schema_template(cfg)
             progressor.update(1)
 
@@ -142,5 +142,5 @@ def ensure_valid_oid_schema_template(
                 validate_oid_template_schema(cfg)
                 progressor.update(2)
             except (FileNotFoundError, ConfigValidationError):
-                logger.error("❌ Rebuilt schema template, but validation still failed. Check for missing fields or "
-                             "malformed registry.", error_type=ConfigValidationError)
+                logger.error("Rebuilt schema template, but validation still failed. Check for missing fields or "
+                             "malformed registry.", error_type=ConfigValidationError, indent=1)

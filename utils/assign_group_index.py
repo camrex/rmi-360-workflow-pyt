@@ -56,17 +56,17 @@ def assign_group_index(
     cfg.validate(tool="assign_group_index")
 
     if not isinstance(group_size, int) or group_size <= 0:
-        logger.error(f"Group size must be a positive integer, got {group_size}", error_type = ValueError)
+        logger.error(f"Group size must be a positive integer, got {group_size}", error_type = ValueError, indent=1)
         return
 
     field_name = cfg.get("oid_schema_template.grp_idx_fields.group_index.name", "GroupIndex")
-    logger.info(f"🧭 Assigning {field_name} values to features, sorted by AcquisitionDate...")
+    logger.custom(f"Assigning {field_name} values to features, sorted by AcquisitionDate...", indent=1, emoji="🧭")
 
     # Ensure the field exists
     existing_fields = [f.name for f in arcpy.ListFields(oid_fc_path)]
     if field_name not in existing_fields:
         logger.error(f"Field '{field_name}' not found in feature class. Please ensure it is included in your schema.",
-                     error_type=RuntimeError)
+                     error_type=RuntimeError, indent=2)
         return
 
     # Step 1: Get all AcquisitionDates with OIDs
@@ -78,7 +78,7 @@ def assign_group_index(
     # Step 2: Check for null AcquisitionDates (not allowed)
     null_oids = [oid for oid, acq_date in rows if acq_date is None]
     if null_oids:
-        logger.error(f"{len(null_oids)} features have null AcquisitionDate values: {null_oids}", error_type=ValueError)
+        logger.error(f"{len(null_oids)} features have null AcquisitionDate values: {null_oids}", error_type=ValueError, indent=2)
         return
 
     # Step 3: Sort by AcquisitionDate
@@ -100,12 +100,13 @@ def assign_group_index(
                         cursor.updateRow((oid, new_val))
                         updated += 1
                     except Exception as e:
-                        logger.warning(f"❌ Failed to update GroupIndex for OID {oid}: {e}")
+                        logger.warning(f"Failed to update GroupIndex for OID {oid}: {e}", indent=1)
                 progressor.update(i)
 
 
-    logger.info(f"✅ Assigned GroupIndex values to {updated} feature(s).")
-    logger.info("🧠 Tip: Use GroupIndex values to control image display intervals in ArcGIS Pro:\n"
-                "    - 5m = all images (no filter)\n"
-                "    - 10m = GroupIndex IN (1, 3) or (2, 4)\n"
-                "    - 20m = GroupIndex = 1 (or 2, 3, or 4)")
+    logger.success(f"Assigned GroupIndex values to {updated} feature(s).", indent=1)
+    logger.custom("Tip: Use GroupIndex values to control image display intervals in ArcGIS Pro:", indent=1, emoji="🧠")
+    logger.custom("5m = all images (no filter)", indent=2, emoji="🧠")
+    logger.custom("10m = GroupIndex IN (1, 3) or (2, 4)", indent=2, emoji="🧠")
+    logger.custom("20m = GroupIndex = 1 (or 2, 3, or 4)", indent=2, emoji="🧠")
+

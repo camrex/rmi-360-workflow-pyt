@@ -77,13 +77,13 @@ def generate_full_process_report(
                 f.write('test')
             os.remove(test_file)
         except (PermissionError, OSError) as e:
-            logger.warning(f"Chart output directory not writable: {e}")
+            logger.warning(f"Chart output directory not writable: {e}", indent=2)
             raise
 
         plot_images_per_reel(report_data.get("reels", []), chart_path_images)
         plot_time_per_step(report_data.get("steps", []), chart_path_steps, logger)
     except Exception as e:
-        logger.warning(f"Failed to generate charts: {e}")
+        logger.warning(f"Failed to generate charts: {e}", indent=2)
 
     try:
         template_dir = paths.templates
@@ -93,15 +93,15 @@ def generate_full_process_report(
         logo_path = Path(template_dir) / "assets" / logo
         report_data["logo_path"] = logo_path.resolve().as_uri()
 
-        logger.debug(f"Template dir: {template_dir}")
+        logger.debug(f"Template dir: {template_dir}", indent=2)
         template_path = os.path.join(template_dir, "process_report_template.html")
-        logger.debug(f"Checking for template file: {template_path}")
+        logger.debug(f"Checking for template file: {template_path}", indent=2)
 
         if not os.path.exists(template_path):
-            logger.error(f"Template file not found at: {template_path}."
-                         f"Please ensure the template exists in the {template_dir} directory "
-                         f"or check the 'template.templates_dir' setting in your configuration.",
-                         error_type=FileNotFoundError)
+            logger.error("Template file not found at: {template_path}", indent=3)
+            logger.error(f"Please ensure the template exists in the {template_dir} directory", indent=3)
+            logger.error(f"or check the 'template.templates_dir' setting in your configuration.", indent=3)
+            logger.error("Report generation failed.", indent=2, error_type=FileNotFoundError)
 
         env = Environment(
             loader=FileSystemLoader(template_dir),
@@ -115,14 +115,14 @@ def generate_full_process_report(
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_out)
 
-        logger.info(f"✅ HTML report written to: {html_path}")
+        logger.success(f"HTML report written to: {html_path}", indent=1)
 
         return {
             "html_path": str(html_path)
         }
 
     except Exception as e:
-        logger.error(f"Report generation failed: {type(e).__name__}: {e}")
+        logger.error(f"Report generation failed: {type(e).__name__}: {e}", indent=1)
         raise  # Re-raise if you want upstream logic to catch this
 
 
@@ -175,7 +175,7 @@ def plot_time_per_step(steps, output_path, logger):
             times_sec.append(extract_time_seconds(s["time"]))  # Use the new time extraction function
         except Exception as e:
             # Log any errors, though the function itself ensures 0.0 is returned for invalid times
-            logger.warning(f"Error processing time for step {s['name']}: {e}")
+            logger.warning(f"Error processing time for step {s['name']}: {e}", indent=1)
             times_sec.append(0.0)
 
     # Generate the bar chart
@@ -197,17 +197,19 @@ def generate_report_from_json(cfg: ConfigManager, json_path: str):
     """
     logger = cfg.get_logger()
 
+    logger.info("Starting report generation...", indent=1)
+
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             report_data = json.load(f)
-
-        logger.info(f"📄 Loaded report data from: {json_path}")
+        
+        logger.custom(f"Loaded report data from: {json_path}", emoji="📄", indent=2)
 
         # Reattach config if missing or externally supplied
         if cfg:
             report_data["config"] = cfg
         else:
-            logger.warning("Config not found in report JSON — some paths or logos may not resolve")
+            logger.warning("Config not found in report JSON — some paths or logos may not resolve", indent=2)
 
         return generate_full_process_report(
             report_data=report_data,
@@ -215,5 +217,5 @@ def generate_report_from_json(cfg: ConfigManager, json_path: str):
         )
 
     except Exception as e:
-        logger.error(f"Failed to generate report from JSON: {e}")
+        logger.error(f"Failed to generate report from JSON: {e}", indent=1)
         raise
