@@ -122,6 +122,10 @@ camera:
   sn: "<SERIAL_NUMBER>"                               # Serial number
   firmware: "2.2.0"                                   # Installed firmware version (adjust as needed)
   software: "Mosaic Processor 1.0.1/MistikaVR 10.14"  # Processing software version string (adjust as needed)
+  stitching_software: "MistikaVR"
+  image_width: 12288
+  image_height: 6144
+  source_photos: 6
 
 # --------------------------------------------------------------------
 # 📏 CAMERA OFFSET: GNSS to Camera Lens Center
@@ -491,6 +495,29 @@ image_output:
       - "field.MP_Pre + '-' + field.MP_Num.float(3)"
       - "config.project.description"
       - "config.project.number"
+    GPano:
+      UsePanoramaViewer: "True"
+      CaptureSoftware: ""
+      StitchingSoftware: "config.camera.stitching_software"
+      ProjectionType: "equirectangular"
+      PoseHeadingDegrees: "field.CameraHeading"
+      PosePitchDegrees: "field.CameraPitch"
+      PoseRollDegrees: "field.CameraRoll"
+      InitialViewHeadingDegrees: "field.CameraHeading"
+      InitialViewPitchDegrees: "field.CameraPitch"
+      InitialViewRollDegrees: "field.CameraRoll"
+      InitialHorizontalFOVDegrees: 75.0
+      CroppedAreaLeftPixels: 0
+      CroppedAreaTopPixels: 0
+      CroppedAreaImageWidthPixels: "config.camera.image_width"
+      CroppedAreaImageHeightPixels: "config.camera.image_height"
+      FullPanoWidthPixels: "config.camera.image_width"
+      FullPanoHeightPixels: "config.camera.image_height"
+      FirstPhotoDate: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
+      LastPhotoDate: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
+      SourcePhotosCount: "config.camera.source_photos"
+      ExposureLockUsed: "True"
+      
 
 # ------------------------------------------------------------------------------
 # ☁️ AWS CLOUD EXPORT & HOSTING

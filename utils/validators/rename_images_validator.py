@@ -45,33 +45,38 @@ def validate(cfg: "ConfigManager") -> bool:
         error_count += 1
 
     fmt = cfg.get("image_output.filename_settings.format")
-    if not validate_type(fmt, "image_output.filename_settings.format", str, cfg):
-        error_count += 1
-
+    fmt_no_lr = cfg.get("image_output.filename_settings.format_no_lr")
     parts = cfg.get("image_output.filename_settings.parts")
-    if not validate_type(parts, "image_output.filename_settings.parts", dict, cfg):
+
+    # Validate both format and format_no_lr
+    if fmt is None and fmt_no_lr is None:
+        logger.error("At least one of 'format' or 'format_no_lr' must be defined in image_output.filename_settings.", error_type=ConfigValidationError)
         error_count += 1
-
-    # ✅ Parse placeholders in format string
-    placeholders = {fname for _, fname, _, _ in string.Formatter().parse(fmt) if fname}
-    part_keys = set(parts.keys())
-
-    # ✅ Check that all placeholders have matching part definitions
-    missing = placeholders - part_keys
-    extra = part_keys - placeholders
-
-    if missing:
-        logger.error(f"Filename format includes undefined placeholder(s): {sorted(missing)}",
-                     error_type=ConfigValidationError)
+    if fmt is not None and not validate_type(fmt, "image_output.filename_settings.format", str, cfg):
         error_count += 1
-
-    if extra:
-        logger.warning(f"Parts contain unused definitions: {sorted(extra)}")
-
-    if not placeholders:
-        logger.error("Filename format must include at least one placeholder (e.g. '{segment_id}')",
-                     error_type=ConfigValidationError)
+    if fmt_no_lr is not None and not validate_type(fmt_no_lr, "image_output.filename_settings.format_no_lr", str, cfg):
         error_count += 1
+    if parts is None or not validate_type(parts, "image_output.filename_settings.parts", dict, cfg):
+        error_count += 1
+        parts = {}  # Prevent further errors
+
+    # Validate placeholders for both formats
+    for fmt_str, label in [(fmt, "format"), (fmt_no_lr, "format_no_lr")]:
+        if fmt_str is None:
+            logger.warning(f"'image_output.filename_settings.{label}' is not defined.")
+            continue
+        placeholders = {fname for _, fname, _, _ in string.Formatter().parse(fmt_str) if fname}
+        part_keys = set(parts.keys())
+        missing = placeholders - part_keys
+        extra = part_keys - placeholders
+        if missing:
+            logger.error(f"Filename {label} includes undefined placeholder(s): {sorted(missing)}", error_type=ConfigValidationError)
+            error_count += 1
+        if extra and label == "format":
+            logger.warning(f"Parts contain unused definitions: {sorted(extra)}")
+        if not placeholders:
+            logger.error(f"Filename {label} must include at least one placeholder (e.g. '{{segment_id}}')", error_type=ConfigValidationError)
+            error_count += 1
 
     # ✅ Validate that each part expression (if string) resolves to a string (config or mixed)
     for part_name, expr in parts.items():

@@ -53,26 +53,37 @@ def validate(cfg: "ConfigManager") -> bool:
 
     extra_tags = set(tags.keys()) - set(required_metadata_fields)
     if extra_tags:
-        logger.warning(f"Found extra metadata_tags fields not in required list: {sorted(extra_tags)}")
+        logger.info(f"Found extra metadata_tags fields not in required list: {sorted(extra_tags)}")
 
-    # ✅ Validate each field's structure and resolution
-    for tag_name, expr in tags.items():
-        if isinstance(expr, str):
-            if not try_resolve_config_expression(expr, f"metadata_tags.{tag_name}", cfg, expected_type=str):
+    def validate_tag_block(tag_block, prefix="metadata_tags"):
+        nonlocal error_count
+        for tag_name, expr in tag_block.items():
+            full_name = f"{prefix}.{tag_name}"
+            if isinstance(expr, (str, int, float)):
+                try:
+                    resolved_value = try_resolve_config_expression(expr, full_name, cfg)
+                    _ = str(resolved_value)
+                except Exception as e:
+                    logger.error(f"{full_name}: failed to resolve or stringify value: {e}", error_type=ConfigValidationError)
+                    error_count += 1
+            elif isinstance(expr, list):
+                for i, item in enumerate(expr):
+                    try:
+                        resolved_value = try_resolve_config_expression(item, f"{full_name}[{i}]", cfg)
+                        _ = str(resolved_value)
+                    except Exception as e:
+                        logger.error(f"{full_name}[{i}]: failed to resolve or stringify value: {e}", error_type=ConfigValidationError)
+                        error_count += 1
+            elif isinstance(expr, dict):
+                # Nested dict (e.g., GPano block)
+                validate_tag_block(expr, prefix=full_name)
+            else:
+                logger.error(f"{full_name} must be a string, number, list, or dict",
+                             error_type=ConfigValidationError)
                 error_count += 1
 
-        elif isinstance(expr, list):
-            for i, item in enumerate(expr):
-                if not validate_type(item, f"metadata_tags.{tag_name}[{i}]", str, cfg):
-                    error_count += 1
-                if not try_resolve_config_expression(item, f"metadata_tags.{tag_name}[{i}]", cfg,
-                                                     expected_type=str):
-                    error_count += 1
-
-        else:
-            logger.error(f"metadata_tags.{tag_name} must be a string or list of strings",
-                         error_type=ConfigValidationError)
-            error_count += 1
+    # Validate all tags, including nested
+    validate_tag_block(tags)
 
     # ✅ Validate exiftool executable path
     exe_path = cfg.paths.exiftool_exe
