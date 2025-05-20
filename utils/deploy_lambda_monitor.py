@@ -302,7 +302,7 @@ def deploy_lambda_monitor(cfg: ConfigManager):
     Logs key steps and warnings throughout the process.
 
     Args:
-        cfg:
+        cfg: ConfigManager instance containing the application configuration
     """
     logger = cfg.get_logger()
     cfg.validate(tool="deploy_lambda_monitor")
