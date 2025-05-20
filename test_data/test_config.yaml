@@ -230,7 +230,7 @@ executables:
     exe_path: "exiftool"  # Command-line call or full path to ExifTool binary
   mosaic_processor:
     exe_path: "C:/Program Files (x86)/Mosaic Apps/Mosaic Processor/Mosaic Processor.exe"  # Full path to Mosaic Processor GUI/CLI
-    grp_path: "E:\DevProjects\rmi-360-workflow-pyt\test_data\test_grp.grp"                    # Default GRP file for Mosaic 51 camera
+    grp_path: "E:/DevProjects/rmi-360-workflow-pyt/test_data/test_grp.grp"                    # Default GRP file for Mosaic 51 camera
     cfg_path: "DISABLED"                                                                  # RESERVED FOR FUTURE FUNCTIONALITY
 
 # --------------------------------------------------------------------
