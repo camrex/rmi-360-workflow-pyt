@@ -98,7 +98,7 @@ class ConfigManager:
 
         # Validate project_base is provided
         if not project_base:
-            raise ValueError("Project folder must be supplied when initializing ConfigManager. It is required for path"
+            raise ValueError("Project folder must be supplied when initializing ConfigManager. It is required for path "
                              "resolution and logging operations.")
 
         self._project_base = Path(project_base).resolve()
