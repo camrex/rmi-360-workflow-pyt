@@ -7,6 +7,8 @@ A modular, camera-agnostic workflow built with ArcGIS Python Toolbox for process
 
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.
 
+_Tested using ArcGIS Pro 3.4.3 and 3.5.0._
+
 ---
 
 ## 📦 Overview
@@ -50,7 +52,7 @@ rmi-360-workflow-pyt/
 ├── aws_lambdas/                        # Lambda upload status functions
 ├── templates/                          # HTML report templates
 ├── legacy_docs/                        # Full documentation set
-├── docs/                               # Updated documentation set
+├── docs/                               # Updated documentation set  (TODO: implement using sphinx)
 ├── dev_docs/                           # Future development documentation
 ```
 
@@ -83,6 +85,8 @@ python -m utils.validate_config --file configs/config.yaml
    - **Orchestrator**
 
 5. Use individual tools or run the full pipeline with `ProcessMosaic360Workflow`.
+
+
 
 ---
 
