@@ -98,9 +98,9 @@ def generate_full_process_report(
         logger.debug(f"Checking for template file: {template_path}", indent=2)
 
         if not os.path.exists(template_path):
-            logger.error("Template file not found at: {template_path}", indent=3)
+            logger.error(f"Template file not found at: {template_path}", indent=3)
             logger.error(f"Please ensure the template exists in the {template_dir} directory", indent=3)
-            logger.error(f"or check the 'template.templates_dir' setting in your configuration.", indent=3)
+            logger.error("or check the 'template.templates_dir' setting in your configuration.", indent=3)
             logger.error("Report generation failed.", indent=2, error_type=FileNotFoundError)
 
         env = Environment(
