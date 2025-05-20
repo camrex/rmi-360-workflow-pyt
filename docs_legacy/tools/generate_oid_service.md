@@ -46,7 +46,7 @@ Publishes an Oriented Imagery Dataset (OID) as a web service, enabling access in
 - OID feature class
 - Project YAML config with service settings
 
---
+---
 
 ## 📤 Output
 
