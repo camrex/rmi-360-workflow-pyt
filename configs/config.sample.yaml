@@ -517,7 +517,6 @@ image_output:
       LastPhotoDate: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
       SourcePhotosCount: "config.camera.source_photos"
       ExposureLockUsed: "True"
-      
 
 # ------------------------------------------------------------------------------
 # ☁️ AWS CLOUD EXPORT & HOSTING
