@@ -57,7 +57,7 @@ def test_path_manager_resolution():
             print(f"{attr:30}: {val}")
         except Exception as e:
             print(f"{attr:30}: ERROR - {e}")
-            raise AssertionError(f"Failed to resolve {attr}: {e}")
+            raise AssertionError(f"Failed to resolve {attr}: {e}") from e
     # Optional additional checks
     assert isinstance(pm.get_log_file_path("enhance_log"), Path)
     assert isinstance(pm.check_exiftool_available(), bool)
