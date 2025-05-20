@@ -1,0 +1,826 @@
+# schema_version (str): Defines which config format version this file conforms to.
+# Used for future validation and compatibility checks.
+schema_version: 1.1.0
+debug_messages: true
+
+# ------------------------------------------------------------------------------
+# 🪵 LOGGING & FILE PATHS
+# ------------------------------------------------------------------------------
+# This section defines where log and debug files are written, and what filenames
+# are used across the various steps in the Mosaic 360 workflow.
+#
+# Used by:
+#   - All tools that write progress, debug, or argument files
+#   - process_report_template.html (for referencing logs in reports)
+#
+# ─── Global Settings ──────────────────────────────────────────────────────────
+#
+# path              (str)   - Relative folder path where general log files are written
+# report_path       (str)   - Folder where report_data.json and report.html are stored
+# prefix            (expr)  - Expression used to prefix filenames (e.g., project slug)
+#
+# ─── Step-Specific Logs ───────────────────────────────────────────────────────
+#
+# mosaic_processor_log (str) - Output capture file for Mosaic Processor CLI
+# exiftool_logs        (str) - Text output from ExifTool
+# exiftool_args        (str) - .args batch file passed to ExifTool
+#
+# geocode_logs         (str) - ExifTool log for geocoding pass
+# geocode_args         (str) - .args batch file for geocoding
+#
+# gps_smooth_debug     (str) - CSV debug output for GPS smoothing outliers
+#
+# aws_upload_log       (str) - Main CSV log for copy_to_aws uploads
+# enhance_log          (str) - Log output for image enhancement runs
+# rename_log           (str) - File rename summary log
+# process_log          (str) - Master runtime log (used by orchestrator, messages, etc.)
+# ------------------------------------------------------------------------------
+logs:
+  path: "logs"
+  report_path: "report"
+  logo_filename: "rmi_logo.png"  # Logo should be located in templates/assets
+  prefix: "config.project.slug"
+  mosaic_processor_log: "mosaic_processor_output.log"
+  exiftool_logs: "exiftool_log.txt"
+  exiftool_args: "exiftool_batch.args"
+  geocode_logs: "exiftool_geocode_log.txt"
+  geocode_args: "exiftool_geocode.args"
+  gps_smooth_debug: "debuglog_outliers.csv"
+  aws_upload_log: "aws_upload_log.csv"
+  aws_upload_summary: "aws_upload_summary.csv"
+  enhance_log: "enhance_log.csv"
+  rename_log: "rename_log.csv"
+  process_log: "process_log.txt"
+
+# --------------------------------------------------------------------
+# 📁 PROJECT-LEVEL METADATA
+# --------------------------------------------------------------------
+#
+# This section defines metadata unique to the current imagery capture project.
+# These values are referenced throughout the workflow in:
+#   - Output filenames (`filename_settings`)
+#   - EXIF/XMP metadata tags (`metadata_tags`)
+#   - AWS export paths
+#   - Portal item summaries and tags
+#   - Custom OID fields (e.g., RR, Client)
+#
+# 📌 Fields:
+#   - company: Organization responsible for imagery (used in Author/Artist tags)
+#   - number: Human-readable project number (e.g., "25-100")
+#   - slug: Machine-safe project ID used in filenames or S3 folder paths (e.g., "RMI25100")
+#   - client: Client organization(s) or stakeholders
+#   - description: Short textual description of the project
+#   - rr_name: Full name of the railroad (used in portal metadata or XPKeywords)
+#   - rr_mark: Railroad reporting mark (used in filename and OID fields)
+#   - local_proj_wkid: EPSG WKID of local projected CRS used in `build_oid_footprints`
+#
+# 📚 Tip:
+# These values are referenced using `config.project.KEY` in expressions.
+#
+project:
+  company: "Test Company"           # Author of the imagery / data
+  number: "25-000"                   # Project ID (YY-###)
+  slug: "TEST25000"                   # Suffix-safe identifier for filenames or folders
+  client: "Test Client"
+  description: "Test Project"
+  rr_name: "Test"          # Full railroad name
+  rr_mark: "TEST"                     # Railroad reporting mark
+# ⚠️ VERY IMPORTANT:
+# local_proj_wkid must be updated to match the local projected coordinate system used for this project.
+# Used for OID footprint.
+# Common examples:
+#   - NAD 1983 StatePlane Massachusetts Mainland (US Feet) → 6492
+#   - NAD 1983 StatePlane California Zone 5 (US Feet) → 2229
+#   - NAD 1983 UTM Zone 14N → 26914
+# Failing to update this may cause incorrect OID footprint geometry or empty layers.
+  local_proj_wkid: 6492             # 6335 for 25-110
+
+# --------------------------------------------------------------------
+# 📷 CAMERA & HARDWARE CONFIGURATION
+# --------------------------------------------------------------------
+#
+# This section stores camera hardware metadata used for:
+#   - Embedding EXIF/XMP metadata during image tagging (e.g., Make, Model, Firmware)
+#   - Populating expressions in metadata_tags or XPKeywords
+#   - Optional display in reports, metadata exports, or OID fields
+#
+# Fields here should reflect the physical camera system used during the imagery collection.
+# These values are referenced using `config.camera.KEY`.
+#
+# 📎 Used In:
+#   - metadata_tags (e.g., Model, Make, Software, FirmwareVersion)
+#   - XPKeywords (for filtering or search)
+#
+camera:
+  make: "Mosaic"                                 # Camera manufacturer
+  model: "Mosaic 51"                             # Model name (used in EXIF)
+  sn: "SN-0000-0000"                             # Serial number
+  firmware: "2.1.4"                              # Installed firmware version
+  software: "Mosaic Processor 1.0.1/MistikaVR 10.14"  # Processing software version string
+  stitching_software: "MistikaVR"
+  image_width: 12288
+  image_height: 6144
+  source_photos: 6
+
+# --------------------------------------------------------------------
+# 📏 CAMERA OFFSET: GNSS to Camera Lens Center
+# --------------------------------------------------------------------
+# This section defines the physical offsets used to calculate:
+#   - Camera Z offset: vertical shift from the GPS antenna to the camera center
+#   - Camera height: total height from ground to lens center (used in OID metadata)
+#   - Optional future X/Y lever arm adjustment (not applied today)
+#
+# 🧭 Coordinate Frame:
+#   - X: positive is to the right
+#   - Y: positive is forward
+#   - Z: positive is upward
+#
+# 🛠 Units:
+#   - All values are in centimeters
+#   - Values will be converted to meters automatically in scripts
+#
+# 🧪 Integration:
+#   - Z components are summed to produce z_offset (for vertical GPS correction)
+#   - Camera height is summed from the ground to the lens center
+#   - X/Y components are defined here for possible use in spatial or EXIF correction
+#
+# 🔮 Future Support:
+#   Mosaic has indicated possible CLI support for `GPS_LEVER_ARM` using:
+#     mosaic_processor --gps-lever-arm 1.0,2.0,3.0
+#   This config is structured to support that format seamlessly.
+#
+# 📚 Reference:
+#   From Mosaic documentation (README_mosaic_processor.md, 2024-12-16):
+#   > "The X/Y/Z coordinate values are used to shift the position measured by the GNSS.
+#   > The lever arm defines the displacement between the camera center and the GNSS antenna."
+#
+camera_offset:
+  # X/Y/Z lever arm between GNSS antenna and camera center (right, forward, up)
+  x:
+    adj: 0.0  # in cm — not currently used
+  y:
+    adj: 0.0  # in cm — not currently used
+  z:
+    gps_base_height: -7.5   # Height of GPS antenna above vehicle roof (negative if GPS is above)
+    mount_height: 51.0      # Height from roof to base of camera mount
+    lens_height: 16.5       # Height from mount base to center of camera lens
+
+  # Total height from ground to camera lens center (used for OID field 'CameraHeight')
+  camera_height:
+    rail_height: 16.8       # Ground to top of rail
+    vehicle_height: 198.0   # Rail to vehicle roof ** 208.3 for 24-110
+    mount_height: 51.0      # Roof to mount base
+    lens_height: 16.5       # Mount base to lens center
+
+# --------------------------------------------------------------------
+# 📐 SPATIAL REFERENCE SYSTEMS
+# --------------------------------------------------------------------
+#
+# These WKIDs define the coordinate systems used throughout the 360 imagery workflow.
+#
+# Used in:
+#   - OID metadata (X/Y/Z, SRS, CameraOrientation)
+#   - Projected analysis (e.g., OID footprints, spatial joins)
+#
+# Coordinate System Roles:
+#   - gcs_horizontal_wkid: Geographic CRS (e.g., WGS 1984)
+#   - vcs_vertical_wkid: Vertical CRS (e.g., Ellipsoidal height)
+#   - pcs_horizontal_wkid: Projected CRS (used only in build_oid_footprints)
+#
+# NOTE:
+#   The pcs_horizontal_wkid is resolved from `project.local_proj_wkid`
+#   to ensure it remains project-specific, but is referenced here for convenience
+#   so that all SRS definitions can be accessed from config.spatial_ref.
+#
+# Reference:
+#   - WKID 4326 = WGS 1984 (horizontal)
+#   - WKID 5703 = WGS 1984 Ellipsoidal Height (vertical)
+#
+spatial_ref:
+  gcs_horizontal_wkid: 4326                         # Geographic — used in OID SRS
+  vcs_vertical_wkid: 5703                           # Vertical — Ellipsoidal (GPS)
+  pcs_horizontal_wkid: "config.project.local_proj_wkid"  # Projected — for footprint projection
+  transformation: null                              # Manually set geographic transformation, if desired, otherwise ArcGIS Pro will pick
+
+# --------------------------------------------------------------------
+# ⚙️ EXECUTABLE PATHS
+# --------------------------------------------------------------------
+#
+# Paths to system-level tools used during the processing pipeline.
+# These tools are called via subprocess or CLI, and must be accessible
+# from the environment where scripts are executed (typically ArcGIS Pro's Python).
+#
+# ✅ Windows-compatible paths should use forward slashes `/` or double backslashes `\\`.
+# ✅ Paths can be relative or absolute. Relative paths are resolved from the project root.
+#
+# Tools included:
+#   • ExifTool — for writing EXIF/XMP metadata to image files
+#   • Mosaic Processor — for stitching and rendering panoramic imagery
+#   • GRP file — camera-specific calibration data (provided by Mosaic), required for rendering
+#
+# 🧪 Notes:
+# - If `exiftool` is already in your system PATH, the default 'exiftool' string will work.
+# - If Mosaic Processor adds support for CLI-configurable `config.ini`, support for
+#   advanced options (e.g., GPS lever arm) can be added here in the future.
+# - If you maintain multiple GRP files for different cameras or projects, this value
+#   can be overridden per-project in future config profiles.
+#
+executables:
+  exiftool:
+    exe_path: "exiftool"  # Command-line call or full path to ExifTool binary
+  mosaic_processor:
+    exe_path: "C:/Program Files (x86)/Mosaic Apps/Mosaic Processor/Mosaic Processor.exe"  # Full path to Mosaic Processor GUI/CLI
+    grp_path: "E:/DevProjects/rmi-360-workflow-pyt/test_data/test_grp.grp"                    # Default GRP file for Mosaic 51 camera
+    cfg_path: "DISABLED"                                                                  # RESERVED FOR FUTURE FUNCTIONALITY
+
+# --------------------------------------------------------------------
+# 🧱 ORIENTED IMAGERY DATASET (OID) SCHEMA TEMPLATE MANAGEMENT
+# --------------------------------------------------------------------
+#
+# This section defines the structure of the OID schema template used to
+# generate Oriented Imagery Datasets. It combines:
+#   - ESRI-standard OID fields (driven from a centralized registry)
+#   - Mosaic-specific fields (e.g., Reel, Frame)
+#   - Group Index field (e.g., GroupIndex)
+#   - Linear referencing fields (e.g., MP_Pre, MP_Num)
+#   - Project-specific custom fields (e.g., Railroad ID)
+#
+# The template is built using `build_oid_schema.py` and consumed by
+# `create_oid_feature_class.py`. It outputs a schema table or GDB template
+# that can be reused when creating new feature classes.
+#
+# 🗃️ FIELD SOURCES
+# --------------------------------------------------------------------
+# ➤ esri_default: Pulls all ESRI-supported OID fields from a YAML registry.
+#                 This registry defines required, optional, and derived fields.
+#
+# ➤ mosaic_fields: Additional fields used in Mosaic 360 workflows, such as
+#                  Reel and Frame numbers (parsed from filename or EXIF).
+#
+# ➤ grp_idx_fields: Fields related to repeating group indices for display control.
+#                   These are used by `assign_group_index.py` to enable filtered
+#                   viewing intervals in ArcGIS Pro without duplicating geometry.
+#
+#                   🧠 GroupIndex filtering usage in ArcGIS Pro:
+#                     - 5m display: Show all images (no filter needed)
+#                     - 10m display: Filter for GroupIndex IN (1, 3) or (2, 4)
+#                     - 20m display: Filter for GroupIndex = 1 (or 2, 3, or 4)
+#
+# ➤ linear_ref_fields: Fields populated by `locate_images_along_route.py`
+#                      using M-enabled centerline geometry. Typically includes:
+#                      - Route identifier (e.g., MP_Pre)
+#                      - Route measure (e.g., MP_Num)
+#
+# ➤ custom_fields: Fields computed using expressions referencing config or
+#                  project-specific attributes. Populated using:
+#                    `update_linear_and_custom.py`
+#
+# 🧪 FIELD DEFINITION FORMAT
+# --------------------------------------------------------------------
+# Each field must follow this structure:
+#   name:        Field name (string)
+#   type:        ESRI field type (TEXT, DOUBLE, LONG, DATE, etc.)
+#   length:      Required for TEXT fields (null for other types)
+#   alias:       Friendly display name (used in ArcGIS)
+#   expression:  (Optional) Expression for computing values dynamically
+#
+# ➤ Expressions are only supported in `custom_fields`
+#   - They may reference:
+#       - config values (e.g., config.project.rr_mark)
+#       - resolved milepost values (e.g., mp_value, route_id)
+#
+# 🛑 STRUCTURE RULES
+# --------------------------------------------------------------------
+# Do not remove or rename the top-level keys:
+#   - esri_default
+#   - mosaic_fields
+#   - linear_ref_fields
+#   - custom_fields
+#
+# These keys must remain for template generation and validation logic.
+# If unused, leave their content commented out or empty (e.g., {}).
+#
+# ESRI Oriented Imagery documentation:
+# - https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/oriented-imagery-table.htm
+oid_schema_template:
+  template:
+    auto_create_oid_template: true
+    templates_dir: "templates"
+    gdb_path: "templates.gdb"
+    template_name: "oid_schema_template"
+  esri_default:
+    field_registry: "configs/esri_oid_fields_registry.yaml"
+    standard: true
+    not_applicable: false
+  mosaic_fields:  # Extra fields used only in Mosaic workflows
+    mosaic_reel:
+      name: "Reel"
+      type: "TEXT"
+      length: 4
+      alias: "Reel ID"
+    mosaic_frame:
+      name: "Frame"
+      type: "TEXT"
+      length: 6
+      alias: "Frame"
+  grp_idx_fields:
+    group_index:
+      name: "GroupIndex"
+      type: "SHORT"
+      length: null
+      alias: "Display Interval Group"
+  linear_ref_fields:  # Fields populated by locate_images_along_route
+    route_identifier:
+      name: "MP_Pre"
+      type: "TEXT"
+      length: 6
+      alias: "Prefix"
+    route_measure:
+      name: "MP_Num"
+      type: "DOUBLE"
+      length: null
+      alias: "Milepost"
+  custom_fields:  # Project-specific fields populated using expressions
+    custom1:
+      name: "RR"
+      type: "TEXT"
+      length: 6
+      alias: "Railroad Code"
+      expression: "config.project.rr_mark"
+#    You can define additional custom fields as needed:
+#    custom2:
+#      name: "FieldName"
+#      type: "TEXT"
+#      length: 12
+#      alias: "Field Alias"
+#      expression: ""
+
+# ------------------------------------------------------------------------------
+# 🛰️ GPS CORRECTION / SMOOTHING – Outlier Detection Configuration
+# ------------------------------------------------------------------------------
+# Controls the detection and flagging of GPS noise using deviation,
+# heading angle, proximity spacing, and (optionally) distance from route.
+#
+# Key Concepts:
+#   - Points are compared against their neighbors (with a smoothing window)
+#   - Multiple criteria must fail to be flagged as outliers
+#   - Optionally logs a debug CSV for visualization/troubleshooting
+#
+# Parameters:
+#   deviation_threshold_m: Max lateral distance (in meters) from midpoint line
+#   angle_bounds_deg: Acceptable angle between forward and backward bearings
+#   proximity_check_range_m: Allowed step spacing variance
+#   max_route_dist_deviation_m: Allowed distance drift from centerline (if provided)
+#   smoothing_window: Number of neighbors before/after to evaluate
+#   outlier_reason_threshold: Minimum failed criteria to flag outlier
+#
+# Example:
+#   If a point is >0.5m from midpoint, angle is outside [175, 185],
+#   and spacing is outside ±0.75m, it may be flagged (if ≥2 checks fail).
+# ------------------------------------------------------------------------------
+gps_smoothing:
+  capture_spacing_meters: 5.0
+  deviation_threshold_m: 0.5
+  angle_bounds_deg: [175, 185]
+  proximity_check_range_m: 0.75
+  max_route_dist_deviation_m: 0.5
+  smoothing_window: 2
+  outlier_reason_threshold: 2
+
+# ------------------------------------------------------------------------------
+# 🖼️ IMAGE OUTPUT
+# ------------------------------------------------------------------------------
+#
+# This section controls how images are:
+#   - 📛 Renamed and copied using structured filenames
+#   - 🏷️ Tagged with EXIF/XMP metadata during the "Update Metadata" stage
+#
+# ------------------------------------------------------------------------------
+# 🧠 Expression Engine (Used in filename_settings and metadata_tags)
+# ------------------------------------------------------------------------------
+#
+# Values are defined using string-based expressions, resolved dynamically from:
+#   - `"field.FIELDNAME"` → OID feature attribute
+#   - `"config.KEY"` → Project, camera, or tool settings
+#   - `"'Literal string'"` → Hardcoded literal value (use single quotes to preserve spacing)
+#
+# 🔧 Supported format transforms:
+#   - `.float(n)` → Format number to `n` decimal places
+#   - `.int` → Convert to integer
+#   - `.date(fmt)` → Format datetime using strftime codes
+#   - `.strip(chars)` → Remove specific characters
+#   - `.lower` / `.upper` → Convert string case
+#
+# ✨ Notes:
+#   - All values are evaluated as strings unless formatting is applied
+#   - Missing/null fields are skipped silently
+#   - List-based values (e.g., XPKeywords) are joined with semicolons
+# ------------------------------------------------------------------------------
+# 📛 FILENAME GENERATION
+# ------------------------------------------------------------------------------
+#
+# Controls how output filenames are generated using a format string with named parts.
+#
+# Each `{key}` in the `format:` string maps to an entry in `parts:`.
+# Expressions are resolved using the expression engine above.
+#
+# 🧪 Example:
+#   With:
+#     config.project.slug = "RMI25100"
+#     field.RR = "BNSF"
+#     field.MP_Pre = "W"
+#     field.MP_Num = 20.123
+#     field.AcquisitionDate = 2025-04-05 11:30:05Z
+#     field.Reel = 0001
+#     field.Frame = 000234
+#
+#   Resulting filename:
+#     RMI25100_BNSF_W20.123_20250405T113005Z_RL0001_FR000234.jpg
+image_output:
+  folders:
+    parent: "panos"
+    original: "original"
+    enhanced: "enhanced"
+    renamed: "final"
+  filename_settings:
+    format: "{project_slug}_{rr}_{mp_pre}{mp_num}_{capture_datetime}_RL{reel}_FR{frame}.jpg"
+    format_no_lr: "{project_slug}_{rr}_{capture_datetime}_RL{reel}_FR{frame}.jpg"
+    parts:
+      project_slug: "config.project.slug"
+      rr: "field.RR"
+      mp_pre: "field.MP_Pre"
+      mp_num: "field.MP_Num.float(3)"
+      capture_datetime: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
+      reel: "field.Reel"
+      frame: "field.Frame"
+
+# ------------------------------------------------------------------------------
+# 🏷️ METADATA TAGGING
+# ------------------------------------------------------------------------------
+#
+# Controls EXIF/XMP metadata tags written to each image via ExifTool.
+# Each tag is assigned:
+#   - A string expression
+#   - Or a list of expressions (joined with semicolons, e.g., for XPKeywords)
+#
+# Expression behavior is documented in the shared engine section above.
+#
+# 🧪 Example:
+#   ImageDescription: "field.RR + ' MP ' + field.MP_Pre + '-' + field.MP_Num.float(3)"
+#   Resolves to: "BNSF MP W-123.456"
+  metadata_tags:
+    Artist: "config.project.company"
+    Copyright: "'© ' + now.year + ' ' + config.project.company"
+    Software: "config.camera.software"
+    Make: "config.camera.make"
+    Model: "config.camera.model"
+    SerialNumber: "config.camera.sn"
+    FirmwareVersion: "config.camera.firmware"
+    ImageDescription: "field.RR + ' MP ' + field.MP_Pre + '-' + field.MP_Num.float(3)"
+    XPComment: "config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
+    XPKeywords:
+      - "config.project.company"
+      - "360 Imagery"
+      - "Panoramic"
+      - "Oriented Imagery"
+      - "Railroad"
+      - "config.project.rr_name"
+      - "config.project.rr_mark"
+      - "config.camera.model"
+      - "field.MP_Pre + '-' + field.MP_Num.float(3)"
+      - "config.project.description"
+      - "config.project.number"
+    GPano:
+      UsePanoramaViewer: "True"
+      CaptureSoftware: ""
+      StitchingSoftware: "config.camera.stitching_software"
+      ProjectionType: "equirectangular"
+      PoseHeadingDegrees: "field.CameraHeading"
+      PosePitchDegrees: "field.CameraPitch"
+      PoseRollDegrees: "field.CameraRoll"
+      InitialViewHeadingDegrees: "field.CameraHeading"
+      InitialViewPitchDegrees: "field.CameraPitch"
+      InitialViewRollDegrees: "field.CameraRoll"
+      InitialHorizontalFOVDegrees: 75.0
+      CroppedAreaLeftPixels: 0
+      CroppedAreaTopPixels: 0
+      CroppedAreaImageWidthPixels: "config.camera.image_width"
+      CroppedAreaImageHeightPixels: "config.camera.image_height"
+      FullPanoWidthPixels: "config.camera.image_width"
+      FullPanoHeightPixels: "config.camera.image_height"
+      FirstPhotoDate: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
+      LastPhotoDate: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
+      SourcePhotosCount: "config.camera.source_photos"
+      ExposureLockUsed: "True"
+
+# ------------------------------------------------------------------------------
+# ☁️ AWS CLOUD EXPORT & HOSTING
+# ------------------------------------------------------------------------------
+# This section defines parameters used for both uploading images to AWS S3
+# and generating public image URLs for hosted Oriented Imagery services.
+#
+# Used by:
+#   - copy_to_aws.py            → For uploading images in batches with resume support
+#   - generate_oid_service.py   → For rewriting ImagePath with public URLs
+#
+# ─── Authentication Options ───────────────────────────────────────────────────
+# AWS credentials can be provided using any of the following methods:
+#   1. Environment variables      (recommended for automation)
+#   2. Plaintext access keys      (fallback for development only)
+#   3. Secure keyring             (enabled via `keyring_aws`)
+#
+# keyring_aws            (bool)   - If true, retrieves AWS credentials from keyring
+# keyring_service_name   (str)    - Optional override for keyring service name
+#
+# access_key             (str)    - Fallback AWS Access Key (used if keyring is false)
+# secret_key             (str)    - Fallback AWS Secret Key (used if keyring is false)
+#
+# ─── Upload Settings ──────────────────────────────────────────────────────────
+# region                 (str)    - AWS region of your S3 bucket (e.g., "us-east-2")
+# s3_bucket              (str)    - Name of the target S3 bucket
+# s3_bucket_folder       (expr)   - Expression to define folder path in S3 bucket
+#                                  Example: "config.project.number + '/' + config.project.rr_mark"
+#
+# skip_existing          (bool)   - If true, skip uploading files already logged
+# use_acceleration       (bool)   - If true, enables S3 Transfer Acceleration
+# max_workers            (int/str)- Number of threads for upload concurrency
+#                                  Can be fixed (e.g., 16) or relative (e.g., "cpu*2")
+# retries                (int)    - Number of retry attempts for failed uploads
+# upload_batch_size      (int)    - Number of files uploaded per batch (enables cancel points)
+# allow_cancel_file_trigger (bool)- If true, allows upload cancellation via 'cancel_copy.txt'
+#
+# ─── Lambda / Publishing ──────────────────────────────────────────────────────
+# lambda_role_arn (str) - IAM Role ARN assumed by the Lambda progress monitor.
+# Required Permissions:
+#   - "s3:ListBucket"         on your S3 bucket
+#   - "s3:GetObject"          on your bucket/folder (e.g., "rmi-orient-img/*")
+#   - "cloudwatch:PutMetricData" (optional, for monitoring/logging)
+# The role must have trust policy allowing Lambda service to assume it.
+# ------------------------------------------------------------------------------
+
+aws:
+  region: <YOUR_REGION>  # e.g., "us-east-2"
+  s3_bucket: <YOUR_BUCKET_NAME>  # e.g., "test-orient-img"
+  s3_bucket_folder: "config.project.slug"
+  use_acceleration: true
+
+  skip_existing: true
+  max_workers: 16           # Accepts fixed integer (e.g., 16) or pattern like "cpu*2"
+  retries: 3
+  upload_batch_size: 25     # Enables cancellation checks between batch groups
+  allow_cancel_file_trigger: true
+
+  keyring_aws: true
+  keyring_service_name: aws_keyring
+
+  # Access credentials should only be included for development testing
+  access_key: "<ACCESS_KEY_ID>"
+  secret_key: "<SECRET_ACCESS_KEY>"
+
+  lambda_role_arn: <YOUR_LAMBDA_ROLE_ARN>  # IAM Role ARN for Lambda progress monitor
+
+# ------------------------------------------------------------------------------
+# 🌐 PORTAL SERVICE PUBLISHING
+# ------------------------------------------------------------------------------
+# This section defines parameters for publishing the final Oriented Imagery
+# Dataset (OID) as a hosted service using ArcGIS Online or Enterprise Portal.
+#
+# It is used by the `generate_oid_service.py` utility and the
+# "Generate OID Service" ArcGIS Pro toolbox tool.
+#
+# ─── Parameters ───────────────────────────────────────────────────────────────
+#
+# project_folder     (str)   - Portal folder name where the service item will
+#                              be created. Can be a literal string or a dynamic
+#                              expression like "config.project.number".
+#
+# share_with         (str)   - Sharing level for the published service:
+#                                 "PRIVATE"       → Only visible to owner
+#                                 "ORGANIZATION"  → Shared with your org
+#                                 "PUBLIC"        → Shared with everyone
+#
+# add_footprint      (str)   - Whether to include the OID footprint layer as a
+#                              sublayer of the service:
+#                                 "FOOTPRINT"     → Include footprint layer (default)
+#                                 "NO_FOOTPRINT"  → Omit the footprint
+#
+# portal_tags        (list)  - List of tags to attach to the service item.
+#                              Each tag can be a static string or an expression
+#                              referencing config values. These will be joined
+#                              with commas in the service metadata.
+#
+# summary            (str)   - Text summary (description) of the service item.
+#                              Can include string expressions referencing
+#                              project metadata.
+#
+# ─── Example Result ───────────────────────────────────────────────────────────
+#
+# With:
+#   project.number = "25-100"
+#   project.rr_name = "BNSF"
+#   project.description = "Hi-rail imagery capture for Chicago Sub"
+#
+# And:
+#   project_folder: "config.project.number"
+#   portal_tags: ["config.project.number", "Oriented Imagery"]
+#   summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
+#
+# You get:
+#   Folder:     "25-100"
+#   Tags:       "25-100, Oriented Imagery"
+#   Summary:    "Oriented Imagery for 25-100 BNSF - Hi-rail imagery capture for Chicago Sub"
+#
+# ─── Notes ────────────────────────────────────────────────────────────────────
+# - All expressions are resolved using resolve_expression() from config_loader.
+# - If publishing fails, check portal sign-in status in ArcGIS Pro.
+# ------------------------------------------------------------------------------
+portal:
+  project_folder: "config.project.number"  # Or otherwise name
+  share_with: "PRIVATE"                    # Options: PRIVATE, ORGANIZATION, PUBLIC
+  add_footprint: "FOOTPRINT"               # Options: FOOTPRINT, NO_FOOTPRINT
+  portal_tags:
+    - "config.project.number"
+    - "Oriented Imagery"
+  summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
+
+# ------------------------------------------------------------------------------
+# 🌍 REVERSE GEOCODING
+# ------------------------------------------------------------------------------
+# Controls how location names (City, State, Country) are applied to images
+# based on their GPS coordinates. This step is handled by the geocode_images.py
+# script and is typically run after all GPS corrections are complete.
+#
+# Supported methods:
+#   - "exiftool": Uses ExifTool's internal Geolocation module.
+#
+# Location tags written may include:
+#   - City / State / Country (EXIF)
+#   - LocationShownCity / ProvinceState / CountryName (XMP/IPTC-Ext)
+#
+# Supported ExifTool Configs:
+#   - "default" (no config file used; built-in DB of cities with population > 2000)
+#   - "geolocation500" (uses config file that points to Geolocation500 DB)
+#   - "geocustom" (uses config file that points to a custom geolocation DB built by user
+#     as descrived in https://exiftool.org/geolocation.html)
+#
+# ⚠️ To use geolocation500:
+#   1. Download: https://exiftool.org/Geolocation500-20250311.zip
+#   2. Place the unzipped database in a known location.
+#   3. Set 'geolocation500_config' to the .config file.
+#   4. In that config file, define the absolute path:
+#        $Image::ExifTool::Geolocation::geoDir = '/ABSOLUTE/PATH/TO/Geolocation500';
+#   ➤ Note: Relative paths in .config are not supported.
+#
+# ⚠️ To use geocustom:
+#   1. Use "build_geolocation" utility script from Exiftool (see https://exiftool.org/geolocation.html)
+#   2. Place the unzipped database in a known location.
+#   3. Set 'geocustom_config' to the .config file.
+#   4. In that config file, define the absolute path:
+#        $Image::ExifTool::Geolocation::geoDir = '/ABSOLUTE/PATH/TO/[NameOfYourCustomGeoDB]"';
+#   ➤ Note: Relative paths in .config are not supported.
+geocoding:
+  method: "exiftool"
+  exiftool_geodb: "geolocation500"  # Options: default, geolocation500, geocustom
+  geoloc500_config_path: "templates/exiftool/geolocation500.config"
+  geocustom_config_path: "templates/exiftool/geocustom.config"
+
+# --------------------------------------------------------------------
+# 🖼️ IMAGE ENHANCEMENT CONFIGURATION
+# --------------------------------------------------------------------
+# Applies automated enhancement to Mosaic 360 imagery using OpenCV.
+# Tuned for panoramic outdoor railroad scenes, this includes:
+#
+# ✅ White balance correction
+# ✅ Local contrast adjustment (CLAHE)
+# ✅ Optional sharpening
+# ✅ Gentle brightness recovery (if image is too dark)
+# ✅ Optional saturation boost for visual clarity
+#
+# 🛠️ This runs after Mosaic Processor, before renaming or tagging.
+# 🧠 Enhancements are applied in this order:
+#    1. White balance
+#    2. CLAHE contrast enhancement
+#    3. Saturation boost (if enabled)
+#    4. Sharpening (if enabled)
+#    5. Brightness recovery (if enabled)
+# --------------------------------------------------------------------
+image_enhancement:
+  enabled: true               # Master switch for image enhancement
+  dry_run: false
+  adaptive: true              # Enable adaptive tuning for CLAHE
+  max_workers: 16             # For high throughput without overloading
+  auto_generate_profile: true
+  profile_json: "enhancement_profile.json"
+  ai_assist: true
+  interval: 10
+
+  # ----------------------------------------------------------------
+  # 🗂️ OUTPUT MODE
+  # ----------------------------------------------------------------
+  output:
+    mode: "directory"         # Options:
+                              #   "overwrite" – Replace original images
+                              #   "suffix"    – Add suffix (e.g., _enh.jpg)
+                              #   "directory" – Save to a new folder
+    suffix: "_enh"            # Suffix for output if mode = "suffix"
+
+  # ----------------------------------------------------------------
+  # ⚪ WHITE BALANCE SETTINGS
+  # ----------------------------------------------------------------
+  apply_white_balance: true
+  white_balance:
+    enabled: true
+    method: "gray_world"      # Options:
+                              #   "gray_world" – Balance RGB to average intensity
+                              #   "simple"     – OpenCV SimpleWB (more aggressive)
+
+  # ----------------------------------------------------------------
+  # 🔳 CLAHE LOCAL CONTRAST ENHANCEMENT
+  # ----------------------------------------------------------------
+  apply_contrast_enhancement: true
+  clahe:
+    enabled: true
+    tile_grid_size: [8, 8]           # Size of local regions for CLAHE
+    contrast_thresholds: [60, 80]    # For adaptive clip limit
+                                     # contrast < 60 → use clip_limit_high
+                                     # contrast >= 60 → use clip_limit_low
+    clip_limit_low: 1.5              # CLAHE strength for normal images
+    clip_limit_high: 2.5             # CLAHE strength for low contrast scenes
+    # min_contrast_to_enhance: 85    # (Optional) Skip CLAHE if contrast too high
+
+  # ----------------------------------------------------------------
+  # ✴️ OPTIONAL SHARPENING
+  # ----------------------------------------------------------------
+  apply_sharpening: true
+  sharpen:
+    enabled: true
+    # min_contrast_to_sharpen: 50    # (Optional) Only sharpen if contrast is high enough
+    kernel:
+      - [ 0, -0.3,  0 ]
+      - [ -0.3,  2.6, -0.3 ]
+      - [ 0, -0.3,  0 ]
+
+  # ----------------------------------------------------------------
+  # 💡 BRIGHTNESS RECOVERY (GENTLE BOOST)
+  # ----------------------------------------------------------------
+  brightness_recovery: true
+  brightness:
+    enabled: true
+    threshold: 110           # Only apply if brightness falls below this value
+    factor: 1.1              # Multiplier to gently lift brightness (e.g., 1.1 = +10%)
+
+  # ----------------------------------------------------------------
+  # 🌈 SATURATION BOOST
+  # ----------------------------------------------------------------
+  apply_saturation_boost: true
+  saturation_boost:
+    enabled: true
+    factor: 1.1              # Multiply saturation (1.1 = +10%)
+
+# ----------------------------------------------------------------
+# ORCHESTRATOR CONFIG
+# ----------------------------------------------------------------
+orchestrator:
+  # Enable or disable waits before specific steps.
+  wait_between_steps: false
+
+  # Number of seconds to pause BEFORE executing each step listed in `wait_before_step`.
+  # This gives the user time to cancel, prepare, or manually inspect state before proceeding.
+  wait_duration_sec: 60  # e.g., wait 1 minute before each step listed
+
+  # List of step keys where a pause should occur BEFORE the step starts.
+  # Step keys must match those defined in the toolbox (e.g., "copy_to_aws", "generate_service").
+  # Useful for long-running, irreversible, or cloud-based operations.
+  wait_before_step:
+    - add_images
+    - smooth_gps
+    - enhance_images
+    - rename_images
+    - geocode
+    - build_footprints
+    - deploy_lambda_monitor
+    - generate_service
+
+  # Enable or disable OID backups before specific steps.
+  backup_oid_between_steps: true
+
+  # List of step keys where an OID snapshot should be saved BEFORE the step runs.
+  # This protects against data loss during critical or irreversible operations.
+  backup_before_step:
+    - smooth_gps
+    - enhance_images
+    - rename_images
+    - generate_service
+
+  # Location of the shared backup geodatabase where OID snapshots will be stored.
+  # Backups are named like: OID_before_{step}_{timestamp}
+  oid_backup_fgdb: "backups/oid_snapshots.gdb"
+
+# ----------------------------------------------------------------
+# OPENAI CONFIG
+# ----------------------------------------------------------------
+openai:
+  keyring_openai: false
+  keyring_service_name: openai_keyring
+  api_key: <YOUR_API_KEY>
+  model: "gpt-4o"

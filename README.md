@@ -1,23 +1,30 @@
 
 # 🧰 RMI 360 Imaging Workflow Python Toolbox
 
-![Version](https://img.shields.io/badge/version-v1.0.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4%2B-green)
+![Version](https://img.shields.io/badge/version-v1.1.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4%2B-green)
 
-A modular, camera-agnostic workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
+A modular workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
 
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.
+
+_Tested using ArcGIS Pro 3.4.3 and 3.5.0._
 
 ---
 
 ## 📦 Overview
 
-- 🖼️ Image enhancement (contrast, white balance, sharpening)
-- 🏷️ EXIF metadata tagging
-- 🗂️ File renaming and organization
+- 🎞️ Processes captured imagery using Mosaic Processor (with support for MistikaVR or MosaicStitcher)
 - 🧭 ArcGIS Oriented Imagery Dataset (OID) creation and enrichment
+- 🏷️ EXIF metadata tagging
+- 🛣️ Linear referencing support for image positioning
+- 🧩 Custom attributing based on config-driven logic
+- 🌍 Geocoding of image locations using spatial reference datasets
+- 🗂️ File renaming and organization
 - ☁️ AWS S3 upload with resumable transfer logic
 - 📈 Lambda-based progress monitoring and status dashboard
-- 🌍 Geocoding of image locations using spatial reference datasets
+- 📊 HTML & JSON reporting of process steps and status
+- 🖼️ _Experimental:_ Image enhancement (contrast, white balance, sharpening)
+  - _Note: This feature is under active development. Current output may show visible seam lines. A fix is planned for a future release._
 
 ---
 
@@ -44,9 +51,13 @@ rmi-360-workflow-pyt/
 │   └── esri_oid_fields_registry.yaml   # ESRI OID field definitions
 ├── tools/                              # ArcGIS tool wrappers
 ├── utils/                              # Reusable logic
+│   ├── manager/                        # Managers (ConfigManager, LogManager, PathManager, ProgressorManager)
+│   ├── shared/                         # Shared utilities
+│   └── validators/                     # Validators
 ├── aws_lambdas/                        # Lambda upload status functions
 ├── templates/                          # HTML report templates
-├── docs/                               # Full documentation set
+├── legacy_docs/                        # Full documentation set
+├── docs/                               # Updated documentation set  (TODO: implement using sphinx)
 ├── dev_docs/                           # Future development documentation
 ```
 
@@ -80,6 +91,8 @@ python -m utils.validate_config --file configs/config.yaml
 
 5. Use individual tools or run the full pipeline with `ProcessMosaic360Workflow`.
 
+
+
 ---
 
 ## 🎞 Mosaic Processor Usage Notes
@@ -94,15 +107,15 @@ python -m utils.validate_config --file configs/config.yaml
 
 ## 📖 Documentation Index
 
-- 📘 [Toolbox Overview](./docs/TOOL_OVERVIEW.md)
-- 🔧 [Tool Guides](./docs/TOOL_GUIDES.md)
-- ⚙️ [Configuration Guide](./docs/CONFIG_GUIDE.md)
-- 🧰 [Shared Utilities](./docs/UTILITIES.md)
-- ☁️ [AWS Setup Guide](./docs/AWS_SETUP_GUIDE.md)
-- 📋 [Schema Changelog](./docs/SCHEMA_CHANGELOG.md)
+- 📘 [Toolbox Overview](docs_legacy/TOOL_OVERVIEW.md)
+- 🔧 [Tool Guides](docs_legacy/TOOL_GUIDES.md)
+- ⚙️ [Configuration Guide](docs_legacy/CONFIG_GUIDE.md)
+- 🧰 [Shared Utilities](docs_legacy/UTILITIES.md)
+- ☁️ [AWS Setup Guide](docs_legacy/AWS_SETUP_GUIDE.md)
+- 📋 [Schema Changelog](docs_legacy/SCHEMA_CHANGELOG.md)
 - 📄 [TODO (Developer Tasks)](./TODO.md)
 - 📝 [Changelog](./CHANGELOG.md)
-- 🛣 [Roadmap](./docs/ROADMAP.md)
+- 🛣 [Roadmap](docs_legacy/ROADMAP.md)
 
 ---
 

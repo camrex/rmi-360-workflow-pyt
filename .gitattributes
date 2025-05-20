@@ -1,0 +1,5 @@
+# Exclude test directories from GitHub release archives
+tests/ export-ignore
+tests/** export-ignore
+test_data/ export-ignore
+test_data/** export-ignore
