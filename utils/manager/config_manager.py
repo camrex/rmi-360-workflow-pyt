@@ -377,7 +377,6 @@ class ConfigManager:
         Returns:
             ProgressorManager: Progress tracker instance
         """
-        from utils.manager.progressor_manager import ProgressorManager
         return ProgressorManager(total=total, label=label, step=step, log_manager=self.get_logger())
 
     TOOL_VALIDATORS = {
