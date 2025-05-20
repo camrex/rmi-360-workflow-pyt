@@ -156,7 +156,14 @@ def backup_oid(
         gdb_path = cfg.paths.backup_gdb
         gdb_path.parent.mkdir(parents=True, exist_ok=True)
         if not gdb_path.exists():
-            arcpy_mod.management.CreateFileGDB(str(gdb_path.parent), gdb_path.name)
+            try:
+                arcpy_mod.management.CreateFileGDB(str(gdb_path.parent), gdb_path.name)
+            except arcpy_mod.ExecuteError as e:
+                # Check if error is due to GDB already existing
+                if "already exists" in str(e):
+                    logger.debug(f"GDB already exists (race condition): {gdb_path}")
+                else:
+                    raise
         oid_desc = arcpy_mod.Describe(oid_fc)
         oid_name = path_mod(oid_desc.name).stem
         timestamp = datetime_mod.now().strftime("%Y%m%d_%H%M")
