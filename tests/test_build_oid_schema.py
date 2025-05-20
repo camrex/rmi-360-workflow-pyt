@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from utils import build_oid_schema
 
