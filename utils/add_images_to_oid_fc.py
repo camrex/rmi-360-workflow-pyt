@@ -31,7 +31,6 @@
 __all__ = ["add_images_to_oid"]
 
 import arcpy
-from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import load_field_registry
@@ -86,6 +85,10 @@ def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str) -> None:
             return
 
         registry = load_field_registry(cfg)
+        if not registry:
+            logger.error("Failed to load field registry", error_type=ValueError, indent=1)
+            return
+
         imagery_type = registry.get("OrientedImageryType", {}).get("oid_default", "360")
 
         logger.info(f"Adding images from '{image_folder}' (including subfolders) to OID: {oid_fc_path}", indent=1)
