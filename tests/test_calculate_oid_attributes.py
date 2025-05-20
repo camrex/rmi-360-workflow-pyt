@@ -1,7 +1,12 @@
-import sys, types
-sys.modules.setdefault("arcpy", types.ModuleType("arcpy"))
-sys.modules["arcpy"].da = types.ModuleType("arcpy.da")
-sys.modules["arcpy"].management = types.ModuleType("arcpy.management")
+import sys
+import types
+# Create arcpy package and submodules in sys.modules
+arcpy_mod = types.ModuleType("arcpy")
+arcpy_da = types.ModuleType("arcpy.da")
+arcpy_mgmt = types.ModuleType("arcpy.management")
+sys.modules["arcpy"] = arcpy_mod
+sys.modules["arcpy.da"] = arcpy_da
+sys.modules["arcpy.management"] = arcpy_mgmt
 
 import pytest
 from unittest.mock import patch, MagicMock
