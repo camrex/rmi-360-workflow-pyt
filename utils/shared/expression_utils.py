@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Provides utility functions to resolve expressions defined in YAML config or field registry.
@@ -31,14 +31,15 @@ from __future__ import annotations
 import os
 import yaml
 from datetime import datetime
-from typing import Union, Optional, Any
+from typing import Union, Optional, Any, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 REQUIRED_REGISTRY_KEYS = {"name", "type", "length", "alias", "category", "expr", "oid_default", "orientation_format"}
 
 
-def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = None) -> dict:
-    from utils.manager.config_manager import ConfigManager    
+def load_field_registry(cfg: "ConfigManager", category_filter: Optional[str] = None) -> dict:
     """
     Loads and validates a field registry from a YAML file.
 
@@ -63,12 +64,14 @@ def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = Non
 
     if not os.path.exists(registry_path):
         logger.error(f"Field registry file does not exist: {registry_path}", error_type=FileNotFoundError)
+        return {}
 
     with open(registry_path, "r", encoding="utf-8") as f:
         registry = yaml.safe_load(f)
 
     if not isinstance(registry, dict):
         logger.error(f"Field registry did not parse as a dictionary: {registry_path}", error_type=ValueError)
+        return {}
 
     validated = {}
     for key, field in registry.items():
@@ -91,8 +94,7 @@ def load_field_registry(cfg: ConfigManager, category_filter: Optional[str] = Non
     return validated
 
 
-def resolve_expression(expr: Union[str, float, int], cfg: ConfigManager, row: Optional[dict] = None) -> Any:
-    from utils.manager.config_manager import ConfigManager    
+def resolve_expression(expr: Union[str, float, int], cfg: "ConfigManager", row: Optional[dict] = None) -> Any:
     """
     Resolves an expression string using values from a configuration and optional data row.
     
@@ -168,8 +170,7 @@ def _resolve_field_expr(expr: str, row: dict) -> str:
     return value
 
 
-def _resolve_config_expr(expr: str, cfg: ConfigManager) -> Any:
-    from utils.manager.config_manager import ConfigManager    
+def _resolve_config_expr(expr: str, cfg: "ConfigManager") -> Any:
     """
     Resolves a value from a ConfigManager using dot-separated key paths with optional modifiers.
 

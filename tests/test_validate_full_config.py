@@ -1,6 +1,6 @@
-import pytest
 from types import SimpleNamespace
-from utils.validate_full_config import validate_full_config
+from utils.validators.validate_full_config import validate_full_config
+from utils.shared.rmi_exceptions import ConfigValidationError
 
 class DummyLogger:
     def __init__(self):
@@ -28,10 +28,6 @@ mod['utils.manager.config_manager'] = SimpleNamespace(SUPPORTED_SCHEMA_VERSIONS=
 class DummyConfigValidationError(Exception):
     pass
 mod['utils.exceptions'] = SimpleNamespace(ConfigValidationError=DummyConfigValidationError)
-import utils.validate_full_config
-setattr(utils.validate_full_config, 'ConfigValidationError', DummyConfigValidationError)
-
-from utils.exceptions import ConfigValidationError
 
 def dummy_validate_type(val, name, typ, cfg):
     if name == "debug_messages" and not isinstance(val, bool):

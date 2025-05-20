@@ -46,12 +46,15 @@ Publishes an Oriented Imagery Dataset (OID) as a web service, enabling access in
 - OID feature class
 - Project YAML config with service settings
 
----
+--
 
-## 📤 Outputs
+## 📤 Output
 
-- Published OID web service
-- Service URL and logs
+| Output | Description |
+|--------|-------------|
+| OID Feature Class | Copied and updated with public AWS URLs |
+| Portal Item | Hosted oriented imagery item published using ArcGIS Pro credentials |
+| Sharing | Controlled via `portal.share_with` (`PRIVATE`, `ORGANIZATION`, or `PUBLIC`) |
 
 ---
 
@@ -73,15 +76,7 @@ generate_oid_service:
 
 ---
 
-## 📤 Output
 
-| Output | Description |
-|--------|-------------|
-| OID Feature Class | Copied and updated with public AWS URLs |
-| Portal Item | Hosted oriented imagery item published using ArcGIS Pro credentials |
-| Sharing | Controlled via `portal.share_with` (`PRIVATE`, `ORGANIZATION`, or `PUBLIC`) |
-
----
 
 ## ✅ Validation
 

@@ -1,8 +1,4 @@
-import os
-import tempfile
-import shutil
 import stat
-from pathlib import Path
 from utils import folder_stats
 
 def test_folder_stats_empty(tmp_path):

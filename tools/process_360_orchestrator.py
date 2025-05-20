@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   Orchestrates the full end-to-end Mosaic 360 image processing pipeline within ArcGIS Pro.
@@ -107,7 +107,6 @@ class Process360Workflow(object):
         Converts ArcPy tool parameters to a dictionary keyed by parameter name.
         Ensures all GPBoolean and 'enable_*' parameters are Python bools for skip logic.
         """
-        from utils.shared.arcpy_utils import str_to_bool
         result = {}
         for param in parameters:
             # Convert GPBoolean and all 'enable_*' params to bool
@@ -221,7 +220,6 @@ class Process360Workflow(object):
         params.append(config_file_param)
 
         # 4. Start From Step [3]
-        step_label_map = {label: name for _, name, label in self.STEP_FUNCTIONS}
         label_to_name = {label: name for _, name, label in self.STEP_FUNCTIONS}
         name_to_label = {name: label for _, name, label in self.STEP_FUNCTIONS}
         step_labels = [label for _, _, label in self.STEP_FUNCTIONS]
@@ -522,7 +520,11 @@ class Process360Workflow(object):
 
         if cfg.get("debug_messages", False):
             logger.custom("Debug mode enabled from config", indent=1, emoji="🔍")
-       
+
+        if not p.get("oid_fc"):
+            logger.error("OID dataset not specified; cannot continue.", indent=1)
+            return
+
         cfg.validate()
 
         # Build steps + order
@@ -600,7 +602,7 @@ class Process360Workflow(object):
 
         if generate_report_flag:
             try:
-                report_data["config"] = cfg
+                report_data["config"] = cfg.raw
                 slug = cfg.get("project.slug", "unknown")
                 json_path = self.os_mod.path.join(paths.report, f"report_data_{slug}.json")
 

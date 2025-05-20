@@ -1,5 +1,3 @@
-import pytest
-from collections import defaultdict
 from utils import gather_metrics
 
 def make_fake_cursor(rows):

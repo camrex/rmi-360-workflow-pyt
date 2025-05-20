@@ -1,7 +1,19 @@
+import sys, types
+# ------------------------------------------------------------------
+# Provide a lightweight stub so importing production modules succeeds
+# in CI environments without ArcGIS.
+arcpy_stub = types.ModuleType("arcpy")
+arcpy_stub.Exists = lambda *_args, **_kw: False
+arcpy_stub.oi = types.ModuleType("arcpy.oi")
+arcpy_stub.oi.AddImagesToOrientedImageryDataset = lambda **_kw: None
+sys.modules.setdefault("arcpy", arcpy_stub)
+sys.modules.setdefault("arcpy.oi", arcpy_stub.oi)
+
 import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 from utils.add_images_to_oid_fc import add_images_to_oid, warn_if_multiple_reel_info
+
 
 @pytest.fixture
 def mock_cfg():
@@ -40,11 +52,11 @@ def test_add_images_to_oid_missing_oid(monkeypatch, mock_cfg, tmp_path):
     monkeypatch.setattr("arcpy.Exists", lambda x: False)
     with patch("utils.add_images_to_oid_fc.load_field_registry", return_value={"OrientedImageryType": {"oid_default": "360"}}):
         add_images_to_oid(mock_cfg, "mock_oid_fc")
-    mock_cfg.get_logger().error.assert_any_call("OID does not exist at path: mock_oid_fc", error_type=FileNotFoundError)
+    mock_cfg.get_logger().error.assert_any_call("OID does not exist at path: mock_oid_fc", error_type=FileNotFoundError, indent=1)
 
 def test_add_images_to_oid_missing_images(monkeypatch, mock_cfg, tmp_path):
     mock_cfg.paths.original = tmp_path
     monkeypatch.setattr("arcpy.Exists", lambda x: True)
     with patch("utils.add_images_to_oid_fc.load_field_registry", return_value={"OrientedImageryType": {"oid_default": "360"}}):
         add_images_to_oid(mock_cfg, "mock_oid_fc")
-    mock_cfg.get_logger().error.assert_any_call(f"No .jpg files found in image folder or its subfolders: {tmp_path}", error_type=RuntimeError)
+    mock_cfg.get_logger().error.assert_any_call(f"No .jpg files found in image folder or its subfolders: {tmp_path}", error_type=RuntimeError, indent=1)

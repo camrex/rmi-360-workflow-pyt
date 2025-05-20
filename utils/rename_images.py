@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Resolves dynamic filename parts from config expressions (e.g., reel, MP, timestamp),
@@ -72,7 +72,7 @@ def _copy_and_delete(old_path, new_path, delete_originals):
         if delete_originals:
             os.remove(old_path)
     except (PermissionError, OSError) as e:
-        raise Exception(f"Failed to copy/delete file: {e}")
+        raise Exception(f"Failed to copy/delete file: {e}") from e
 
 
 def _update_row(cursor, row_dict, fields, new_path, filename):

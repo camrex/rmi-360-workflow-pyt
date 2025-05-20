@@ -1,4 +1,4 @@
-from .manager import *
+from .manager import PathManager, LogManager, ConfigManager, ProgressorManager
 from .shared import *
 from .validators import *
 
@@ -22,7 +22,6 @@ from .rename_images import *
 from .smooth_gps_noise import *
 from .step_runner import *
 from .update_linear_and_custom import *
-from .version import *
 
 __all__ = [
     "PathManager", "LogManager", "ConfigManager", "ProgressorManager",
@@ -33,5 +32,5 @@ __all__ = [
     "build_oid_schema", "build_step_funcs", "calculate_oid_attributes", "copy_to_aws",
     "correct_gps_outliers", "create_oid_feature_class", "deploy_lambda_monitor", "enhance_images",
     "generate_oid_service", "generate_report", "geocode_images", "mosaic_processor",
-    "rename_images", "smooth_gps_noise", "step_runner", "update_linear_and_custom", "version"
+    "rename_images", "smooth_gps_noise", "step_runner", "update_linear_and_custom"
 ]

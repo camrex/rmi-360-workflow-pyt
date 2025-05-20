@@ -6,7 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Checks the existence and field completeness of the configured OID schema template feature class.
@@ -14,7 +14,7 @@
 #   using build_oid_schema.py and revalidate. Verifies registry-defined fields, custom schema blocks,
 #   and standard categories. Logs descriptive errors and raises on failure.
 #
-# File Location:        /utils/schema_validator.py
+# File Location:        /utils/shared/schema_validator.py
 # Called By:            create_oid_feature_class.py, orchestrator, config_loader
 # Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils, utils/shared/exceptions, utils/shared/build_oid_schema
 # Ext. Dependencies:    arcpy, typing

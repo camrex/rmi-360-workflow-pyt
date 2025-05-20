@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   ArcPy Tool class to rename images based on project metadata and EXIF/XMP tagging rules
@@ -113,9 +113,9 @@ class RenameAndTagImagesTool(object):
         This method renames image files and updates their EXIF/XMP metadata according to rules defined in a
         configuration file. It logs progress and results throughout the process.
         """
-        project_folder = parameters[0].value
+        project_folder = parameters[0].valueAsTest
         oid_fc = parameters[1].valueAsText
-        delete_originals = parameters[2].value
+        delete_originals = bool(parameters[2].value)
         config_file = parameters[3].valueAsText
 
         cfg = ConfigManager.from_file(

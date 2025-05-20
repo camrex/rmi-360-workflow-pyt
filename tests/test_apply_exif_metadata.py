@@ -1,4 +1,3 @@
-import pytest
 from utils.apply_exif_metadata import _extract_required_fields, _resolve_tags
 
 def test_extract_required_fields_simple():

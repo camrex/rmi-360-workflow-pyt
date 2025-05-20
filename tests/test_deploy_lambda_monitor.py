@@ -1,8 +1,5 @@
-import types
-import io
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from datetime import datetime, timezone
-from pathlib import Path
 
 from utils.deploy_lambda_monitor import get_final_image_files, count_final_images, build_progress_json
 
@@ -39,7 +36,7 @@ def test_count_final_images_found(tmp_path):
     (tmp_path / "img2.jpeg").write_bytes(b"")
     count = count_final_images(cfg)
     assert count == 2
-    logger.info.assert_called_with(f"Found 2 JPEG images in {tmp_path}")
+    logger.custom.assert_called_with(f"Found 2 JPEG images in {tmp_path}", indent=2, emoji="📸")
 
 def test_count_final_images_none(tmp_path):
     class DummyPaths:
@@ -50,7 +47,7 @@ def test_count_final_images_none(tmp_path):
     cfg.get_logger.return_value = logger
     count = count_final_images(cfg)
     assert count == 0
-    logger.warning.assert_called_with(f"No JPEG images found in {tmp_path}")
+    logger.warning.assert_called_with(f"No JPEG images found in {tmp_path}", indent=2)
 
 def test_build_progress_json_defaults():
     cfg = MagicMock()

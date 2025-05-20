@@ -2,9 +2,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 from utils import build_oid_schema
 
-from unittest.mock import MagicMock
-from utils import build_oid_schema
-import pytest
 
 def test_create_oid_schema_template_success():
     # Mocks for arcpy management functions

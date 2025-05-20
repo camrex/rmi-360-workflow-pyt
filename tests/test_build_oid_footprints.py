@@ -16,7 +16,7 @@ def test_resolve_spatial_reference_valid(monkeypatch):
     monkeypatch.setattr("utils.build_oid_footprints.arcpy.SpatialReference", FakeSpatialReference)
     sr = resolve_spatial_reference(cfg, logger)
     assert sr.wkid == 3857
-    logger.info.assert_called_with("📐 Using projected coordinate system: WKID 3857")
+    logger.custom.assert_called_with(f"Using projected coordinate system: WKID 3857", indent=2, emoji="📐")
 
 def test_resolve_spatial_reference_missing(monkeypatch):
     cfg = MagicMock()
@@ -32,7 +32,7 @@ def test_resolve_geographic_transformation():
     cfg.get.return_value = "WGS_1984_(ITRF00)_To_NAD_1983"
     result = resolve_geographic_transformation(cfg, logger)
     assert result == "WGS_1984_(ITRF00)_To_NAD_1983"
-    logger.info.assert_called_with("🌍 Applying geographic transformation: WGS_1984_(ITRF00)_To_NAD_1983")
+    logger.custom.assert_called_with(f"Applying geographic transformation: WGS_1984_(ITRF00)_To_NAD_1983", indent=2, emoji="🌍")
 
 def test_get_output_path():
     class FakeDesc:

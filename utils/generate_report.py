@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Loads report data from JSON, attaches config if needed, and uses Jinja2 templates to render
@@ -207,7 +207,7 @@ def generate_report_from_json(cfg: ConfigManager, json_path: str):
 
         # Reattach config if missing or externally supplied
         if cfg:
-            report_data["config"] = cfg
+            report_data["config"] = cfg.raw
         else:
             logger.warning("Config not found in report JSON — some paths or logos may not resolve", indent=2)
 

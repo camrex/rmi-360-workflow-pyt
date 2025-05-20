@@ -1,11 +1,12 @@
 
 # 🧾 LogManager Utility
 
-> **Module:** `utils/log_manager.py`  
+> **Module:** `utils/manager/log_manager.py`  
 > **Project:** RMI 360 Imaging Workflow Python Toolbox  
 > **Author:** RMI Valuation, LLC  
-> **Version:** 1.0.0  
-> **Created:** 2025-05-10
+> **Version:** 1.1.0  
+> **Created:** 2025-05-10  
+> **Last Updated:** 2025-05-20
 
 ---
 
@@ -110,5 +111,7 @@ log.info("Exporting", context={"bucket": "prod-bucket", "file_count": 24})
 
 ## 🔁 Dependencies
 
-- Internal: `utils/path_manager.py`
+```
+- Internal: `utils/manager/path_manager.py`
 - External: `html`, `json`, `contextlib`, `time`, `datetime`
+```

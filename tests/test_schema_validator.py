@@ -2,10 +2,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 from utils import schema_validator
 
-import pytest
-from unittest.mock import MagicMock, patch
-from utils import schema_validator
-
 class DummyConfigValidationError(Exception):
     pass
 
@@ -92,3 +88,4 @@ def test_ensure_valid_oid_schema_template_no_auto_create(mock_load_registry, moc
     with patch('utils.schema_validator.ConfigValidationError', DummyConfigValidationError):
         schema_validator.ensure_valid_oid_schema_template(cfg)
     # Should not raise, just log error and return
+    assert cfg.get_logger.return_value.error.called, "Error should be logged when template is missing and auto_create is False"

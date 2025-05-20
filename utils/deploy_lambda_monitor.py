@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Deploys and configures AWS Lambda functions for monitoring upload progress to S3. Sets up a CloudWatch
@@ -43,13 +43,14 @@ from utils.shared.expression_utils import resolve_expression
 from utils.shared.aws_utils import get_aws_credentials
 
 
-def zip_lambda(source_path: str, arcname: str) -> bytes:
+def zip_lambda(source_path: str, arcname: str, logger) -> bytes:
     """
     Packages a Python source file into an in-memory ZIP archive.
     
     Args:
         source_path: Path to the source file to be zipped.
         arcname: Name to assign to the file within the ZIP archive.
+        logger: Logger instance for logging messages.
     
     Returns:
         The bytes of the ZIP archive containing the source file.
@@ -188,7 +189,7 @@ def ensure_lambda_progress_monitor(cfg, lambda_client, role_arn):
         logger.custom("Deploying UploadProgressMonitor Lambda...", indent=2, emoji="🚀")
 
     try:
-        zipped = zip_lambda(cfg.paths.lambda_pm_path, "lambda_progress_monitor.py")
+        zipped = zip_lambda(cfg.paths.lambda_pm_path, "lambda_progress_monitor.py", logger)
     except FileNotFoundError as e:
         logger.error(f"Lambda zip failed: {e}", indent=3)
         raise
@@ -226,7 +227,7 @@ def ensure_lambda_deactivator(cfg, lambda_client, role_arn):
     # 🔍 Resolve Lambda source files relative to config file
     deactivator_path = cfg.paths.lambda_dr_path
     try:
-        zipped = zip_lambda(deactivator_path, "disable_rule.py")
+        zipped = zip_lambda(deactivator_path, "disable_rule.py", logger)
     except FileNotFoundError as e:
         logger.error(f"Lambda zip failed: {e}", indent=3)
         raise

@@ -93,6 +93,7 @@ from utils.geocode_images import geocode_images
 geocode_images(
     oid_fc="C:/GIS/OID.gdb/Images",
     config_file="C:/Projects/config.yaml",
+    project_folder="C:/Projects/MyProject",
     messages=None
 )
 ```

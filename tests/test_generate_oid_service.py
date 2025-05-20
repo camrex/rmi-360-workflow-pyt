@@ -81,7 +81,7 @@ def test_ensure_portal_folder_creates(monkeypatch):
     # Test folder does not exist
     gis = DummyGIS([{"title": "existing"}])
     ensure_portal_folder(gis, "newfolder", dummy_logger)
-    dummy_logger.warning.assert_any_call("Portal folder 'newfolder' does not exist. Attempting to create it...")
+    dummy_logger.info.assert_any_call("Portal folder 'newfolder' does not exist. Attempting to create it...")
     dummy_logger.info.assert_any_call("✅ Portal folder 'newfolder' created successfully.")
     # Test folder exists
     dummy_logger.reset_mock()

@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   ArcPy Tool class that geotags images from an Oriented Imagery Dataset (OID)
@@ -24,6 +24,7 @@
 #   (Ensure these docs are current; update if needed.)
 #
 # Parameters:
+#   Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project.
 #   Oriented Imagery Feature Class {oid_fc} (Feature Class): The OID containing images to geotag.
 #   Config File (optional) {config_file} (File): Optional config.yaml with geolocation DB and output settings.
 #
@@ -86,7 +87,7 @@ class GeocodeImagesTool:
     def execute(self, parameters, messages):
         project_folder = parameters[0].valueAsText
         oid_fc = parameters[1].valueAsText
-        config_file = parameters[2].valueAsText
+        config_file = parameters[2].valueAsText or None
 
         cfg = ConfigManager.from_file(
             path=config_file,  # may be None

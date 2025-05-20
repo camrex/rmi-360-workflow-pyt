@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   ArcPy Tool class that creates a new Oriented Imagery Dataset (OID) feature class
@@ -25,7 +25,7 @@
 # Parameters:
 #   - Output Oriented Imagery Dataset {output_fc} (Feature Class): Output OID feature class to create.
 #   - Spatial Reference {spatial_ref} (Spatial Reference): Optional custom spatial reference for the output.
-#   - Config File {config_file} (File): Optional path to a YAML config file with project and schema settings.
+#   - Config File {config_file} (File): Required path to a YAML config file with project and schema settings.
 #   - Project Folder {project_folder} (Folder): Root folder for this project.
 #
 # Notes:

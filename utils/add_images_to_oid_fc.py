@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Scans and validates a folder of enhanced/final images, checks for reel_info
@@ -73,14 +73,17 @@ def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str) -> None:
 
         if not arcpy.Exists(oid_fc_path):
             logger.error(f"OID does not exist at path: {oid_fc_path}", error_type=FileNotFoundError, indent=1)
+            return
 
         if not image_folder.is_dir():
             logger.error(f"Image folder not found: {image_folder}", error_type=FileNotFoundError, indent=1)
+            return
 
         # Use pathlib to collect all .jpg files recursively
-        jpg_files = list(Path(image_folder).rglob("*.jpg"))
+        jpg_files = list(image_folder.rglob("*.jpg"))
         if not jpg_files:
             logger.error(f"No .jpg files found in image folder or its subfolders: {image_folder}", error_type=RuntimeError, indent=1)
+            return
 
         registry = load_field_registry(cfg)
         imagery_type = registry.get("OrientedImageryType", {}).get("oid_default", "360")

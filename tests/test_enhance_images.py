@@ -1,6 +1,5 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from utils.enhance_images import enhance_images_in_oid
+from utils.enhance_images import enhance_images_in_oid  # Used indirectly in line 59
 
 def test_process_images_in_parallel_logic(monkeypatch):
     # Import the helper from the module (now defined inside enhance_images_in_oid)
@@ -27,8 +26,6 @@ def test_process_images_in_parallel_logic(monkeypatch):
     assert all(isinstance(d, float) for d in brightness_deltas)
     assert all(isinstance(d, float) for d in contrast_deltas)
     assert failed_exif_copies == []
-
-from unittest.mock import patch
 
 @patch('arcpy.da.SearchCursor')
 @patch('utils.enhance_images.process_images_in_parallel')

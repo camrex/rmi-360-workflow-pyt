@@ -1,5 +1,5 @@
 
-# 🧰 Shared Utilities – RMI 360 Imaging Workflow Python Toolboxx
+# 🧰 Shared Utilities – RMI 360 Imaging Workflow Python Toolbox
 
 This guide explains the utility functions and helpers that power nearly every tool in the Mosaic 360 Toolbox. These are mostly located in the `utils/` directory and are reused across tools, orchestrators, and validation scripts.
 

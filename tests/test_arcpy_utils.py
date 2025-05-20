@@ -1,5 +1,5 @@
 import pytest
-from utils import arcpy_utils
+from utils.shared import arcpy_utils
 from unittest.mock import MagicMock
 
 def test_validate_fields_exist_all_present():

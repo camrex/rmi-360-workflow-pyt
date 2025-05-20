@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Resolves tag expressions from config for each image in an OID feature class, then generates
@@ -33,6 +33,7 @@
 __all__ = ["update_metadata_from_config"]
 
 import os
+import re
 import subprocess
 import arcpy
 from typing import Dict, Any
@@ -52,7 +53,8 @@ def _extract_required_fields(tags, oid_fc=None):
             for item in tag_block:
                 recurse_tags(item)
         elif isinstance(tag_block, str):
-            required_fields.update([part.split('.')[1] for part in tag_block.split() if part.startswith("field.")])
+            matches = re.findall(r"field\.([a-zA-Z_][a-zA-Z0-9_]*)", tag_block)
+            required_fields.update(matches)
     recurse_tags(tags)
     required_fields.update(["X", "Y"])
     # Only require QCFlag if it exists in the feature class
@@ -68,6 +70,7 @@ def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str
     Recursively flattens nested tag dictionaries for ExifTool, e.g.,
     {'GPano': {'PoseHeadingDegrees': '...'}} -> {'XMP-GPano:PoseHeadingDegrees': value}
     """
+    logger = cfg.get_logger()
     flat: Dict[str, str] = {}
     for tag_name, value in tags.items():
         if isinstance(value, dict):
@@ -84,7 +87,7 @@ def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str
                         val = str(val)
                     keywords.append(val)
                 except Exception as e:
-                    print(f"Failed to resolve tag {tag_name}: {e}")
+                    logger.error(f"Failed to resolve tag {tag_name}: {e}", indent=1)
             flat[f"{prefix}{tag_name}"] = ";".join(keywords)
         else:
             # String or numeric expression
@@ -94,7 +97,7 @@ def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str
                     val = str(val)
                 flat[f"{prefix}{tag_name}"] = val
             except Exception as e:
-                print(f"Failed to resolve tag {tag_name}: {e}")
+                logger.error(f"Failed to resolve tag {tag_name}: {e}", indent=1)
     return flat
 
 
@@ -114,7 +117,7 @@ def _write_exiftool_args(cfg, tags, rows, cursor_fields):
         row_dict = dict(zip(cursor_fields, row))
         path = row_dict["ImagePath"]
         if not os.path.exists(path):
-            print(f"Image path does not exist: {path}")
+            logger.warning(f"Image path does not exist: {path}")
             continue
 
         resolved_tags = _resolve_tags(cfg, tags, row_dict)

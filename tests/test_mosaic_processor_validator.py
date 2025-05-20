@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 # Import the validator function
 from utils.validators import mosaic_processor_validator

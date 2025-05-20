@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Runs the Mosaic Processor in three sequential stages:
@@ -162,7 +162,6 @@ def run_processor_stage(
 
     result = subprocess.run(cmd, cwd=exe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
 
-    logger.success(f"=== {stage_name} Complete ===", indent=1)
     log_f.write(f"=== {stage_name} ===\n")
     log_f.write(result.stdout or "")
     log_f.write("\n\n")
@@ -171,6 +170,8 @@ def run_processor_stage(
         logger.error(f"{stage_name} failed. See log for details.", error_type=RuntimeError, indent=0)
         logger.info(f"📄 Log written to: {log_path}", indent=1)
         return False
+
+    logger.success(f"=== {stage_name} Complete ===", indent=1)
 
     return True
 
@@ -195,7 +196,7 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
     else:
         logger.info("Frame numbers are padded. Skipping padding.", indent=3)
 
-    for root, dirs, files in os.walk(output_dir):
+    for root, _dirs, files in os.walk(output_dir):
         for f in files:
             if f.lower().endswith(".jpg"):
                 match = re.match(r"^(.*_)(\d+)\.jpg$", f)
@@ -264,11 +265,12 @@ def run_mosaic_processor(
 
             # === Step 1: Render + Reel Fix ===
             logger.info("=== Render + Reel Fix Started ===", indent=1)
-            number_of_reels = len(os.listdir(input_dir))  # TODO: Is this the best way to get the number of reels? (just need to get number of folders in input_dir)
+            reel_folders = [d for d in os.listdir(input_dir) if (Path(input_dir) / d).is_dir()]
+            number_of_reels = len(reel_folders)  # TODO: Is this the best way to get the number of reels? (just need to get number of folders in input_dir)
             logger.info(f"Found {number_of_reels} reel(s) in {input_dir}", indent=2)
 
             # TODO get folder names from input_dir and add logger.info for each folder
-            for folder in os.listdir(input_dir):
+            for folder in reel_folders:
                 logger.info(f"🎞️ {folder}", indent=3)
             if not run_processor_stage(
                     cfg, input_dir, output_dir, start_frame, end_frame,

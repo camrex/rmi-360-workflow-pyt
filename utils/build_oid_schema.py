@@ -6,7 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Builds a geodatabase table to serve as a schema template for OID creation. It integrates
@@ -87,7 +87,7 @@ def create_oid_schema_template(
             backup_name = f"{paths.oid_schema_template_name}_{timestamp}"
             arcpy_mod.management.Rename(paths.oid_schema_template_path, backup_name)
             logger.info(f"Existing schema template found and backed up as: {backup_name}", indent=0)
-        arcpy_mod.management.CreateTable(paths.oid_schema_gdb, paths.oid_schema_template_path)
+        arcpy_mod.management.CreateTable(paths.oid_schema_gdb, paths.oid_schema_template_name)
         fields: list[tuple[str, str, Optional[int], str]] = []
 
         # Load registry-defined fields (assumes prior validation)
@@ -119,7 +119,8 @@ def create_oid_schema_template(
                     )
                     added_fields += 1
                 except Exception as e:
-                    logger.warning(f"Failed to add field '{name}' (type={ftype}, length={length}) to schema: {e}", indent=1)
+                    logger.error(f"Failed to add field '{name}' (type={ftype}, length={length}) to schema: {e}", indent=1)
+                    raise
         logger.success(f"OID schema template table created: {paths.oid_schema_template_path} with {added_fields} fields.", indent=0)
         return paths.oid_schema_template_path
     except Exception as e:

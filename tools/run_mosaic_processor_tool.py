@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   ArcPy Tool class that wraps the Mosaic Processor command-line tool to render 360° video imagery
@@ -27,7 +27,6 @@
 #   - Project Folder {project_folder} (Folder): Root folder for the Mosaic 360 project. Logs and imagery will be saved here.
 #   - Input Reels Folder {input_dir} (Folder): Directory containing raw `.mp4` video folders from the Mosaic 360 camera.
 #   - Config File {config_file} (File): Optional path to a YAML config file. If omitted, uses the default.
-#   - Mosaic GRP Template Path (optional) {grp_path} (File): GRP calibration file for stitching, typically provided by Mosaic.
 #   - Start Frame (optional) {start_frame} (Long): First frame to render. Leave blank to start from beginning.
 #   - End Frame (optional) {end_frame} (Long): Last frame to render. Leave blank to render until end.
 #
@@ -126,16 +125,16 @@ class RunMosaicProcessorTool(object):
         Executes the Mosaic Processor tool using parameters provided by the ArcPy framework.
         
         Extracts input values for the Mosaic 360 imagery project, including project folder, input reels, configuration,
-        GRP template, and optional frame range, then invokes the Mosaic Processor with these settings.
+        and optional frame range, then invokes the Mosaic Processor with these settings.
         """
         project_folder = parameters[0].valueAsText
         input_dir = parameters[1].valueAsText
-        config_file = parameters[2].valueAsText
+        config_file = parameters[2].valueAsText or None
         start_frame = parameters[3].valueAsText
         end_frame = parameters[4].valueAsText
 
         cfg = ConfigManager.from_file(
-            path=config_file,  # may be None
+            path=config_file,
             project_base=project_folder,
             messages=messages
         )

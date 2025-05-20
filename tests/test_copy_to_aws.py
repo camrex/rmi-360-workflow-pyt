@@ -1,9 +1,5 @@
-import os
-import tempfile
 import csv
-from pathlib import Path
 from unittest.mock import MagicMock
-import pytest
 from utils.copy_to_aws import (
     collect_upload_tasks,
     parse_uploaded_keys_from_log,
@@ -44,7 +40,7 @@ def test_parse_uploaded_keys_from_log(tmp_path):
     assert "s3key1" in keys
     assert "s3key3" in keys
     assert "s3key2" not in keys
-    logger.info.assert_called()
+    logger.custom.assert_called()
 
 def test_calculate_summary():
     # log_rows: (timestamp, f_path, s3_key, status, error, size_bytes, duration)

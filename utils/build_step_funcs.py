@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Maps each pipeline step in the 360° imagery workflow to a labeled function. Supports conditional
@@ -45,8 +45,6 @@ from utils.build_oid_footprints import build_oid_footprints
 from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
 from utils.generate_oid_service import generate_oid_service
-
-from utils.shared.arcpy_utils import str_to_bool
 
 StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
 
