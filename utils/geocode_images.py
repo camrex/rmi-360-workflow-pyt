@@ -33,12 +33,13 @@ ___all___ = ["geocode_images"]
 import os
 import subprocess
 import arcpy
+from typing import List, Optional
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.arcpy_utils import validate_fields_exist
 
 
-def get_exiftool_cmd(cfg, logger):
+def get_exiftool_cmd(cfg: ConfigManager, logger) -> Optional[List[str]]:
     method = cfg.get("geocoding.method", "").lower()
     if method != "exiftool":
         logger.warning("Geocoding skipped (unsupported method)", indent=1)
