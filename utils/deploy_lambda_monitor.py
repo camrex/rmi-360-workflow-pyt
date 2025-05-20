@@ -153,7 +153,7 @@ def upload_progress_json(s3_client, progress, bucket, slug, logger):
         progress: The progress status dictionary to upload.
         bucket: The name of the S3 bucket.
         slug: Project slug used to generate the filename.
-        logger:
+        logger: Logger instance for logging upload status and errors.
     """
     filename = f"progress_{slug}.json"
     try:
