@@ -1,27 +1,29 @@
+# Import manager classes
 from .manager import PathManager, LogManager, ConfigManager, ProgressorManager
-from .shared import *
-from .validators import *
 
-from .add_images_to_oid_fc import *
-from .apply_exif_metadata import *
-from .assign_group_index import *
-from .build_oid_footprints import *
-from .build_oid_schema import *
-from .build_step_funcs import *
-from .calculate_oid_attributes import *
-from .copy_to_aws import *
-from .correct_gps_outliers import *
-from .create_oid_feature_class import *
-from .deploy_lambda_monitor import *
-from .enhance_images import *
-from .generate_oid_service import *
-from .generate_report import *
-from .geocode_images import *
-from .mosaic_processor import *
-from .rename_images import *
-from .smooth_gps_noise import *
-from .step_runner import *
-from .update_linear_and_custom import *
+# Import modules (not their contents)
+from . import shared
+from . import validators
+from . import add_images_to_oid_fc
+from . import apply_exif_metadata
+from . import assign_group_index
+from . import build_oid_footprints
+from . import build_oid_schema
+from . import build_step_funcs
+from . import calculate_oid_attributes
+from . import copy_to_aws
+from . import correct_gps_outliers
+from . import create_oid_feature_class
+from . import deploy_lambda_monitor
+from . import enhance_images
+from . import generate_oid_service
+from . import generate_report
+from . import geocode_images
+from . import mosaic_processor
+from . import rename_images
+from . import smooth_gps_noise
+from . import step_runner
+from . import update_linear_and_custom
 
 __all__ = [
     "PathManager", "LogManager", "ConfigManager", "ProgressorManager",
