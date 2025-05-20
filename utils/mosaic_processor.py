@@ -190,26 +190,38 @@ def pad_frame_numbers(output_dir: str, logger) -> int:
     renamed_count = 0
     logger.info(f"Checking for frame number padding in: {output_dir}", indent=2)
 
-    padded = False  # TODO: Add support for checking if frame numbers are padded (Check if any file has a 6-digit frame number)
-    if not padded:
-        logger.info("Frame numbers are not padded, padding...", indent=3)
-    else:
-        logger.info("Frame numbers are padded. Skipping padding.", indent=3)
-
+    # Check for any unpadded JPG file (less than 6 digits in the number)
+    unpadded_found = False
     for root, _dirs, files in os.walk(output_dir):
         for f in files:
             if f.lower().endswith(".jpg"):
-                match = re.match(r"^(.*_)(\d+)\.jpg$", f)
+                match = re.match(r"^.*_(\d{1,5})\.jpg$", f)
+                if match:
+                    unpadded_found = True
+                    break
+        if unpadded_found:
+            break
+
+    if unpadded_found:
+        logger.info("Frame numbers are not padded, padding...", indent=3)
+    else:
+        logger.info("Frame numbers are padded. Skipping padding.", indent=3)
+        logger.success("=== Pad frame numbers Complete ===", indent=1)
+        return 0
+
+    # Proceed with renaming
+    for root, _dirs, files in os.walk(output_dir):
+        for f in files:
+            if f.lower().endswith(".jpg"):
+                match = re.match(r"^(.*_)(\d{1,5})\.jpg$", f)
                 if match:
                     prefix, num = match.groups()
-                    if len(num) < 6:
-                        padded = num.zfill(6)
-                        new_name = f"{prefix}{padded}.jpg"
-                        old_path = os.path.join(root, f)
-                        new_path = os.path.join(root, new_name)
-                        os.rename(old_path, new_path)
-                        renamed_count += 1
-                        logger.debug(f"Renamed: {f} → {new_name}", indent=4)
+                    new_name = f"{prefix}{num.zfill(6)}.jpg"
+                    old_path = os.path.join(root, f)
+                    new_path = os.path.join(root, new_name)
+                    os.rename(old_path, new_path)
+                    renamed_count += 1
+                    logger.debug(f"Renamed: {f} → {new_name}", indent=4)
 
     logger.info(f"Total files padded: {renamed_count}", indent=3)
     logger.success("=== Pad frame numbers Complete ===", indent=1)
@@ -266,10 +278,9 @@ def run_mosaic_processor(
             # === Step 1: Render + Reel Fix ===
             logger.info("=== Render + Reel Fix Started ===", indent=1)
             reel_folders = [d for d in os.listdir(input_dir) if (Path(input_dir) / d).is_dir()]
-            number_of_reels = len(reel_folders)  # TODO: Is this the best way to get the number of reels? (just need to get number of folders in input_dir)
+            number_of_reels = len(reel_folders)
             logger.info(f"Found {number_of_reels} reel(s) in {input_dir}", indent=2)
 
-            # TODO get folder names from input_dir and add logger.info for each folder
             for folder in reel_folders:
                 logger.info(f"🎞️ {folder}", indent=3)
             if not run_processor_stage(
