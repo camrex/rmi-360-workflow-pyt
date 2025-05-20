@@ -52,7 +52,7 @@ def test_build_step_funcs_structure():
     ]
     assert set(step_funcs.keys()) == set(expected_keys)
     # Check structure
-    for key, entry in step_funcs.items():
+    for _key, entry in step_funcs.items():
         assert "label" in entry
         assert callable(entry["func"])
         # skip is optional
