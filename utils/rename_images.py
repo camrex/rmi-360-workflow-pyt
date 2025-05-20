@@ -94,7 +94,7 @@ def _write_rename_log(rename_log_path, log_rows):
             writer.writeheader()
             writer.writerows(log_rows)
     except PermissionError as e:
-        raise Exception(f"Failed to write rename log: {e}")
+        raise Exception(f"Failed to write rename log: {e}") from e
 
 
 def rename_images(cfg: ConfigManager, oid_fc: str, delete_originals: bool = False, enable_linear_ref: bool = True):
