@@ -1,4 +1,3 @@
-import pytest
 from utils.build_step_funcs import build_step_funcs, skip_enhance_images, skip_if_copy_to_aws_disabled
 
 def test_skip_enhance_images():
@@ -13,27 +12,28 @@ def test_skip_if_copy_to_aws_disabled():
 
 def test_build_step_funcs_structure():
     # Minimal mocks for required functions and config
-    class DummyCfg: pass
+    class DummyCfg:
+        pass
     def dummy_func(*args, **kwargs): return "called"
     # Patch all used functions in the build_step_funcs module
     import sys
     mod = sys.modules["utils.build_step_funcs"]
-    setattr(mod, "run_mosaic_processor", dummy_func)
-    setattr(mod, "create_oriented_imagery_dataset", dummy_func)
-    setattr(mod, "add_images_to_oid", dummy_func)
-    setattr(mod, "assign_group_index", dummy_func)
-    setattr(mod, "enrich_oid_attributes", dummy_func)
-    setattr(mod, "smooth_gps_noise", dummy_func)
-    setattr(mod, "correct_gps_outliers", dummy_func)
-    setattr(mod, "update_linear_and_custom", dummy_func)
-    setattr(mod, "enhance_images_in_oid", dummy_func)
-    setattr(mod, "rename_images", dummy_func)
-    setattr(mod, "update_metadata_from_config", dummy_func)
-    setattr(mod, "geocode_images", dummy_func)
-    setattr(mod, "build_oid_footprints", dummy_func)
-    setattr(mod, "deploy_lambda_monitor", dummy_func)
-    setattr(mod, "copy_to_aws", dummy_func)
-    setattr(mod, "generate_oid_service", dummy_func)
+    mod.run_mosaic_processor = dummy_func
+    mod.create_oriented_imagery_dataset = dummy_func
+    mod.add_images_to_oid = dummy_func
+    mod.assign_group_index = dummy_func
+    mod.enrich_oid_attributes = dummy_func
+    mod.smooth_gps_noise = dummy_func
+    mod.correct_gps_outliers = dummy_func
+    mod.update_linear_and_custom = dummy_func
+    mod.enhance_images_in_oid = dummy_func
+    mod.rename_images = dummy_func
+    mod.update_metadata_from_config = dummy_func
+    mod.geocode_images = dummy_func
+    mod.build_oid_footprints = dummy_func
+    mod.deploy_lambda_monitor = dummy_func
+    mod.copy_to_aws = dummy_func
+    mod.generate_oid_service = dummy_func
     # Minimal params
     p = {
         "project_folder": "pf",

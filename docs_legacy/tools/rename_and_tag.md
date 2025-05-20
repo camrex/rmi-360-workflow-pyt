@@ -1,7 +1,7 @@
 # 🏷 Tool: Rename and Tag Images
 
 ## 🧰 Tool Name
-**05 – Rename and Tag Images**
+## 05 – Rename and Tag Images
 
 ---
 
@@ -34,7 +34,7 @@ Standardizes image filenames and applies metadata tags to images in preparation 
 ## ⚙️ Behavior / Logic
 
 1. Loads naming/tagging parameters from config.
-2. Iterates over images in input folder.
+2. Iterates over images in the input folder.
 3. Renames files according to convention.
 4. Writes EXIF/XMP metadata tags.
 5. Logs changes and errors.
@@ -45,14 +45,6 @@ Standardizes image filenames and applies metadata tags to images in preparation 
 
 - Folder of images
 - Project YAML config with naming/tagging rules
-
----
-
-## 📤 Outputs
-
-- Renamed images in output folder
-- Images with updated metadata tags
-- Logs of changes/errors
 
 ---
 
@@ -70,7 +62,7 @@ rename_and_tag:
 ```
 
 - Naming convention supports placeholders for project, date, sequence, etc.
-- Output folder is created if missing.
+- The output folder is created if missing.
 
 ---
 
@@ -79,15 +71,6 @@ rename_and_tag:
 - Python with `exiftool`, `pandas`
 - ArcGIS Pro
 - Project YAML config
-
----
-
-## ✅ Validation
-
-Validation is performed by the appropriate validator in `utils/validators` (not `validate_config.py`).
-- Checks that naming convention and tag fields are valid
-- Ensures output folder is writable
-- Validates EXIF tool path and config
 
 ---
 
@@ -207,10 +190,3 @@ Checks include:
 - ExifTool path is valid
 
 ---
-
-## 📝 Notes
-
-- This is the final processing step before upload (`copy_to_aws`) or service generation
-- Designed for batch‑safe execution (will not overwrite files silently)
-- Can be run multiple times — images are renamed and tagged independently
-- Best used after GPS correction and linear referencing are complete

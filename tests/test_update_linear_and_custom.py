@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from utils.update_linear_and_custom import compute_linear_and_custom_updates, update_linear_and_custom
 
@@ -27,6 +26,7 @@ def test_compute_linear_and_custom_updates_linear_and_custom():
     ulc.resolve_expression = dummy_resolve_expression
     try:
         new_row, updated = compute_linear_and_custom_updates(
+            cfg=MagicMock(),
             row=row,
             update_fields=update_fields,
             linear_fields=linear_fields,
@@ -58,6 +58,7 @@ def test_compute_linear_and_custom_updates_disable_linear():
     ulc.resolve_expression = dummy_resolve_expression
     try:
         new_row, updated = compute_linear_and_custom_updates(
+            cfg=MagicMock(),
             row=row,
             update_fields=update_fields,
             linear_fields=linear_fields,
@@ -103,3 +104,7 @@ def test_update_linear_and_custom_main_logic(mock_compute, mock_search, mock_upd
     update_linear_and_custom(mock_cfg, 'fake_oid_fc', centerline_fc=None, route_id_field=None, enable_linear_ref=False)
     mock_cfg.validate.assert_called_with(tool="update_linear_and_custom")
     assert mock_logger.info.called
+    # Verify specific log messages
+    mock_logger.success.assert_called_once()
+    # If you need to check the exact message:
+    # assert "Updated" in mock_logger.success.call_args[0][0]

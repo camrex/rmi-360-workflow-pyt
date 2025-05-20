@@ -1,7 +1,5 @@
-import pytest
 from unittest.mock import MagicMock, patch, mock_open, call
 from utils import mosaic_processor
-import os
 
 # ----------------------
 # Test build_mosaic_command
@@ -73,6 +71,7 @@ def test_run_processor_stage_success(mock_run):
         skip_render=False, skip_reel_fix=False, skip_gpx=False
     )
     assert result is True
+
 
 @patch('subprocess.run')
 def test_run_processor_stage_failure(mock_run):

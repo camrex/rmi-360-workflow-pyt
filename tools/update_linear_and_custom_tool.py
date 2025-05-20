@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   ArcPy Tool class to assign Milepost (MP) values and route identifiers via linear referencing
@@ -128,11 +128,11 @@ class UpdateLinearAndCustomTool(object):
         oid_fc = parameters[1].valueAsText
         centerline_fc = parameters[2].valueAsText
         route_id_field = parameters[3].valueAsText
-        enable_linear_ref = parameters[4].value if parameters[3].value is not None else True
+        enable_linear_ref = parameters[4].value if parameters[4].value is not None else True
         config_file = parameters[5].valueAsText
 
         cfg = ConfigManager.from_file(
-            path=config_file,  # may be None
+            path=config_file or None,
             project_base=project_folder,
             messages=messages
         )

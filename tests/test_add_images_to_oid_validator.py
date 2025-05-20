@@ -34,6 +34,7 @@ def test_validate_invalid_type(mock_cfg):
          patch("utils.validators.add_images_to_oid_validator.validate_field_block", return_value=True), \
          patch("utils.validators.add_images_to_oid_validator.validate_type", return_value=False):
         assert validator.validate(mock_cfg) is False
+    mock_cfg.get_logger().error.assert_called()
 
 def test_validate_invalid_default_value(mock_cfg):
     # oid_default is not in VALID_IMAGE_TYPES
@@ -42,4 +43,7 @@ def test_validate_invalid_default_value(mock_cfg):
          patch("utils.validators.add_images_to_oid_validator.validate_field_block", return_value=True), \
          patch("utils.validators.add_images_to_oid_validator.validate_type", return_value=True):
         assert validator.validate(mock_cfg) is False
-    mock_cfg.get_logger().error.assert_called()
+    mock_cfg.get_logger().error.assert_called_with(
+        "OrientedImageryType.oid_default must be one of: 360, Panorama, Standard, etc.",
+        error_type = validator.ConfigValidationError
+    )

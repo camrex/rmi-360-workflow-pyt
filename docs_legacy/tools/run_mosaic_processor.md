@@ -107,7 +107,7 @@ mosaic_processor:
 ## ✅ Validation
 
 Validation is performed by the appropriate validator in `utils/validators`.
-- Checks that input folder and output folder are valid
+- Checks that the input folder and output folder are valid
 - Ensures config options are present and correct
 - Validates image file types and required metadata fields
 

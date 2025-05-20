@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 from utils.assign_group_index import assign_group_index
 
 @pytest.fixture

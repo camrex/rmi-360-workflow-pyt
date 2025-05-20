@@ -6,7 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Constructs a new OID feature class using ArcGIS Pro’s CreateOrientedImageryDataset tool. Validates schema
@@ -81,9 +81,9 @@ def create_oriented_imagery_dataset(
     elif spatial_reference is None:
         sr = arcpy.SpatialReference(default_xy, default_z)
     else:
-        logger.error(f"Invalid spatial_reference: {spatial_reference}. Must be None, WKID (int), or "
-                     f"arcpy.SpatialReference.", error_type=ValueError, indent=1)
-        raise
+        msg = f"Invalid spatial_reference: {spatial_reference}. Must be None, WKID (int), or arcpy.SpatialReference."
+        logger.error(msg, error_type=ValueError, indent=1)
+        raise ValueError(msg)
 
     with cfg.get_progressor(total=2, label="Creating OID...") as progressor:
         # ✅ Ensure schema template is valid (and rebuild it if needed)
@@ -93,15 +93,6 @@ def create_oriented_imagery_dataset(
         logger.info(f"Creating Oriented Imagery Dataset at {output_fc_path}", indent=1)
 
         try:
-            logger.debug("Calling CreateOrientedImageryDataset with parameters:", indent=2)
-            logger.debug(f"out_dataset_path={output_gdb}", indent=3)
-            logger.debug(f"out_dataset_name={oid_name}", indent=3)
-            logger.debug(f"spatial_reference={sr}", indent=3)
-            logger.debug(f"elevation_source='DEM'", indent=3)
-            logger.debug(f"dem='https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer'", indent=3)
-            logger.debug(f"lod='17'", indent=3)
-            logger.debug(f"template={str(paths.oid_schema_template_path)}", indent=3)
-            logger.debug(f"has_z='ENABLED'", indent=3)
             arcpy.oi.CreateOrientedImageryDataset(
                 out_dataset_path=output_gdb,
                 out_dataset_name=oid_name,
@@ -114,6 +105,7 @@ def create_oriented_imagery_dataset(
             )
         except arcpy.ExecuteError as exc:
             logger.error(f"Arcpy failed while creating OID: {oid_name}: {exc}", error_type=RuntimeError, indent=1)
+            return output_fc_path  # or `raise` to propagate the error
 
         progressor.update(2)
 

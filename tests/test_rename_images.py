@@ -1,9 +1,4 @@
-import os
-import tempfile
-import shutil
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-import pytest
 
 from utils.rename_images import _resolve_fields, _get_unique_filename, _copy_and_delete
 

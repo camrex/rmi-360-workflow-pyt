@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Iterates through images referenced in an OID feature class and uses ExifTool to copy GPSPosition into the
@@ -59,7 +59,7 @@ def get_exiftool_cmd(cfg, logger):
 def build_geocode_args_and_log(rows, logger):
     lines = []
     log_entries = []
-    for oid, path, x, y in rows:
+    for oid, path, _x, _y in rows:
         if not os.path.exists(path):
             logger.warning(f"Image path does not exist: {path}", indent=1)
             continue
@@ -82,7 +82,11 @@ def write_args_and_log_files(args_file, log_file, lines, log_entries):
 def run_exiftool(cmd, args_file, logger):
     cmd = list(cmd) + ["-@", args_file]
     try:
-        subprocess.run(cmd, check=True)
+        completed = subprocess.run(cmd, capture_output=True, text=True)
+        completed.check_returncode()
+        logger.debug(completed.stdout)
+        if completed.stderr:
+            logger.warning(completed.stderr.strip(), indent=2)
         logger.success("Reverse geocoding completed.", indent=1)
     except subprocess.CalledProcessError as e:
         logger.error(f"ExifTool geocoding failed: {e}", indent=1)

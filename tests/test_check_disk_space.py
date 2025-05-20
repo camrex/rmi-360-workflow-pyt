@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import Mock
-from utils.check_disk_space import check_sufficient_disk_space, find_base_dir, get_folder_size
+from utils.shared.check_disk_space import check_sufficient_disk_space, find_base_dir
 
 class DummyLogger:
     def __init__(self):

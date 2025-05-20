@@ -1,3 +1,8 @@
+import sys, types
+sys.modules.setdefault("arcpy", types.ModuleType("arcpy"))
+sys.modules["arcpy"].da = types.ModuleType("arcpy.da")
+sys.modules["arcpy"].management = types.ModuleType("arcpy.management")
+
 import pytest
 from unittest.mock import patch, MagicMock
 from utils.calculate_oid_attributes import enrich_oid_attributes

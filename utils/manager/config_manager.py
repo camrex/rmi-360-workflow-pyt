@@ -1,12 +1,13 @@
 # =============================================================================
 # 🧠 Config Manager Utility (utils/manager/config_manager.py)
 # -----------------------------------------------------------------------------
-# Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360 Workflow Toolbox.
+# Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360
+#                      Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Centralized configuration manager for the toolbox. Wraps access to key config
@@ -15,7 +16,8 @@
 #
 # File Location:        /utils/manager/config_manager.py
 # Called By:            ArcGIS tools, orchestrators, log initializers
-# Int. Dependencies:    utils/manager/path_manager, utils/manager/log_manager, utils/validate_full_config, utils/expression_utils, utils/exceptions, utils/validators
+# Int. Dependencies:    utils/manager/path_manager, utils/manager/log_manager, utils/validate_full_config,
+#                       utils/expression_utils, utils/exceptions, utils/validators
 # Ext. Dependencies:    yaml, pathlib, typing, os
 #
 # Documentation:
@@ -28,6 +30,7 @@
 #   - Integrates tool-specific validators for robust schema enforcement
 # =============================================================================
 
+from __future__ import annotations
 import os
 import yaml
 from typing import Any, Optional, Union, Dict, List
@@ -92,17 +95,20 @@ class ConfigManager:
         """
         self._config = config
         self._config_path = config_path or config.get("__source__")
-        self._project_base = Path(project_base).resolve() if project_base else None
-        if self._project_base:
-            self._config["__project_root__"] = str(self._project_base)
-        if self._project_base:
-            from utils.manager.path_manager import PathManager
-            from utils.manager.log_manager import LogManager
-            self._paths = PathManager(project_base=self._project_base, config=self._config)
-            self._lm = LogManager(messages=None, config=self._config, path_manager=self._paths)
-        else:
-            self._paths = None
-            self._lm = None
+
+        # Validate project_base is provided
+        if not project_base:
+            raise ValueError("Project folder must be supplied when initializing ConfigManager. It is required for path"
+                             "resolution and logging operations.")
+
+        self._project_base = Path(project_base).resolve()
+        self._config["__project_base__"] = str(self._project_base)
+
+        # Initialize path and log managers
+        from utils.manager.path_manager import PathManager
+        from utils.manager.log_manager import LogManager
+        self._paths = PathManager(project_base=self._project_base, config=self._config)
+        self._lm = LogManager(messages=None, config=self._config, path_manager=self._paths)
 
     @classmethod
     def from_file(cls, path: Optional[str] = None, project_base: Optional[Union[str, Path]] = None, *,

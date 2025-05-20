@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Loads enhancement configuration, checks disk space, and processes all images in an OID
@@ -327,8 +327,9 @@ def enhance_single_image(original_path: Path, cfg: ConfigManager, logger):
     """
     img = cv2.imread(str(original_path))
     if img is None:
-        logger.warning(f"Skipping unreadable image: {original_path}", indent=2)
-        return None
+        err = f"Failed to read image: {original_path}"
+        logger.warning(err, indent=2)
+        return None, err
 
     output_mode = cfg.get("image_enhancement.output.mode", "directory")
     suffix = cfg.get("image_enhancement.output.suffix", "_enh")
@@ -350,25 +351,29 @@ def enhance_single_image(original_path: Path, cfg: ConfigManager, logger):
         elif f"\\{original_tag}\\" in path_str:
             out_path = Path(path_str.replace(f"\\{original_tag}\\", f"\\{enhanced_tag}\\", 1))
         else:
-            logger.warning(f"Could not locate '{original_tag}' in image path: {original_path}", indent=2)
-            return None
+            err = f"Could not locate '{original_tag}' in image path: {original_path}"
+            logger.warning(err, indent=2)
+            return None, err
         out_path.parent.mkdir(parents=True, exist_ok=True)
     else:
-        logger.error(f"Unknown output_mode: '{output_mode}'. Expected one of: overwrite, suffix, directory", indent=2)
-        return None
+        err = f"Unknown output_mode: '{output_mode}'. Expected one of: overwrite, suffix, directory"
+        logger.error(err, indent=2)
+        return None, err
 
     try:
         if not cv2.imwrite(str(out_path), enhanced):
-            logger.error(f"cv2 failed to write image to {out_path}", indent=2)
-            return None
+            err = f"cv2 failed to write image to {out_path}"
+            logger.error(err, indent=2)
+            return None, err
         # Copy EXIF metadata from original to enhanced image
         exiftool_path = cfg.paths.exiftool_exe
         copied = copy_exif_metadata(original_path, out_path, exiftool_path)
         if not copied:
             logger.warning(f"Failed to copy EXIF metadata from {original_path.name}", indent=3)
     except Exception as e:
-        logger.error(f"Failed to write image to {out_path}: {e}", indent=2)
-        return None
+        err = f"Failed to write image to {out_path}: {e}"
+        logger.error(err, indent=2)
+        return None, err
 
     log_row = [
         original_path.name,

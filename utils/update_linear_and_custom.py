@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Performs linear referencing of image points against an M-enabled centerline using LocateFeaturesAlongRoutes.
@@ -67,6 +67,9 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
         with arcpy.da.SearchCursor(projected_oid_fc, ["SHAPE@"]) as cursor:
             for (point_geom,) in cursor:
                 point = point_geom.centroid
+                if not routes:
+                    logger.warning("No route geometries found - skipping linear referencing.", indent=1)
+                    return {}
                 min_dist = min(route.queryPointAndDistance(point, use_percentage=False)[2] for route in routes)
                 max_dist = max(max_dist, min_dist)
         tolerance = round(max_dist + 5, 2)
@@ -143,7 +146,7 @@ def compute_linear_and_custom_updates(
             row[idx] = value
             update = True
     # Custom field updates
-    for key, target_field, expression, field_type in custom_field_defs:
+    for _, target_field, expression, field_type in custom_field_defs:
         try:
             # resolve_expression may raise
             value = resolve_expression(expression, cfg, row=context)

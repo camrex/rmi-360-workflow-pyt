@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Duplicates an existing OID feature class and updates its ImagePath values to point to
@@ -34,12 +34,16 @@ import arcpy
 import os
 from typing import Literal
 from arcgis.gis import GIS
+from urllib.parse import quote_plus
 
 from utils.manager.config_manager import ConfigManager
 
 
 def build_s3_url(bucket, region, bucket_folder, filename):
-    return f"https://{bucket}.s3.{region}.amazonaws.com/{bucket_folder}/{filename}"
+    return (
+        f"https://{bucket}.s3.{region}.amazonaws.com/"
+        f"{quote_plus(bucket_folder)}/{quote_plus(filename)}")
+
 
 def update_oid_image_paths(oid_fc, bucket, region, bucket_folder, logger):
     updated_count = 0
@@ -54,6 +58,7 @@ def update_oid_image_paths(oid_fc, bucket, region, bucket_folder, logger):
     logger.info(f"Updated {updated_count} image paths to AWS URLs.", indent=2)
     return updated_count
 
+
 def assemble_service_metadata(cfg, oid_name):
     service_name = f"{oid_name}"
     portal_folder = cfg.resolve(cfg.get("portal.project_folder", ""))
@@ -64,21 +69,47 @@ def assemble_service_metadata(cfg, oid_name):
     summary = cfg.resolve(cfg.get("portal.summary", ""))
     return service_name, portal_folder, share_with, add_footprint, tags_str, summary
 
+
 def ensure_portal_folder(gis, portal_folder, logger):
     try:
         user = gis.users.me
-        existing_folders = [f["title"] for f in user.folders]
+        existing_folders = []
+
+        try:
+            folder_gen = gis.content.folders.list(owner=user)
+        except Exception as e:
+            logger.error(f"Failed to list folders for user '{user.username}': {e}", error_type=RuntimeError)
+            return
+
+        for f in folder_gen:
+            folder_name = None
+
+            # First try: preferred attribute access (Folder objects in API 2.4.0+)
+            if hasattr(f, "name"):
+                folder_name = f.name
+
+            # Fallback: dictionary-style access if it's a dict or other edge type
+            elif isinstance(f, dict):
+                folder_name = f.get("title") or f.get("name")
+
+            if folder_name:
+                existing_folders.append(folder_name)
+            else:
+                logger.warning(f"⚠️ Could not extract folder name from object: {type(f)} → {f}", indent=2)
+
         if portal_folder not in existing_folders:
             logger.info(f"Portal folder '{portal_folder}' does not exist. Attempting to create it...", indent=2)
             try:
-                gis.content.folders.create(portal_folder)
+                gis.content.folders.create(folder=portal_folder, owner=user)
                 logger.info(f"✅ Portal folder '{portal_folder}' created successfully.", indent=2)
             except Exception as e:
-                logger.error(f"Failed to create portal folder '{portal_folder}': {e}", error_type=RuntimeError)
+                logger.error(f"❌ Failed to create portal folder '{portal_folder}': {e}", error_type=RuntimeError)
         else:
             logger.info(f"📁 Portal folder found: {portal_folder}", indent=2)
+
     except Exception as e:
-        logger.warning(f"Unable to check portal folders: {e}", indent=2)
+        logger.error(f"Portal folder check failed due to unexpected error: {e}", indent=2, error_type=RuntimeError)
+
 
 def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     """
@@ -95,6 +126,7 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     bucket_folder = cfg.resolve(cfg.get("aws.s3_bucket_folder"))
     if not all([bucket, region, bucket_folder]):
         logger.error("Missing required AWS values in config.yaml", error_type=ValueError, indent=2)
+        return None  # or `raise ValueError("AWS configuration incomplete")`
 
     # Derive output AWS OID path
     oid_gdb = os.path.dirname(oid_fc)

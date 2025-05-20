@@ -6,7 +6,7 @@
 # Version:            1.1.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-05-20
 #
 # Description:
 #   ArcPy Tool class that detects and flags suspect GPS points in an Oriented Imagery Dataset
@@ -121,8 +121,8 @@ class SmoothGPSNoiseTool(object):
         """
         project_folder = parameters[0].valueAsText
         oid_fc = parameters[1].valueAsText
-        centerline_fc = parameters[2].valueAsText if parameters[1].value else None
-        flag_only = parameters[3].value if parameters[2].altered else False
+        centerline_fc = parameters[2].valueAsText if parameters[2].value else None
+        flag_only = parameters[3].value if parameters[3].altered else False
         config_file = parameters[4].valueAsText
 
         cfg = ConfigManager.from_file(

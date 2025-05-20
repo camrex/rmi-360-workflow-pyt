@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Analyzes GPS tracks in an OID feature class to identify potential outlier points based on
@@ -75,54 +75,53 @@ def process_gps_metrics(
         reel: str,
         global_counter: List[int],
         total: int,
-        logger):
+        logger,
+        progressor=None):
 
     window = cfg.get("gps_smoothing.smoothing_window")
 
+    for i in range(len(points)):
+        p = points[i]
+        prev_pt = points[i - window] if i >= window else None
+        next_pt = points[i + window] if i + window < len(points) else None
 
-    with cfg.get_progressor(total=total, label=f"Smoothing GPS (Reel {reel})") as progressor:
-        for i in range(len(points)):
-            p = points[i]
-            prev_pt = points[i - window] if i >= window else None
-            next_pt = points[i + window] if i + window < len(points) else None
+        if prev_pt and next_pt:
+            mid_x = (prev_pt["x"] + next_pt["x"]) / 2
+            mid_y = (prev_pt["y"] + next_pt["y"]) / 2
+            p["deviation"] = haversine(p["x"], p["y"], mid_x, mid_y)
+            p["angle"] = angle_between((prev_pt["x"], prev_pt["y"]),
+                                       (p["x"], p["y"]),
+                                       (next_pt["x"], next_pt["y"]))
+        else:
+            p["deviation"] = 0
+            p["angle"] = 180
 
-            if prev_pt and next_pt:
-                mid_x = (prev_pt["x"] + next_pt["x"]) / 2
-                mid_y = (prev_pt["y"] + next_pt["y"]) / 2
-                p["deviation"] = haversine(p["x"], p["y"], mid_x, mid_y)
-                p["angle"] = angle_between((prev_pt["x"], prev_pt["y"]),
-                                           (p["x"], p["y"]),
-                                           (next_pt["x"], next_pt["y"]))
-            else:
-                p["deviation"] = 0
-                p["angle"] = 180
+        p["step"] = haversine(points[i - 1]["x"], points[i - 1]["y"], p["x"], p["y"]) if i > 0 else 0
+        p["route_dist"] = 0
 
-            p["step"] = haversine(points[i - 1]["x"], points[i - 1]["y"], p["x"], p["y"]) if i > 0 else 0
-            p["route_dist"] = 0
+        if route_sr:
+            try:
+                pt_geom = arcpy.PointGeometry(arcpy.Point(p["x"], p["y"]), arcpy.SpatialReference(4326))
+                pt_proj = pt_geom.projectAs(route_sr)
+                min_dist = float("inf")
+                for route in routes:
+                    dist = route.queryPointAndDistance(pt_proj.centroid, use_percentage=False)[2]
+                    min_dist = min(min_dist, dist)
+                p["route_dist"] = min_dist
+            except Exception as e:
+                logger.warning(f"Projection failed for OID {p['oid']}: {e}")
+                p["route_dist"] = 0
 
-            if route_sr:
-                try:
-                    pt_geom = arcpy.PointGeometry(arcpy.Point(p["x"], p["y"]), arcpy.SpatialReference(4326))
-                    pt_proj = pt_geom.projectAs(route_sr)
-                    min_dist = float("inf")
-                    for route in routes:
-                        dist = route.queryPointAndDistance(pt_proj.centroid, use_percentage=False)[2]
-                        min_dist = min(min_dist, dist)
-                    p["route_dist"] = min_dist
-                except Exception as e:
-                    logger.warning(f"Projection failed for OID {p['oid']}: {e}")
-                    p["route_dist"] = 0
+        global_counter[0] += 1
+        progressor.update(global_counter[0])
 
-            global_counter[0] += 1
-            progressor.update(global_counter[0])
-
-        # Route distance smoothing
-        for i in range(1, len(points) - 1):
-            prev, curr, nxt = points[i - 1], points[i], points[i + 1]
-            avg = (prev["route_dist"] + nxt["route_dist"]) / 2
-            curr["route_dev"] = abs(curr["route_dist"] - avg)
-            global_counter[0] += 1
-            progressor.update(global_counter[0])
+    # Route distance smoothing
+    for i in range(1, len(points) - 1):
+        prev, curr, nxt = points[i - 1], points[i], points[i + 1]
+        avg = (prev["route_dist"] + nxt["route_dist"]) / 2
+        curr["route_dev"] = abs(curr["route_dist"] - avg)
+        global_counter[0] += 1
+        progressor.update(global_counter[0])
 
 
 def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[str] = None) -> None:
@@ -186,8 +185,10 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
     total_points = sum(len(v) for v in points_by_reel.values()) * 2
     global_counter = [0]
 
-    for reel, pts in points_by_reel.items():
-        process_gps_metrics(pts, cfg, routes, route_sr, reel, global_counter, total_points, logger)
+    # Create a single progressor for all reels
+    with cfg.get_progressor(total=total_points, label="Smoothing GPS") as progressor:
+        for reel, pts in points_by_reel.items():
+            process_gps_metrics(pts, cfg, routes, route_sr, reel, global_counter, total_points, logger, progressor)
 
 
     # Flag outliers

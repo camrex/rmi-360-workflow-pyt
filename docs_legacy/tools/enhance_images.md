@@ -80,14 +80,6 @@ enhance_images:
 
 ---
 
-## ✅ Validation
-
-Validation is performed by the appropriate validator in `utils/validators` (not `validate_config.py`).
-- Checks that enhancement config block exists and values are valid
-- Ensures OID and output paths are writable
-
----
-
 ## 🔗 Related Tools
 
 - Add Images to OID

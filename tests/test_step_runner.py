@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 from utils.step_runner import run_steps
 
 class DummyLogger:
@@ -90,10 +90,13 @@ def test_wait_triggered(dummy_report, dummy_cfg):
     }
     step_order = ["a"]
     wait_config = {"wait_between_steps": True, "wait_before_step": ["a"], "wait_duration_sec": 0}
-    with patch("utils.step_runner.save_report_json"), \
-         patch("utils.step_runner.backup_oid"):
+    with (patch("utils.step_runner.save_report_json"), \
+          patch("utils.step_runner.backup_oid"), \
+          patch("utils.step_runner.time.sleep") as mock_sleep):
         results = run_steps(step_funcs, step_order, 0, {}, dummy_report, dummy_cfg, wait_config)
     assert results[0]["status"] == "✅"
+    # Verify that sleep was called, indicating wait was triggered
+    mock_sleep.assert_called_once_with(0)
 
 # Additional test: report_data missing 'steps' key
 

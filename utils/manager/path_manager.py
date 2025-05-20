@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-10
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Centralizes and simplifies path resolution across the Python Toolbox project.
@@ -31,10 +31,13 @@
 from __future__ import annotations
 import os
 import subprocess
+import shutil
 from pathlib import Path
 import yaml
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 __all__ = ["PathManager"]
 
@@ -107,8 +110,10 @@ class PathManager:
     @property
     def backup_gdb(self):
         """Path to project backup fgdb (configurable via orchestrator.oid_backup_fgdb)."""
-        folder = self._get_config_value("orchestrator.oid_backup_fgdb")
-        return self.backups / folder
+        gdb_name = self._get_config_value("orchestrator.oid_backup_fgdb")
+        if gdb_name:
+            return self.backups / gdb_name
+        return None
 
     @property
     def logs(self):
@@ -393,6 +398,9 @@ class PathManager:
             # Prevent command window from showing
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+
+        if not shutil.which(str(exe_path)):
+            return False
 
         try:
             result = subprocess.run(

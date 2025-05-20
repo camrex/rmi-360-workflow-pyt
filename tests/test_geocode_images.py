@@ -1,4 +1,3 @@
-import os
 from unittest.mock import MagicMock
 from utils.geocode_images import get_exiftool_cmd, build_geocode_args_and_log
 
@@ -28,6 +27,6 @@ def test_build_geocode_args_and_log(tmp_path):
     rows = [(123, str(img), 1.1, 2.2), (456, str(tmp_path/"missing.jpg"), 3.3, 4.4)]
     args, logs = build_geocode_args_and_log(rows, logger)
     assert any("img1.jpg" in a for a in args)
-    assert any("Geocoded OID 123" in l for l in logs)
+    assert any("Geocoded OID 123" in log_entry for log_entry in logs)
     # Should warn for missing.jpg
     logger.warning.assert_called_with(f"Image path does not exist: {tmp_path/ 'missing.jpg'}")

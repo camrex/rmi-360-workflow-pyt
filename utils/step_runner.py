@@ -6,7 +6,7 @@
 # Version:             1.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Iterates through workflow step functions, checking for skip conditions, handling wait intervals,
@@ -98,7 +98,7 @@ def run_steps(
                         backup_oid(params["oid_fc"], stp_key, config)
                         return True
                     except Exception as e:
-                        logger.warning(f"Failed to back up OID before step '{stp_key}': {e}", 1)
+                        logger.warning(f"Failed to back up OID before step '{stp_key}': {e}", indent=1)
         return False
 
     def perform_wait(stp_key: str, lbl: str, wait_cfg: Optional[dict]):

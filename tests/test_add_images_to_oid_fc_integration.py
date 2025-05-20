@@ -1,3 +1,11 @@
+import sys
+from types import ModuleType
+fake_arcpy = ModuleType("arcpy")
+fake_arcpy.Exists = lambda _: True
+fake_arcpy.oi = ModuleType("arcpy.oi")
+fake_arcpy.oi.AddImagesToOrientedImageryDataset = lambda **_: None
+sys.modules["arcpy"] = fake_arcpy
+
 import pytest
 import shutil
 from pathlib import Path
@@ -8,21 +16,27 @@ from unittest.mock import patch
 CONFIG_FILE = str(Path(__file__).parent.parent / "configs" / "config.sample.yaml")
 
 @pytest.fixture
-def sample_cfg(tmp_path):
+def sample_cfg(tmp_path, request):
     # Copy sample config to temp dir
     cfg_path = tmp_path / "config.yaml"
     shutil.copy(CONFIG_FILE, cfg_path)
+
     # Patch project_base and config path
     cfg = ConfigManager.from_file(str(cfg_path), project_base=tmp_path)
+
     # Patch paths.original to a temp image folder using patch.object
     images_dir = tmp_path / "images"
     images_dir.mkdir()
-    patcher = patch.object(type(cfg.paths), 'original', new=property(lambda self: images_dir))
-    patcher.start()
-    try:
-        yield cfg
-    finally:
-        patcher.stop()
+
+    # Patch only the specific instance's original property
+    # instead of patching at the class level
+    patcher = patch.object(cfg.paths, 'original', return_value=images_dir)
+    mock_original = patcher.start()
+
+    # Register cleanup to run even if tests fail
+    request.addfinalizer(patcher.stop)
+
+    return cfg
 
 def test_add_images_to_oid_with_sample_config(tmp_path, sample_cfg, monkeypatch):
     # Create a fake OID feature class path

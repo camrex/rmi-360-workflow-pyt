@@ -105,8 +105,7 @@ def build_oid_footprints(cfg: ConfigManager, oid_fc: str) -> Optional[str]:
         Optional[str]: Full path to the created footprint feature class, or None if failed.
 
     Raises:
-        FileNotFoundError: If the input OID feature class does not exist.
-        Exception: If footprint creation fails for any other reason.
+        None
     """
     logger = cfg.get_logger()
     cfg.validate(tool="build_oid_footprints")

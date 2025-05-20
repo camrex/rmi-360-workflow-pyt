@@ -19,7 +19,6 @@ from pathlib import Path
 from utils.manager.config_manager import ConfigManager
 
 # === Configurable Inputs ===
-from pathlib import Path
 CONFIG_FILE = str(Path(__file__).parent.parent / "configs" / "config.sample.yaml")
 
 @pytest.fixture
@@ -79,7 +78,7 @@ def test_config_manager_invalid_config(temp_dir):
     with open(invalid_config, "w") as f:
         f.write("Invalid YAML")
 
-    with pytest.raises(Exception):
+    with pytest.raises((ValueError, RuntimeError)):
         ConfigManager.from_file(invalid_config, project_base=temp_dir, messages=messages)
 
 @pytest.mark.integration

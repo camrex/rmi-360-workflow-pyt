@@ -1,12 +1,7 @@
-
-# 📎 NOTE: All placeholder values in this file are wrapped in angle brackets, e.g.:
-#   "<YOUR_AWS_S3_REGION>", "<PROJECT_SLUG>", "<CLIENT_NAME>"
-# Replace each one with the actual value for your project.
-#
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
 schema_version: 1.1.0
-debug_messages: false
+debug_messages: true
 
 # ------------------------------------------------------------------------------
 # 🪵 LOGGING & FILE PATHS
@@ -83,13 +78,13 @@ logs:
 # These values are referenced using `config.project.KEY` in expressions.
 #
 project:
-  company: "<YOUR COMPANY NAME>"           # Author of the imagery / data
-  number: "<PROJECT_NUMBER>"               # Project ID (YY-###)
-  slug: "<PROJECT_SLUG>"                   # Suffix-safe identifier for filenames or folders (ABCYY###)
-  client: "<CLIENT_NAME>"                  # Client Name
-  description: "<PROJECT_DESCRIPTION>"     # Project Description
-  rr_name: "<RAILROAD_NAME>"               # Full railroad name (This can be replaced, BUT CHECK image_output)
-  rr_mark: "<RAILROAD_MARK>"               # Railroad reporting mark (This can be replaced, BUT CHECK image_output)
+  company: "Test Company"           # Author of the imagery / data
+  number: "25-000"                   # Project ID (YY-###)
+  slug: "TEST25000"                   # Suffix-safe identifier for filenames or folders
+  client: "Test Client"
+  description: "Test Project"
+  rr_name: "Test"          # Full railroad name
+  rr_mark: "TEST"                     # Railroad reporting mark
 # ⚠️ VERY IMPORTANT:
 # local_proj_wkid must be updated to match the local projected coordinate system used for this project.
 # Used for OID footprint.
@@ -98,7 +93,7 @@ project:
 #   - NAD 1983 StatePlane California Zone 5 (US Feet) → 2229
 #   - NAD 1983 UTM Zone 14N → 26914
 # Failing to update this may cause incorrect OID footprint geometry or empty layers.
-local_proj_wkid: <YOUR_PROJECT_WKID>
+  local_proj_wkid: 6492             # 6335 for 25-110
 
 # --------------------------------------------------------------------
 # 📷 CAMERA & HARDWARE CONFIGURATION
@@ -117,11 +112,11 @@ local_proj_wkid: <YOUR_PROJECT_WKID>
 #   - XPKeywords (for filtering or search)
 #
 camera:
-  make: "Mosaic"                                      # Camera manufacturer
-  model: "Mosaic 51"                                  # Model name (used in EXIF) - (adjust as needed)
-  sn: "<SERIAL_NUMBER>"                               # Serial number
-  firmware: "2.2.0"                                   # Installed firmware version (adjust as needed)
-  software: "Mosaic Processor 1.0.1/MistikaVR 10.14"  # Processing software version string (adjust as needed)
+  make: "Mosaic"                                 # Camera manufacturer
+  model: "Mosaic 51"                             # Model name (used in EXIF)
+  sn: "SN-0000-0000"                             # Serial number
+  firmware: "2.1.4"                              # Installed firmware version
+  software: "Mosaic Processor 1.0.1/MistikaVR 10.14"  # Processing software version string
   stitching_software: "MistikaVR"
   image_width: 12288
   image_height: 6144
@@ -173,7 +168,7 @@ camera_offset:
   # Total height from ground to camera lens center (used for OID field 'CameraHeight')
   camera_height:
     rail_height: 16.8       # Ground to top of rail
-    vehicle_height: 208.3   # Rail to vehicle roof
+    vehicle_height: 198.0   # Rail to vehicle roof ** 208.3 for 24-110
     mount_height: 51.0      # Roof to mount base
     lens_height: 16.5       # Mount base to lens center
 
@@ -234,9 +229,9 @@ executables:
   exiftool:
     exe_path: "exiftool"  # Command-line call or full path to ExifTool binary
   mosaic_processor:
-    exe_path: "<YOUR_ABSOLUTE_PATH_TO_MOSAIC_PROCESSOR_EXECUTABLE>"               # Full path to Mosaic Processor GUI/CLI
-    grp_path: "<YOUR_ABSOLUTE_PATH_TO_MOSAIC_GRP_FILE>"                           # Default GRP file for Mosaic 51 camera
-    cfg_path: "DISABLED"                                                          # RESERVED FOR FUTURE FUNCTIONALITY
+    exe_path: "C:/Program Files (x86)/Mosaic Apps/Mosaic Processor/Mosaic Processor.exe"  # Full path to Mosaic Processor GUI/CLI
+    grp_path: "E:\DevProjects\rmi-360-workflow-pyt\test_data\test_grp.grp"                    # Default GRP file for Mosaic 51 camera
+    cfg_path: "DISABLED"                                                                  # RESERVED FOR FUTURE FUNCTIONALITY
 
 # --------------------------------------------------------------------
 # 🧱 ORIENTED IMAGERY DATASET (OID) SCHEMA TEMPLATE MANAGEMENT
@@ -311,7 +306,7 @@ oid_schema_template:
   template:
     auto_create_oid_template: true
     templates_dir: "templates"
-    gdb_path: "templates.gdb"  # located in "templates_dir"
+    gdb_path: "templates.gdb"
     template_name: "oid_schema_template"
   esri_default:
     field_registry: "configs/esri_oid_fields_registry.yaml"
@@ -517,7 +512,6 @@ image_output:
       LastPhotoDate: "field.AcquisitionDate.date(%Y%m%dT%H%M%SZ)"
       SourcePhotosCount: "config.camera.source_photos"
       ExposureLockUsed: "True"
-      
 
 # ------------------------------------------------------------------------------
 # ☁️ AWS CLOUD EXPORT & HOSTING
@@ -565,8 +559,8 @@ image_output:
 # ------------------------------------------------------------------------------
 
 aws:
-  region: "<YOUR_AWS_S3_REGION>"
-  s3_bucket: "<YOUR_S3_BUCKET_NAME>"
+  region: <YOUR_REGION>  # e.g., "us-east-2"
+  s3_bucket: <YOUR_BUCKET_NAME>  # e.g., "test-orient-img"
   s3_bucket_folder: "config.project.slug"
   use_acceleration: true
 
@@ -576,14 +570,14 @@ aws:
   upload_batch_size: 25     # Enables cancellation checks between batch groups
   allow_cancel_file_trigger: true
 
-  keyring_aws: false
-  keyring_service_name: aws_s3
+  keyring_aws: true
+  keyring_service_name: aws_keyring
 
   # Access credentials should only be included for development testing
   access_key: "<ACCESS_KEY_ID>"
   secret_key: "<SECRET_ACCESS_KEY>"
 
-  lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"
+  lambda_role_arn: <YOUR_LAMBDA_ROLE_ARN>  # IAM Role ARN for Lambda progress monitor
 
 # ------------------------------------------------------------------------------
 # 🌐 PORTAL SERVICE PUBLISHING
@@ -711,14 +705,14 @@ geocoding:
 #    5. Brightness recovery (if enabled)
 # --------------------------------------------------------------------
 image_enhancement:
-  enabled: true                             # Master switch for image enhancement
-  dry_run: false                            # NOT IMPLEMENTED IN 1.1.0
-  adaptive: true                            # Enable adaptive tuning for CLAHE
-  max_workers: 16                           # For high throughput without overloading
-  auto_generate_profile: true               # NOT IMPLEMENTED IN 1.1.0
-  profile_json: "enhancement_profile.json"  # NOT IMPLEMENTED IN 1.1.0
-  ai_assist: true                           # NOT IMPLEMENTED IN 1.1.0
-  interval: 10                              # NOT IMPLEMENTED IN 1.1.0
+  enabled: true               # Master switch for image enhancement
+  dry_run: false
+  adaptive: true              # Enable adaptive tuning for CLAHE
+  max_workers: 16             # For high throughput without overloading
+  auto_generate_profile: true
+  profile_json: "enhancement_profile.json"
+  ai_assist: true
+  interval: 10
 
   # ----------------------------------------------------------------
   # 🗂️ OUTPUT MODE
@@ -733,7 +727,7 @@ image_enhancement:
   # ----------------------------------------------------------------
   # ⚪ WHITE BALANCE SETTINGS
   # ----------------------------------------------------------------
-  apply_white_balance: true  # SUPERCEDED (BUT KEEP FOR NOW)
+  apply_white_balance: true
   white_balance:
     enabled: true
     method: "gray_world"      # Options:
@@ -788,7 +782,7 @@ image_enhancement:
 # ----------------------------------------------------------------
 orchestrator:
   # Enable or disable waits before specific steps.
-  wait_between_steps: true
+  wait_between_steps: false
 
   # Number of seconds to pause BEFORE executing each step listed in `wait_before_step`.
   # This gives the user time to cancel, prepare, or manually inspect state before proceeding.
@@ -820,21 +814,13 @@ orchestrator:
 
   # Location of the shared backup geodatabase where OID snapshots will be stored.
   # Backups are named like: OID_before_{step}_{timestamp}
-  backup_folder: "backups"
-  oid_backup_fgdb: "oid_snapshots.gdb"
-
-# ----------------------------------------------------------------
-# DISK SPACE CONFIG
-# ----------------------------------------------------------------
-disk_space:
-  check_enabled: True
-  min_buffer_ratio: 1.1
+  oid_backup_fgdb: "backups/oid_snapshots.gdb"
 
 # ----------------------------------------------------------------
 # OPENAI CONFIG
 # ----------------------------------------------------------------
 openai:
-  keyring_openai: false             # NOT IMPLEMENTED IN 1.1.0
-  keyring_service_name: openai_kr   # NOT IMPLEMENTED IN 1.1.0
-  api_key: "<YOUR OPENAI API KEY>"  # NOT IMPLEMENTED IN 1.1.0
-  model: "gpt-4o"                   # NOT IMPLEMENTED IN 1.1.0
+  keyring_openai: false
+  keyring_service_name: openai_keyring
+  api_key: <YOUR_API_KEY>
+  model: "gpt-4o"

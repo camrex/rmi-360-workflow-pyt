@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Centralized logging framework that supports text, HTML, and JSON output.
@@ -31,7 +31,7 @@
 # =============================================================================
 
 from datetime import datetime
-from typing import Optional, List, Type, Dict, Generator
+from typing import Optional, List, Type, Dict
 from contextlib import contextmanager
 import time
 import html
@@ -94,17 +94,8 @@ class LogManager:
         self._timing_stack: List[float] = []
         self._context_stack: List[Optional[Dict]] = []
 
-    def push(self, msg: str) -> None:
-        """
-        Start a new indented log section and begin timing it.
-        Args:
-            msg (str): Header message for the step or section.
-        """
-        self.info(msg)
-        self.depth += 1
-        self._timing_stack.append(time.time())
-
-    def log(self, msg: str, level: str = "info", context: Optional[Dict] = None, indent: int = 0, error_type: Optional[Type[Exception]] = None, emoji: Optional[str] = None) -> None:
+    def log(self, msg: str, level: str = "info", context: Optional[Dict] = None, indent: int = 0,
+            error_type: Optional[Type[Exception]] = None, emoji: Optional[str] = None) -> None:
         """
         Log a message with a specified level, optional context, and explicit indentation.
 
@@ -234,8 +225,6 @@ class LogManager:
 
     def custom(self, msg: str, emoji: str, context: Optional[Dict] = None, indent: int = 0) -> None:
         self.log(msg, level="custom", context=context, indent=indent, emoji=emoji)
-
-
 
     @staticmethod
     def _format_duration(seconds: float) -> str:

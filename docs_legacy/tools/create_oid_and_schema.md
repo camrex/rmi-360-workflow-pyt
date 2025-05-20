@@ -14,12 +14,14 @@ Defines and instantiates the schema for an Oriented Imagery Dataset (OID) used i
 ## 🧰 Parameters
 
 ### Create OID Schema Template
+
 | Parameter      | Required | Description                                                |
 |---------------|----------|------------------------------------------------------------|
 | Config File    | ✅       | Path to `config.yaml` with schema structure                |
 | Project Folder | ✅       | Root folder for the project (for logs, assets)             |
 
 ### Create Oriented Imagery Dataset
+
 | Parameter                   | Required | Description                                             |
 |-----------------------------|----------|---------------------------------------------------------|
 | Output OID Feature Class    | ✅       | Output feature class to create                          |

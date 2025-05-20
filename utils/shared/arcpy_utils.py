@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Centralizes common ArcGIS Pro field existence validation, value coercion, and OID backup utilities.
@@ -30,7 +30,11 @@ from __future__ import annotations
 import arcpy
 from pathlib import Path
 from datetime import datetime
-from typing import List, Optional, Union, Any
+from typing import List, Optional, Union, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.log_manager import LogManager
+    from utils.manager.config_manager import ConfigManager
 
 
 def validate_fields_exist(
@@ -110,6 +114,12 @@ def str_to_value(
             if logger:
                 logger.debug(f"Failed to convert '{value}' to spatial_reference: {e}", indent=1)
             return None
+
+    # Allow "int", "float", "str", etc. as strings
+    _PRIMITIVE_MAP = {"int": int, "float": float, "str": str, "bool": bool}
+    if isinstance(value_type, str) and value_type.lower() in _PRIMITIVE_MAP:
+        value_type = _PRIMITIVE_MAP[value_type.lower()]
+
     try:
         return value_type(value)
     except (ValueError, TypeError) as e:

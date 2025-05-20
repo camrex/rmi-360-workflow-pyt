@@ -1,6 +1,5 @@
-import pytest
 import json
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 from utils import report_data_builder
 
 def test_resolve_if_expression_literal():

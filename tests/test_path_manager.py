@@ -12,16 +12,19 @@
 # Framework:   Pytest
 # Author:      RMI Valuation, LLC
 # Created:     2025-05-10
+# Last Modified: 2025-05-20
 # =============================================================================
 
 import pytest
+import os
 from pathlib import Path
 from utils.manager.path_manager import PathManager
 from utils.manager.config_manager import ConfigManager
 
 # === Configurable Inputs ===
-CONFIG_FILE = r"D:\RMI Valuation LLC\RMI - Development\RMI Mosaic 360 Tools Test AGP\Project\config2.yaml"
-PROJECT_FOLDER = r"D:\RMI Valuation LLC\RMI - Development\RMI Mosaic 360 Tools Test AGP\Project"
+TEST_DATA_DIR = Path(__file__).parent / "test_data"
+CONFIG_FILE = os.getenv("TEST_CONFIG_PATH", str(TEST_DATA_DIR / "test_config.yaml"))
+PROJECT_FOLDER = os.getenv("TEST_PROJECT_PATH", str(TEST_DATA_DIR))
 
 @pytest.mark.integration
 def test_path_manager_resolution():
@@ -54,7 +57,7 @@ def test_path_manager_resolution():
             print(f"{attr:30}: {val}")
         except Exception as e:
             print(f"{attr:30}: ERROR - {e}")
-            assert False, f"Failed to resolve {attr}: {e}"
+            raise AssertionError(f"Failed to resolve {attr}: {e}")
     # Optional additional checks
     assert isinstance(pm.get_log_file_path("enhance_log"), Path)
     assert isinstance(pm.check_exiftool_available(), bool)

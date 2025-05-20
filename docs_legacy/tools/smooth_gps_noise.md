@@ -48,13 +48,6 @@ Corrects GPS outliers and smooths the location data for images in an Oriented Im
 
 ---
 
-## 📤 Outputs
-
-- OID feature class with smoothed geometry
-- Logs of outliers and corrections
-
----
-
 ## 🗝️ Configuration / Notes
 
 From `config.yaml`:
@@ -67,8 +60,8 @@ smooth_gps_noise:
   interpolate: true
 ```
 
-- Method can be `moving_average`, `kalman`, etc.
-- Outlier threshold is in meters.
+- The method can be `moving_average`, `kalman`, etc.
+- The outlier threshold is in meters.
 
 ---
 
@@ -77,15 +70,6 @@ smooth_gps_noise:
 - Python with `numpy`, `pandas`
 - ArcGIS Pro
 - Project YAML config
-
----
-
-## ✅ Validation
-
-Validation is performed by the appropriate validator in `utils/validators`.
-- Checks that smoothing config block exists and values are valid
-- Ensures OID and output paths are writable
-- Validates method and threshold values
 
 ---
 

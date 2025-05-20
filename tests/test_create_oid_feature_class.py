@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import MagicMock, patch
 from utils import create_oid_feature_class
 

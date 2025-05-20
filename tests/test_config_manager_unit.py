@@ -6,11 +6,8 @@
 # Author:      Cascade AI (2025-05-14)
 # =============================================================================
 import pytest
-import tempfile
-import os
 import yaml
-from pathlib import Path
-from utils.manager.config_manager import ConfigManager, ConfigValidationError
+from utils.manager.config_manager import ConfigManager
 
 # --- Minimal valid config for testing ---
 MINIMAL_CONFIG = {
@@ -77,13 +74,20 @@ def test_bad_schema(tmp_bad_schema_file, tmp_path):
 
 def test_validate_and_tool_dispatch(tmp_config_file, tmp_path, mocker):
     cfg = ConfigManager.from_file(tmp_config_file, project_base=tmp_path)
-    # Patch a validator to check dispatch
+
+    # Mock the validator function
     mock_validator = mocker.patch("utils.validators.mosaic_processor_validator.validate")
-    cfg.TOOL_VALIDATORS["mosaic_processor"] = mock_validator
+
+    # Use monkeypatch to safely patch the TOOL_VALIDATORS dictionary
+    original_validators = cfg.TOOL_VALIDATORS
+    mocker.patch.object(cfg, 'TOOL_VALIDATORS', {**original_validators, "mosaic_processor": mock_validator})
+
+    # Test the validation dispatch
     cfg.validate_tool_config("mosaic_processor")
     mock_validator.assert_called_once_with(cfg)
+
     # Unknown tool
-    with pytest.raises(Exception):
+    with pytest.raises(KeyError):
         cfg.validate_tool_config("not_a_tool")
 
 

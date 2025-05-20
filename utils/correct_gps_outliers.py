@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Identifies sequences of features flagged as GPS outliers (`QCFlag = GPS_OUTLIER`) in an
@@ -138,12 +138,14 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
 
     # Apply updates with error handling
     failed_oids = set()
+    # Pre-index by OID for 0(1) lookups
+    row_by_oid = {r["oid"]: r for r in rows}
     with cfg.get_progressor(total=len(corrected_oids), label="Correcting GPS outliers") as progressor:
         with arcpy.da.UpdateCursor(oid_fc, fields) as cursor:
             for row in cursor:
                 oid = row[0]
                 if oid in corrected_oids:
-                    r = next((r for r in rows if r["oid"] == oid), None)
+                    r = row_by_oid.get(oid)
                     if r:
                         try:
                             row[2] = r["xy"]

@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Defines a context-managed ProgressorManager class that attempts to initialize ArcGIS Pro's progressor
@@ -61,14 +61,15 @@ class ProgressorManager:
         output.
         
         Returns:
-            The Progressor instance.
+            The ProgressorManager instance.
         """
         if self.total > 0:
             try:
                 arcpy.SetProgressor("step", self.label, 0, self.total, self.step)
                 self.use_progressor = True
             except Exception as e:
-                self.log_manager.warning(f"Could not initialize ArcGIS Pro progressor: {e}")
+                if self.log_manager:
+                    self.log_manager.warning(f"Could not initialize ArcGIS Pro progressor: {e}")
         return self
 
     def update(self, pos: int, label: Optional[str] = None):
@@ -85,7 +86,8 @@ class ProgressorManager:
                     arcpy.SetProgressorLabel(label)
                 arcpy.SetProgressorPosition(pos)
             except Exception as e:
-                self.log_manager.warning(f"Progressor update failed: {e}")
+                if self.log_manager:
+                    self.log_manager.warning(f"Progressor update failed: {e}")
                 self.use_progressor = False
 
         if not self.use_progressor:

@@ -6,7 +6,7 @@
 # Version:             1.0.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Estimates required disk space using the size of the base imagery folder (original or enhanced),
@@ -32,7 +32,10 @@ import arcpy
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 
 def find_base_dir(dir_path: str, token: str) -> Optional[str]:

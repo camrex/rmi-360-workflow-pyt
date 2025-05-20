@@ -6,7 +6,7 @@
 # Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-20
 #
 # Description:
 #   Recursively uploads enhanced or renamed images from a local directory to a configured
@@ -54,7 +54,7 @@ def collect_upload_tasks(local_dir, include_extensions, bucket_folder):
     for file_path in local_dir.rglob("*"):
         if not file_path.is_file():
             continue
-        if not file_path.suffix.lower() in include_extensions:
+        if file_path.suffix.lower() not in include_extensions:
             continue
         rel_key = file_path.relative_to(local_dir).as_posix()
         s3_key = f"{bucket_folder}/{rel_key}".lstrip("/")
@@ -160,9 +160,11 @@ def copy_to_aws(
     use_accel = cfg.get("aws.use_acceleration", False)
 
     include_extensions = [".jpg", ".jpeg"]
-    if not local_dir:
-        local_dir = Path(cfg.paths.renamed)
-    if not skip_existing:
+    if local_dir is None:
+        local_dir = cfg.paths.renamed
+    local_dir = Path(local_dir)
+
+    if skip_existing is None:
         skip_existing = cfg.get("aws.skip_existing", True)
 
     allow_cancel_file_trigger = cfg.get("aws.allow_cancel_file_trigger", True)

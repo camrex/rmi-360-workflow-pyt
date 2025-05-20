@@ -1,8 +1,8 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from utils.manager.progressor_manager import ProgressorManager
 
 class DummyLogManager:
+    """Mock log manager that captures warning messages for test verification."""
     def __init__(self):
         self.warnings = []
     def warning(self, msg):
@@ -34,6 +34,7 @@ def test_context_manager_zero_total():
     with ProgressorManager(total=0, label="Nothing", log_manager=log) as prog:
         assert prog.use_progressor is False
         assert prog.completed == 0
+        assert prog.label == "Nothing"
 
 
 def test_update_progressor_and_cli(monkeypatch, capfd):
