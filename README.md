@@ -3,7 +3,7 @@
 
 ![Version](https://img.shields.io/badge/version-v1.1.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4%2B-green)
 
-A modular, camera-agnostic workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
+A modular workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
 
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.
 
@@ -13,13 +13,18 @@ _Tested using ArcGIS Pro 3.4.3 and 3.5.0._
 
 ## 📦 Overview
 
-- 🖼️ Image enhancement (contrast, white balance, sharpening)
-- 🏷️ EXIF metadata tagging
-- 🗂️ File renaming and organization
+- 🎞️ Processes captured imagery using Mosaic Processor (with support for MistikaVR or MosaicStitcher)
 - 🧭 ArcGIS Oriented Imagery Dataset (OID) creation and enrichment
+- 🏷️ EXIF metadata tagging
+- 🛣️ Linear referencing support for image positioning
+- 🧩 Custom attributing based on config-driven logic
+- 🌍 Geocoding of image locations using spatial reference datasets
+- 🗂️ File renaming and organization
 - ☁️ AWS S3 upload with resumable transfer logic
 - 📈 Lambda-based progress monitoring and status dashboard
-- 🌍 Geocoding of image locations using spatial reference datasets
+- 📊 HTML & JSON reporting of process steps and status
+- 🖼️ _Experimental:_ Image enhancement (contrast, white balance, sharpening)
+  - _Note: This feature is under active development. Current output may show visible seam lines. A fix is planned for a future release._
 
 ---
 
