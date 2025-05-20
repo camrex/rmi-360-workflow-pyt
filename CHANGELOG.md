@@ -1,15 +1,17 @@
 # 📦 CHANGELOG
 
-_All notable changes to this project will be documented in this file._
+*All notable changes to this project will be documented in this file.*
 
-## [v1.1.0] - 2025-05-20 - Major Refactor: Managers, Modularization, and Enhancements
-### 🚀 Public Release - RMI 360 Imaging Workflow Python Toolbox v1.1.0
+## [v1.1.0] - 2025-05-20
+### 🚀 Public Release - RMI 360 Imaging Workflow Python Toolbox v1.1.0 (Major Refactor: Managers, Modularization, and Enhancements)
 #### Added
 - Manager Classes: Introduced ConfigManager, LogManager, PathManager, and ProgressorManager for centralized configuration, logging, path resolution, and progress tracking.
 - Modular Validators: Added tool-specific validator modules under utils/validators/ for robust, modular config validation.
 - Shared Utilities: New/refactored shared utilities for ArcPy, AWS, disk space, expression resolution, folder stats, metrics, report data, exceptions, and schema validation.
 - Comprehensive Tests: Extensive new and updated unit/integration tests for all major modules, managers, validators, and utilities.
 - Legacy Documentation: Added detailed legacy docs for all tools, utilities, and managers.
+- Orchestrator Enhancements: Fine-grained control over optional steps, with improved configuration options, documentation, and error handling.
+- Metadata Enhancements: Expanded metadata handling with new fields for richer context and propagation across workflow steps.
 
 #### Changed
 - Centralized Configuration & Logging: All tools and utilities now use ConfigManager and LogManager for consistent config access and structured logging.
