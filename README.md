@@ -72,8 +72,6 @@ cd rmi-360-workflow-pyt
 # Copy and edit config
 cp configs/config.sample.yaml configs/config.yaml
 
-# (Optional) Run config validation
-python -m utils.validate_config --file configs/config.yaml
 ```
 
 ---
