@@ -84,7 +84,6 @@ cp configs/config.sample.yaml configs/config.yaml
 4. Access tools grouped under:
    - **Setup**
    - **Individual Tools**
-   - **Reporting**
    - **Orchestrator**
 
 5. Use individual tools or run the full pipeline with `ProcessMosaic360Workflow`.
