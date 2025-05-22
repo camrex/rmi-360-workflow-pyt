@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Validates AWS configuration for copying data to S3
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-22
 #
 # Description:
 #   Ensures presence and correctness of required AWS keys, validates types, and checks max_workers and S3 folder

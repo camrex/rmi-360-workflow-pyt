@@ -579,8 +579,8 @@ aws:
   keyring_service_name: aws_s3
 
   # Access credentials should only be included for development testing
-  access_key: "<ACCESS_KEY_ID>"
-  secret_key: "<SECRET_ACCESS_KEY>"
+  access_key: "<ACCESS_KEY_ID>"           # Placeholder should be "<ACCESS_KEY_ID>" for validation check
+  secret_key: "<SECRET_ACCESS_KEY>"       # Placeholder should be "<SECRET_ACCESS_KEY>" for validation check
 
   lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"
 
