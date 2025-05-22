@@ -9,6 +9,8 @@
 #### Fixed
 - Fixed indentation of `project.local_proj_wkid`. It needs to be a child of `project`. This caused failure in validation.
 - Fixed a regression in configuration management where the project root directory path key was changed from `__project_root__` to `__project_base__`. This update restores the correct key (`__project_root__`) for full compatibility with workflow tools and logging.
+- Updated the sample configuration so `geocoding.exiftool_geodb` now defaults to `default`, avoiding errors when the specialized `geolocation500` GeoDB is not present in templates. This improves out-of-the-box compatibility for new projects.
+
 
 ---
 
