@@ -137,8 +137,8 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     # Step 1: Duplicate the OID feature class
     if arcpy.Exists(aws_oid_fc):
         logger.info(f"Overwriting existing AWS OID: {aws_oid_fc}", indent=2)
-        arcpy.management.Delete(aws_oid_fc)
-    arcpy.management.Copy(oid_fc, aws_oid_fc)
+        arcpy.management.Delete(str(aws_oid_fc))
+    arcpy.management.Copy(str(oid_fc), str(aws_oid_fc))
     logger.info(f"Duplicated OID to: {aws_oid_fc}", indent=2)
 
     # Step 2: Update ImagePath values
