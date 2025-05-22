@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             ArcGIS Python Toolbox entry point for the RMI 360 Imaging Workflow
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-05-22
 #
 # Description:
 #   This file defines the ArcGIS Python Toolbox interface, registering all pipeline tools for the RMI 360 workflow.
@@ -22,7 +22,7 @@
 #   utils/manager/      → Configuration, Logging, Path and Progressor management modules
 #   utils/validators/   → Configuration and schema validation modules
 #   utils/shared/       → Reusable stateless utilities
-#   docs/               → Markdown documentation
+#   docs_legacy/        → Markdown documentation
 #   configs/            → YAML templates and schema registry
 #   templates/          → HTML report and style templates
 #
