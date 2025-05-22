@@ -98,7 +98,7 @@ project:
 #   - NAD 1983 StatePlane California Zone 5 (US Feet) → 2229
 #   - NAD 1983 UTM Zone 14N → 26914
 # Failing to update this may cause incorrect OID footprint geometry or empty layers.
-local_proj_wkid: <YOUR_PROJECT_WKID>
+  local_proj_wkid: <YOUR_PROJECT_WKID>
 
 # --------------------------------------------------------------------
 # 📷 CAMERA & HARDWARE CONFIGURATION
