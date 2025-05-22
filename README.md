@@ -1,13 +1,17 @@
 
 # 🧰 RMI 360 Imaging Workflow Python Toolbox
 
-![Version](https://img.shields.io/badge/version-v1.1.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green)
+![Version](https://img.shields.io/badge/version-v1.1.1-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green)
 
 A modular workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
 
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.
 
 _Tested using ArcGIS Pro 3.4.3 and 3.5.0._
+
+> **⚠️ Note: ⚠️**  
+> Version **v1.1.0** contained critical bugs that may render the workflow unusable.  
+> Please use version **v1.1.1** or later, which resolves these issues.
 
 ---
 
@@ -71,7 +75,6 @@ cd rmi-360-workflow-pyt
 
 # Copy and edit config
 cp configs/config.sample.yaml configs/config.yaml
-
 ```
 
 ---
@@ -87,8 +90,6 @@ cp configs/config.sample.yaml configs/config.yaml
    - **Orchestrator**
 
 5. Use individual tools or run the full pipeline with `ProcessMosaic360Workflow`.
-
-
 
 ---
 
