@@ -61,6 +61,22 @@ def validate(cfg: "ConfigManager") -> bool:
 
     error_count += validate_keys_with_types(cfg, aws, optional_keys, "aws", required=False)
 
+    # ✅ Placeholder credential check if not using keyring
+    use_keyring = aws.get("keyring_aws", False)
+    access_key = aws.get("access_key")
+    secret_key = aws.get("secret_key")
+    if not use_keyring:
+        if access_key in (None, "", "<ACCESS_KEY_ID>"):
+            logger.error(
+                "AWS config: 'aws.access_key' is not set or is a placeholder (\"<ACCESS_KEY_ID>\"). Please set a real value or enable keyring usage.",
+                error_type=ConfigValidationError)
+            error_count += 1
+        if secret_key in (None, "", "<SECRET_ACCESS_KEY>"):
+            logger.error(
+                "AWS config: 'aws.secret_key' is not set or is a placeholder (\"<SECRET_ACCESS_KEY>\"). Please set a real value or enable keyring usage.",
+                error_type=ConfigValidationError)
+            error_count += 1
+
     # ✅ max_workers logic: allow int or resolvable expression
     max_workers = aws.get("max_workers")
     if max_workers is None:

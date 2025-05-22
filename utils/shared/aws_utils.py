@@ -29,6 +29,8 @@
 # =============================================================================
 from __future__ import annotations
 import keyring
+from boto3.session import Session
+from botocore.exceptions import ClientError, NoCredentialsError
 from typing import Tuple, Optional, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -76,3 +78,34 @@ def get_aws_credentials(
                          "settings.", indent=2, error_type=RuntimeError)
         logger.custom("Retrieved AWS credentials from config.", indent=2, emoji="🔑")
         return access_key, secret_key
+
+def verify_aws_credentials(access_key, secret_key, region, logger=None):
+    """
+    Attempts to verify AWS credentials by calling sts.get_caller_identity().
+    Raises an exception if verification fails.
+
+    Args:
+        access_key (str): AWS access key ID.
+        secret_key (str): AWS secret access key.
+        region (str): AWS region.
+        logger (optional): Logger object for output. If None, prints messages.
+
+    Returns:
+        Session: A boto3 Session object if verification succeeds.
+    """
+    try:
+        logger.info("Verifying AWS credentials...", indent=1)
+        session = Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region
+        )
+        sts = session.client("sts")
+        sts.get_caller_identity()
+        msg = "AWS credentials verified."
+        logger.custom(msg, emoji="🔑", indent=2)
+        return session
+    except (ClientError, NoCredentialsError, Exception) as e:
+        msg = f"AWS credentials verification failed: {e}"
+        logger.error(msg, indent=2)
+        raise
