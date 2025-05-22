@@ -33,7 +33,7 @@ __all__ = ["create_oid_schema_template"]
 import arcpy
 import os
 from datetime import datetime
-from typing import Optional, Callable, Any, cast
+from typing import Optional, cast
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import load_field_registry
@@ -49,25 +49,19 @@ def _field_tuple(f: dict) -> tuple[str, str, Optional[int], str]:
     )
 
 def create_oid_schema_template(
-    cfg: ConfigManager,
-    registry_loader: Optional[Callable[..., dict]] = None,
-    logger: Optional[Any] = None
+    cfg: ConfigManager
 ) -> str:
     """
     Creates a schema template table for Oriented Imagery Datasets (OIDs) using configuration and field registry files.
 
     Args:
         cfg: Validated configuration manager.
-        registry_loader: Optional loader for field registry.
-        logger: Optional logger for test injection.
     Returns:
         The full path to the created schema template table.
     Raises:
         ValueError: If the required field registry path is missing in the configuration.
     """
-
-    registry_loader = registry_loader or load_field_registry
-    logger = logger or cfg.get_logger()
+    logger = cfg.get_logger()
     cfg.validate(tool="build_oid_schema")
     paths = cfg.paths
     esri_cfg = cfg.get("oid_schema_template.esri_default", {})
@@ -76,8 +70,6 @@ def create_oid_schema_template(
     oid_schema_gdb_path = paths.oid_schema_gdb
     oid_schema_gdb_name = os.path.basename(oid_schema_gdb_path)
 
-    logger.debug(f"Checking permissions for templates dir: {templates_path}", indent=1)
-
     try:
         if not os.path.exists(templates_path):
             logger.debug(f"Templates directory does not exist, creating: {templates_path}", indent=1)
@@ -85,10 +77,6 @@ def create_oid_schema_template(
             logger.debug(f"Templates directory created: {templates_path}", indent=1)
         if not arcpy.Exists(oid_schema_gdb_path):
             logger.debug(f"OID schema gdb does not exist, creating: {oid_schema_gdb_path}", indent=1)
-
-            logger.debug(
-                f"About to call CreateFileGDB with out_folder_path='{templates_path}', out_name='{oid_schema_gdb_name}'",
-                indent=1)
             arcpy.management.CreateFileGDB(str(templates_path), str(oid_schema_gdb_name))
             logger.debug(f"OID schema gdb created: {oid_schema_gdb_path}", indent=1)
         if arcpy.Exists(str(paths.oid_schema_template_path)):
@@ -105,7 +93,7 @@ def create_oid_schema_template(
         # Load registry-defined fields (assumes prior validation)
         for category in ("standard", "not_applicable"):
             if esri_cfg.get(category, True):
-                entries = registry_loader(cfg, category_filter=category)
+                entries = load_field_registry(cfg, category_filter=category)
                 if not entries:
                     logger.debug(f"No fields loaded for category: {category}", indent=1)
                 for f in entries.values():
