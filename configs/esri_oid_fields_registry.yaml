@@ -1,4 +1,6 @@
 # esri_oid_fields_registry.yaml
+# Version: ArcGIS Pro 3.5
+# Last Updated: 2025-05-22
 # ------------------------------
 # Master field registry for ESRI Oriented Imagery Datasets (OIDs).
 # This file defines:
@@ -241,6 +243,25 @@ ImageRotation:
   category: "standard"
   required: false
   oid_default: 0
+
+# Accuracy is defined as a string of eight semicolon delimited values that define the standard deviation of each value
+# in the following order: Camera location in XY direction; Camera Z; Camera Heading; Camera Pitch; Camera Roll; Near
+# distance; Far distance; Elevation.
+# All distances are defined in meters, unless the coordinate system's units are in feet in which case the units used for
+# distance should be feet. All angles are defined in degrees. If a value is unknown, that value can be excluded. However,
+# this may result in the accuracy computed being higher than the actual value.
+# For example, if the GPS has a +/- 10 meters RMS in x,y-coordinates and +/- 20 meters in height, the orientation
+# accuracy value is 10;20.
+# The typical value for a vehicle mounted consumer camera may be - 5;10;5;5;5;0;0;1
+# The typical value for oblique imagery following aerial triangulation may be - 0.01;0.02;0.001;0.001;0.001;0;0;1
+OrientationAccurancy:
+  name: "OrientationAccurancy"
+  type: "TEXT"
+  length: 50
+  alias: "Orientation Accuracy"
+  category: "standard"
+  required: false
+  oid_defrault: "5;10;5;5;5;0;0;1"
 
 # The row-wise sorted rotation matrix that defines the transformation from image space to map space, specified as nine
 # floating-point values, delimited by semicolons. Period or full-stop must be the decimal separator for all the values.
