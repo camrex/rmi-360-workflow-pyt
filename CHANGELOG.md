@@ -8,6 +8,9 @@
 
 #### Fixed
 - Fixed indentation of `project.local_proj_wkid`. It needs to be a child of `project`. This caused failure in validation.
+- Fixed a regression in configuration management where the project root directory path key was changed from `__project_root__` to `__project_base__`. This update restores the correct key (`__project_root__`) for full compatibility with workflow tools and logging.
+
+---
 
 ## [v1.1.0] - 2025-05-20
 ### 🚀 Public Release - RMI 360 Imaging Workflow Python Toolbox v1.1.0 (Major Refactor: Managers, Modularization, and Enhancements)
