@@ -787,7 +787,7 @@ image_enhancement:
 # ----------------------------------------------------------------
 orchestrator:
   # Enable or disable waits before specific steps.
-  wait_between_steps: true
+  wait_between_steps: false
 
   # Number of seconds to pause BEFORE executing each step listed in `wait_before_step`.
   # This gives the user time to cancel, prepare, or manually inspect state before proceeding.
