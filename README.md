@@ -7,11 +7,16 @@ A modular workflow built with ArcGIS Python Toolbox for processing and deploying
 
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.
 
+> **❗ ArcGIS Pro Note:** When adding the Toolbox to ArcGIS Pro, you may see a warning icon (❗) upon loading. If this occurs, simply remove the Toolbox and add it again to resolve the issue.
+
 _Tested using ArcGIS Pro 3.4.3 and 3.5.0._
 
 > **⚠️ Note: ⚠️**  
 > Version **v1.1.0** contained critical bugs that may render the workflow unusable.  
 > Please use version **v1.1.1** or later, which resolves these issues.
+
+> **⚠️ Unit Tests Note:** Many unit tests may currently be broken due to some bug fixes in this release.
+
 
 ---
 
