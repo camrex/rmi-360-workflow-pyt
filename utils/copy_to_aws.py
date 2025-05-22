@@ -43,7 +43,7 @@ from botocore.config import Config
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
-from utils.shared.aws_utils import get_aws_credentials
+from utils.shared.aws_utils import get_aws_credentials, verify_aws_credentials
 
 
 def collect_upload_tasks(local_dir, include_extensions, bucket_folder):
@@ -149,8 +149,6 @@ def copy_to_aws(
                 "needed.", indent=1, emoji="⚠️")
 
     # AWS Setup
-    logger.info("Verifying AWS credentials...", indent=1)
-    access_key, secret_key = get_aws_credentials(cfg)
     bucket = cfg.get("aws.s3_bucket")
     region = cfg.get("aws.region", "us-east-2")
     bucket_folder = cfg.resolve(cfg.get("aws.s3_bucket_folder"))
@@ -173,7 +171,7 @@ def copy_to_aws(
     log_file = cfg.paths.get_log_file_path("aws_upload_log", cfg)
     summary_file = cfg.paths.get_log_file_path("aws_upload_summary", cfg)
 
-    logger.info("Starting AWS Upload...", indent=1)
+    logger.info("Preparing AWS Upload...", indent=1)
 
     # Concurrency resolution
     cpu_count = multiprocessing.cpu_count() or 4
@@ -199,12 +197,14 @@ def copy_to_aws(
         logger.warning("No matching files found to upload.", indent=2)
         return {}
 
-    # Init AWS session and client
-    session = Session(
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        region_name=region
-    )
+    # Load credentials from keyring or config and verify AWS credentials
+    try:
+        logger.info("Retrieving AWS credentials...", indent=1)
+        access_key, secret_key = get_aws_credentials(cfg)
+        session = verify_aws_credentials(access_key, secret_key, region, logger)
+    except Exception:
+        # Error already logged; handle accordingly
+        return
 
     s3_cfg = Config(s3={"use_accelerate_endpoint": True}) if use_accel else None
     s3 = session.client("s3", config=s3_cfg) if s3_cfg else session.client("s3")
@@ -214,6 +214,8 @@ def copy_to_aws(
     else:
         logger.info("S3 Transfer Acceleration endpoint disabled", indent=2)
 
+    logger.info("Starting AWS Upload...", indent=1)
+    # Create TransferManager with custom configuration
     transfer_config = TransferConfig(
         multipart_threshold=16 * 1024 * 1024,
         multipart_chunksize=8 * 1024 * 1024,
