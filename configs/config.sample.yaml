@@ -685,7 +685,7 @@ portal:
 #   ➤ Note: Relative paths in .config are not supported.
 geocoding:
   method: "exiftool"
-  exiftool_geodb: "geolocation500"  # Options: default, geolocation500, geocustom
+  exiftool_geodb: "default"  # Options: default, geolocation500, geocustom
   geoloc500_config_path: "templates/exiftool/geolocation500.config"
   geocustom_config_path: "templates/exiftool/geocustom.config"
 
