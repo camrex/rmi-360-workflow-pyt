@@ -3,10 +3,10 @@
 *All notable changes to this project will be documented in this file.*
 
 ## [2025-05-22]
-### Added
+#### Added
 - Added `OrientationAccuracy` as a standard field in `esri_oid_fields_registry.yaml` (per ArcGIS Pro 3.5 OID attribute updates).
 
-### Fixed
+#### Fixed
 - Fixed indentation of `project.local_proj_wkid`. It needs to be a child of `project`. This caused failure in validation.
 
 ## [v1.1.0] - 2025-05-20
