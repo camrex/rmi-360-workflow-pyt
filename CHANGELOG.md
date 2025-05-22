@@ -4,7 +4,10 @@
 
 ## [2025-05-22]
 ### Added
-- Added `OrientationAccuracy` as a standard field in `esri_oid_fields_registry.yaml` (per ArcGIS Pro 3.5 OID attribute updates). 
+- Added `OrientationAccuracy` as a standard field in `esri_oid_fields_registry.yaml` (per ArcGIS Pro 3.5 OID attribute updates).
+
+### Fixed
+- Fixed indentation of `project.local_proj_wkid`. It needs to be a child of `project`. This caused failure in validation.
 
 ## [v1.1.0] - 2025-05-20
 ### 🚀 Public Release - RMI 360 Imaging Workflow Python Toolbox v1.1.0 (Major Refactor: Managers, Modularization, and Enhancements)
