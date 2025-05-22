@@ -17,6 +17,12 @@
 - Fixed AWS credential verification in `copy_to_aws.py` to match the logic in `deploy_lambda_monitor.py`, which is now handled from `aws_utils.py`.This ensures that invalid or placeholder credentials are detected before any operations are attempted, improving reliability and error reporting.
 - Fixed a bug in `generate_oid_service.py` where the OID was not duplicated with AWS urls.
 
+> **⚠️ Note: ⚠️**  
+> Version **v1.1.0** contained critical bugs that may render the workflow unusable.  
+> Please use version **v1.1.1** or later, which resolves these issues.
+
+> **⚠️ Unit Tests Note:** Many unit tests may currently be broken due to some bug fixes in this release.
+
 ---
 
 ## [v1.1.0] - 2025-05-20
