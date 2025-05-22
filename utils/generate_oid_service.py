@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Publishes an OID as a hosted Oriented Imagery Service on ArcGIS Online
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-20
+# Last Updated:        2025-05-22
 #
 # Description:
 #   Duplicates an existing OID feature class and updates its ImagePath values to point to

@@ -4,10 +4,10 @@
 # Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360
 #                      Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-20
+# Last Updated:        2025-05-22
 #
 # Description:
 #   Centralized configuration manager for the toolbox. Wraps access to key config
