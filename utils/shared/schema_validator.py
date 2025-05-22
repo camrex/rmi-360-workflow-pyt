@@ -98,24 +98,23 @@ def ensure_valid_oid_schema_template(cfg: 'ConfigManager') -> None:
     auto_create = cfg.get("oid_schema_template.template.auto_create_oid_template", False)
 
     with cfg.get_progressor(total=2, label="Validating OID Schema Template") as progressor:
-        try:
-            validate_oid_template_schema(cfg)
+        if validate_oid_template_schema(cfg):
             progressor.update(2)
             return  # ✅ Schema is valid, done
-        except (FileNotFoundError, ConfigValidationError):
-            if not auto_create:
-                logger.error("OID schema template is invalid and auto_create_oid_template is set to False. "
-                             "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError, indent=1)
-                return
 
-            # 🚧 Try to rebuild
-            logger.custom("Schema template invalid — attempting to regenerate with build_oid_schema.py...", emoji="🚧", indent=1)
-            create_oid_schema_template(cfg)
-            progressor.update(1)
+        if not auto_create:
+            logger.error("OID schema template is invalid and auto_create_oid_template is set to False. "
+                         "Please run create_oid_schema_template() manually.", error_type=ConfigValidationError, indent=1)
+            return
 
-            try:
-                validate_oid_template_schema(cfg)
-                progressor.update(2)
-            except (FileNotFoundError, ConfigValidationError):
-                logger.error("Rebuilt schema template, but validation still failed. Check for missing fields or "
-                             "malformed registry.", error_type=ConfigValidationError, indent=1)
+        # 🚧 Try to rebuild
+        logger.custom("Schema template invalid — attempting to regenerate with build_oid_schema.py...", emoji="🚧", indent=1)
+        create_oid_schema_template(cfg)
+        progressor.update(1)
+
+        if validate_oid_template_schema(cfg):
+            progressor.update(2)
+            return
+        else:
+            logger.error("Rebuilt schema template, but validation still failed. Check for missing fields or malformed "
+                         "registry.", error_type=ConfigValidationError, indent=1)
