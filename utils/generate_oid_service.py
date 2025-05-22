@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Publishes an OID as a hosted Oriented Imagery Service on ArcGIS Online
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-20
+# Last Updated:        2025-05-22
 #
 # Description:
 #   Duplicates an existing OID feature class and updates its ImagePath values to point to
@@ -137,8 +137,8 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     # Step 1: Duplicate the OID feature class
     if arcpy.Exists(aws_oid_fc):
         logger.info(f"Overwriting existing AWS OID: {aws_oid_fc}", indent=2)
-        arcpy.management.Delete(aws_oid_fc)
-    arcpy.management.Copy(oid_fc, aws_oid_fc)
+        arcpy.management.Delete(str(aws_oid_fc))
+    arcpy.management.Copy(str(oid_fc), str(aws_oid_fc))
     logger.info(f"Duplicated OID to: {aws_oid_fc}", indent=2)
 
     # Step 2: Update ImagePath values

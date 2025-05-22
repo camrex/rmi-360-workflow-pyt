@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Purpose:             ArcGIS Python Toolbox entry point for the RMI 360 Imaging Workflow
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
 # Last Updated:        2025-05-22

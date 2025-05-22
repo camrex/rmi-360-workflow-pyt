@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Creates a reusable schema template table for Oriented Imagery Datasets (OIDs)
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-20
+# Last Updated:        2025-05-22
 #
 # Description:
 #   Builds a geodatabase table to serve as a schema template for OID creation. It integrates
@@ -33,7 +33,7 @@ __all__ = ["create_oid_schema_template"]
 import arcpy
 import os
 from datetime import datetime
-from typing import Optional, Callable, Any, cast
+from typing import Optional, cast
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import load_field_registry
@@ -49,51 +49,51 @@ def _field_tuple(f: dict) -> tuple[str, str, Optional[int], str]:
     )
 
 def create_oid_schema_template(
-    cfg: ConfigManager,
-    *,
-    arcpy_mod=None,
-    os_mod=None,
-    registry_loader: Optional[Callable[..., dict]] = None,
-    logger: Optional[Any] = None
+    cfg: ConfigManager
 ) -> str:
     """
     Creates a schema template table for Oriented Imagery Datasets (OIDs) using configuration and field registry files.
 
     Args:
         cfg: Validated configuration manager.
-        arcpy_mod: Optional arcpy module for test injection.
-        os_mod: Optional os module for test injection.
-        registry_loader: Optional loader for field registry.
-        logger: Optional logger for test injection.
     Returns:
         The full path to the created schema template table.
     Raises:
         ValueError: If the required field registry path is missing in the configuration.
     """
-    arcpy_mod = arcpy_mod or arcpy
-    os_mod = os_mod or os
-    registry_loader = registry_loader or load_field_registry
-    logger = logger or cfg.get_logger()
+    logger = cfg.get_logger()
     cfg.validate(tool="build_oid_schema")
     paths = cfg.paths
     esri_cfg = cfg.get("oid_schema_template.esri_default", {})
+    logger.debug(f"Creating OID schema template: {paths.oid_schema_template_path}", indent=0)
+    templates_path = paths.templates
+    oid_schema_gdb_path = paths.oid_schema_gdb
+    oid_schema_gdb_name = os.path.basename(oid_schema_gdb_path)
+
     try:
-        if not os_mod.path.exists(paths.templates):
-            os_mod.makedirs(paths.templates, exist_ok=True)
-        if not arcpy_mod.Exists(paths.oid_schema_gdb):
-            arcpy_mod.management.CreateFileGDB(paths.templates, os_mod.path.basename(paths.oid_schema_gdb))
-        if arcpy_mod.Exists(paths.oid_schema_template_path):
+        if not os.path.exists(templates_path):
+            logger.debug(f"Templates directory does not exist, creating: {templates_path}", indent=1)
+            os.makedirs(templates_path, exist_ok=True)
+            logger.debug(f"Templates directory created: {templates_path}", indent=1)
+        if not arcpy.Exists(oid_schema_gdb_path):
+            logger.debug(f"OID schema gdb does not exist, creating: {oid_schema_gdb_path}", indent=1)
+            arcpy.management.CreateFileGDB(str(templates_path), str(oid_schema_gdb_name))
+            logger.debug(f"OID schema gdb created: {oid_schema_gdb_path}", indent=1)
+        if arcpy.Exists(str(paths.oid_schema_template_path)):
+            logger.debug(f"Existing schema template found: {paths.oid_schema_template_path}", indent=1)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_name = f"{paths.oid_schema_template_name}_{timestamp}"
-            arcpy_mod.management.Rename(paths.oid_schema_template_path, backup_name)
-            logger.info(f"Existing schema template found and backed up as: {backup_name}", indent=0)
-        arcpy_mod.management.CreateTable(paths.oid_schema_gdb, paths.oid_schema_template_name)
+            arcpy.management.Rename(str(paths.oid_schema_template_path), str(backup_name))
+            logger.info(f"Existing schema template found and backed up as: {backup_name}", indent=1)
+        logger.debug(f"Creating new schema template table: {paths.oid_schema_template_path}", indent=1)
+        arcpy.management.CreateTable(str(oid_schema_gdb_path), str(paths.oid_schema_template_name))
+        logger.debug(f"Schema template table created: {paths.oid_schema_template_path}", indent=1)
         fields: list[tuple[str, str, Optional[int], str]] = []
 
         # Load registry-defined fields (assumes prior validation)
         for category in ("standard", "not_applicable"):
             if esri_cfg.get(category, True):
-                entries = registry_loader(cfg, category_filter=category)
+                entries = load_field_registry(cfg, category_filter=category)
                 if not entries:
                     logger.debug(f"No fields loaded for category: {category}", indent=1)
                 for f in entries.values():
@@ -105,18 +105,21 @@ def create_oid_schema_template(
             for f in block.values():
                 fields.append(_field_tuple(f))
         added_fields = 0
+        logger.debug("Checking if fields exist in schema template and adding missing fields", indent=1)
         for name, ftype, length, alias in fields:
             field_type = cast(EsriFieldType, ftype)
-            if not arcpy_mod.ListFields(paths.oid_schema_template_path, name):
+            if not arcpy.ListFields(str(paths.oid_schema_template_path), name):
+                logger.debug(f"Field '{name}' not found in schema template, adding...", indent=1)
                 try:
-                    arcpy_mod.management.AddField(
-                        in_table=paths.oid_schema_template_path,
+                    arcpy.management.AddField(
+                        in_table=str(paths.oid_schema_template_path),
                         field_name=name,
                         field_type=field_type,
                         field_length=length,
                         field_alias=alias,
                         field_is_nullable="NULLABLE"
                     )
+                    logger.debug(f"Field '{name}' added to schema template: {paths.oid_schema_template_path}", indent=1)
                     added_fields += 1
                 except Exception as e:
                     logger.error(f"Failed to add field '{name}' (type={ftype}, length={length}) to schema: {e}", indent=1)

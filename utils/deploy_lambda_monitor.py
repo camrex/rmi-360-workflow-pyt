@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Deploys Lambda functions and schedules upload monitor for 360° image tracking
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.1.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-20
+# Last Updated:        2025-05-22
 #
 # Description:
 #   Deploys and configures AWS Lambda functions for monitoring upload progress to S3. Sets up a CloudWatch
@@ -40,7 +40,7 @@ from boto3 import Session
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
-from utils.shared.aws_utils import get_aws_credentials
+from utils.shared.aws_utils import get_aws_credentials, verify_aws_credentials
 
 
 def zip_lambda(source_path: str, arcname: str, logger) -> bytes:
@@ -314,18 +314,11 @@ def deploy_lambda_monitor(cfg: ConfigManager):
 
     # Load credentials from keyring or config and verify AWS credentials
     try:
-        logger.info("Verifying AWS credentials...", indent=1)
+        logger.info("Retrieving AWS credentials...", indent=1)
         access_key, secret_key = get_aws_credentials(cfg)
-        session = Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            region_name=region
-        )
-        sts = session.client("sts")
-        sts.get_caller_identity()
-        logger.custom("AWS credentials verified.", emoji="🔑", indent=2)
-    except Exception as e:
-        logger.error(f"AWS credentials verification failed: {e}", indent=2)
+        session = verify_aws_credentials(access_key, secret_key, region, logger)
+    except Exception:
+        # Error already logged; handle accordingly
         return
     
     logger.info("Preparing to deploy Lambda monitor...", indent=1)
