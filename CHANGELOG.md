@@ -2,15 +2,26 @@
 
 *All notable changes to this project will be documented in this file.*
 
-## [2025-05-22]
+## [v1.1.1] - 2025-05-22
+### 🛠️ Bug Fix Update
 #### Added
 - Added `OrientationAccuracy` as a standard field in `esri_oid_fields_registry.yaml` (per ArcGIS Pro 3.5 OID attribute updates).
+- Added `verify_aws_credentials()` function to `aws_utils.py` for AWS credential verification.
+- Added additional validation to fail early if proper AWS credentials are not provided.
 
 #### Fixed
 - Fixed indentation of `project.local_proj_wkid`. It needs to be a child of `project`. This caused failure in validation.
 - Fixed a regression in configuration management where the project root directory path key was changed from `__project_root__` to `__project_base__`. This update restores the correct key (`__project_root__`) for full compatibility with workflow tools and logging.
 - Updated the sample configuration so `geocoding.exiftool_geodb` now defaults to `default`, avoiding errors when the specialized `geolocation500` GeoDB is not present in templates. This improves out-of-the-box compatibility for new projects.
+- Resolved bugs in `build_oid_schema.py` affecting OID generation and schema consistency.
+- Fixed AWS credential verification in `copy_to_aws.py` to match the logic in `deploy_lambda_monitor.py`, which is now handled from `aws_utils.py`.This ensures that invalid or placeholder credentials are detected before any operations are attempted, improving reliability and error reporting.
+- Fixed a bug in `generate_oid_service.py` where the OID was not duplicated with AWS urls.
 
+> **⚠️ Note: ⚠️**  
+> Version **v1.1.0** contained critical bugs that may render the workflow unusable.  
+> Please use version **v1.1.1** or later, which resolves these issues.
+
+> **⚠️ Unit Tests Note:** Many unit tests may currently be broken due to some bug fixes in this release.
 
 ---
 
