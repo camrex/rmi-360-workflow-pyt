@@ -102,7 +102,7 @@ class ConfigManager:
                              "resolution and logging operations.")
 
         self._project_base = Path(project_base).resolve()
-        self._config["__project_base__"] = str(self._project_base)
+        self._config["__project_root__"] = str(self._project_base)
 
         # Initialize path and log managers
         from utils.manager.path_manager import PathManager
