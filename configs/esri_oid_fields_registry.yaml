@@ -1,4 +1,6 @@
 # esri_oid_fields_registry.yaml
+# Version: ArcGIS Pro 3.5
+# Last Updated: 2025-05-22
 # ------------------------------
 # Master field registry for ESRI Oriented Imagery Datasets (OIDs).
 # This file defines:
@@ -242,6 +244,14 @@ ImageRotation:
   required: false
   oid_default: 0
 
+OrientationAccuracy:
+  name: "OrientationAccuracy"
+  type: "TEXT"
+  length: 50
+  alias: "Orientation Accuracy"
+  category: "standard"
+  required: false
+  oid_default: "5;10;5;5;5;0;0;1"
 # The row-wise sorted rotation matrix that defines the transformation from image space to map space, specified as nine
 # floating-point values, delimited by semicolons. Period or full-stop must be the decimal separator for all the values.
 # NOT USED FOR 360 IMAGERY
