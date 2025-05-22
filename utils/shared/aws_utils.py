@@ -31,18 +31,13 @@ from __future__ import annotations
 import keyring
 from boto3.session import Session
 from botocore.exceptions import ClientError, NoCredentialsError
-from typing import Tuple, Optional, Any, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
 
 
-def get_aws_credentials(
-    cfg: "ConfigManager",
-    *,
-    keyring_mod=None,
-    logger: Optional[Any] = None
-) -> Tuple[str, str]:
+def get_aws_credentials(cfg: "ConfigManager") -> Tuple[str, str]:
     """
     Retrieves AWS credentials from keyring or configuration.
 
@@ -51,20 +46,17 @@ def get_aws_credentials(
 
     Args:
         cfg: Instance of ConfigManager to retrieve settings.
-        keyring_mod: Optional keyring module for dependency injection/testing.
-        logger: Optional logger for dependency injection/testing.
     Returns:
         (access_key, secret_key): Tuple of AWS credentials as strings.
     Raises:
         RuntimeError: If required credentials are missing.
     """
-    keyring_mod = keyring_mod or keyring
-    logger = logger or cfg.get_logger()
+    logger = cfg.get_logger()
     use_keyring = cfg.get("aws.keyring_aws", False)
     service_name = cfg.get("aws.keyring_service_name", "rmi_s3")
     if use_keyring:
-        access_key = keyring_mod.get_password(service_name, "aws_access_key_id")
-        secret_key = keyring_mod.get_password(service_name, "aws_secret_access_key")
+        access_key = keyring.get_password(service_name, "aws_access_key_id")
+        secret_key = keyring.get_password(service_name, "aws_secret_access_key")
         if not access_key or not secret_key:
             logger.error(f"AWS credentials not found in keyring for service '{service_name}'.", indent=2,
                          error_type=RuntimeError)
@@ -79,7 +71,7 @@ def get_aws_credentials(
         logger.custom("Retrieved AWS credentials from config.", indent=2, emoji="🔑")
         return access_key, secret_key
 
-def verify_aws_credentials(access_key, secret_key, region, logger=None):
+def verify_aws_credentials(access_key, secret_key, region, logger):
     """
     Attempts to verify AWS credentials by calling sts.get_caller_identity().
     Raises an exception if verification fails.
@@ -88,7 +80,7 @@ def verify_aws_credentials(access_key, secret_key, region, logger=None):
         access_key (str): AWS access key ID.
         secret_key (str): AWS secret access key.
         region (str): AWS region.
-        logger (optional): Logger object for output. If None, prints messages.
+        logger: Logger object for output.
 
     Returns:
         Session: A boto3 Session object if verification succeeds.
@@ -102,10 +94,8 @@ def verify_aws_credentials(access_key, secret_key, region, logger=None):
         )
         sts = session.client("sts")
         sts.get_caller_identity()
-        msg = "AWS credentials verified."
-        logger.custom(msg, emoji="🔑", indent=2)
+        logger.custom("AWS credentials verified.", emoji="🔑", indent=2)
         return session
     except (ClientError, NoCredentialsError, Exception) as e:
-        msg = f"AWS credentials verification failed: {e}"
-        logger.error(msg, indent=2)
+        logger.error(f"AWS credentials verification failed: {e}", indent=2)
         raise
