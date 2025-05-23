@@ -1,6 +1,6 @@
 # ArcPy Function Licensing Matrix
 
-> **Document Location:** `docs_legacy/arcpy_license_matrix.md`  
+> **Document Location:** `docs_legacy/ARCGISPRO_LICENSE_REQUIREMENTS.md`  
 > **Generated:** 2025-05-23
 
 This document summarizes the **ArcPy functions and classes used in this project**, along with the minimum required ArcGIS Pro license level (Basic, Standard, Advanced) for each. Use this table to identify tools that may require higher license tiers and ensure your deployment environment is compatible.
