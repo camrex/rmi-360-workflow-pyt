@@ -8,6 +8,7 @@ A modular workflow built with ArcGIS Python Toolbox for processing and deploying
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.
 
 > **❗ ArcGIS Pro Note:** When adding the Toolbox to ArcGIS Pro, you may see a warning icon (❗) upon loading. If this occurs, simply remove the Toolbox and add it again to resolve the issue.
+New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all required Python libraries in your ArcGIS Pro environment before running the main tools.
 
 *Tested using ArcGIS Pro 3.4.3 and 3.5.0.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 
@@ -55,6 +56,7 @@ Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes too
 ```
 rmi-360-workflow-pyt/
 ├── rmi_360_workflow.pyt                # ArcGIS Python Toolbox
+├── rmi_360_env_checker.pyt             # ArcGIS Python Toolbox for environment checking
 ├── configs/
 │   ├── config.sample.yaml              # Config template
 │   └── esri_oid_fields_registry.yaml   # ESRI OID field definitions
@@ -87,15 +89,21 @@ cp configs/config.sample.yaml configs/config.yaml
 ## 🧭 ArcGIS Pro Environment Setup
 
 1. Open **ArcGIS Pro** and load a project (.aprx).
-2. In the Catalog pane, right-click **Toolboxes** → **Add Toolbox**.
-3. Browse to `rmi_360_workflow.pyt` and add it.
-4. Access tools grouped under:
+2. **Verify Python Environment:**  
+   In the Catalog pane, right-click **Toolboxes** → **Add Toolbox**, and add `rmi_360_env_checker.pyt`.  
+   Run the **Check Required Python Packages** tool to ensure all required libraries are installed.  
+   *If any libraries are missing, install them using the Python Command Prompt or the ArcGIS Pro Package Manager before proceeding.*
+
+3. **Add the Workflow Toolbox:**  
+   Again in the Catalog pane, right-click **Toolboxes** → **Add Toolbox**, and add `rmi_360_workflow.pyt`.
+
+4. **Access the Toolbox Tools:**  
+   Tools are grouped under:
    - **Setup**
    - **Individual Tools**
    - **Orchestrator**
 
 5. Use individual tools or run the full pipeline with `ProcessMosaic360Workflow`.
-
 ---
 
 ## 🎞 Mosaic Processor Usage Notes
