@@ -2,6 +2,12 @@
 
 *All notable changes to this project will be documented in this file.*
 
+## [2025-05-23]
+### 🧰 RMI 360 Environment Checker
+#### Added
+- Added `rmi_360_env_checker.pyt` to the repository to check for required libraries in the ArcGIS Pro Python environment. This utility does not affect workflow toolbox versioning.
+
+
 ## [v1.1.1] - 2025-05-22
 ### 🛠️ Bug Fix Update
 #### Added
