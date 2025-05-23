@@ -10,7 +10,7 @@ Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes too
 > **❗ ArcGIS Pro Note:** When adding the Toolbox to ArcGIS Pro, you may see a warning icon (❗) upon loading. If this occurs, simply remove the Toolbox and add it again to resolve the issue.
 New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all required Python libraries in your ArcGIS Pro environment before running the main tools.
 
-*Tested using ArcGIS Pro 3.4.3 and 3.5.0.*
+*Tested using ArcGIS Pro 3.4.3 and 3.5.0.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 
 > ℹ️ The “Oriented Imagery” tools require **Standard or Advanced** licenses. All other functions are available with **Basic** or higher.
 
