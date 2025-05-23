@@ -12,6 +12,8 @@ New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all requ
 
 *Tested using ArcGIS Pro 3.4.3 and 3.5.0.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 
+> ℹ️ The “Oriented Imagery” tools require **Standard or Advanced** licenses. All other functions are available with **Basic** or higher.
+
 > **⚠️ Note: ⚠️**  
 > Version **v1.1.0** contained critical bugs that may render the workflow unusable.  
 > Please use version **v1.1.1** or later, which resolves these issues.
