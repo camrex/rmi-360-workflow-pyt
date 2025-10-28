@@ -43,7 +43,7 @@ from botocore.config import Config
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
-from utils.shared.aws_utils import get_aws_credentials, verify_aws_credentials
+from utils.shared.aws_utils import get_boto3_session
 
 
 def collect_upload_tasks(local_dir, include_extensions, bucket_folder):
@@ -200,8 +200,7 @@ def copy_to_aws(
     # Load credentials from keyring or config and verify AWS credentials
     try:
         logger.info("Retrieving AWS credentials...", indent=1)
-        access_key, secret_key = get_aws_credentials(cfg)
-        session = verify_aws_credentials(access_key, secret_key, region, logger)
+        session = get_boto3_session(cfg)
     except Exception:
         # Error already logged; handle accordingly
         return

@@ -55,6 +55,7 @@ import arcpy
 import time
 import os
 from typing import Optional, Any, Callable, Dict, List
+from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.arcpy_utils import str_to_bool
@@ -64,6 +65,7 @@ from utils.build_step_funcs import build_step_funcs, get_step_order
 from utils.shared.gather_metrics import collect_oid_metrics, summarize_oid_metrics
 from utils.shared.folder_stats import folder_stats
 from utils.shared.report_data_builder import initialize_report_data, save_report_json, load_report_json_if_exists
+from utils.s3_stage import stage_reels_prefix
 
 
 class Process360Workflow(object):
@@ -372,6 +374,26 @@ class Process360Workflow(object):
         generate_report_param.value = True
         params.append(generate_report_param)
 
+        # 17. Stage Input Reels from S3 [16]
+        stage_from_s3 = arcpy.Parameter(
+            displayName="Stage Input Reels from S3?",
+            name="stage_from_s3",
+            datatype="GPBoolean",
+            parameterType="Optional",
+            direction="Input"
+        )
+        params.append(stage_from_s3)
+
+        # 18. S3 Reels Prefix (under bucket) [17]
+        s3_reels_prefix = arcpy.Parameter(
+            displayName="S3 Reels Prefix (under bucket)",
+            name="s3_reels_prefix",
+            datatype="GPString",
+            parameterType="Optional",
+            direction="Input"
+        )
+        params.append(s3_reels_prefix)
+
         return params
 
     def updateParameters(self, parameters):
@@ -385,6 +407,8 @@ class Process360Workflow(object):
         enable_linear_ref = parameters[7]  # enable_linear_ref
         centerline_param = parameters[13]  # centerline_fc
         route_id_param = parameters[14]  # route_id_field
+        stage_from_s3 = parameters[16]
+        s3_reels_prefix = parameters[17]
 
         # Defensive: ensure label-to-name mapping exists even if getParameterInfo not called
         if not hasattr(self, '_step_label_to_name') or not hasattr(self, '_step_name_to_label'):
@@ -441,6 +465,15 @@ class Process360Workflow(object):
         else:
             enable_deploy_lambda_monitor.enabled = True
             enable_generate_service.enabled = True
+        
+        # S3 staging logic
+        if bool(stage_from_s3.value):
+            s3_reels_prefix.enabled = True
+            s3_reels_prefix.parameterType = "Required"
+        else:
+            s3_reels_prefix.enabled = False
+            s3_reels_prefix.parameterType = "Optional"
+            s3_reels_prefix.value = None
 
     def updateMessages(self, parameters):
         """
@@ -454,6 +487,8 @@ class Process360Workflow(object):
         enable_linear_ref = parameters[7]
         centerline_param = parameters[13]
         route_id_param = parameters[14]
+        stage_from_s3 = parameters[16]
+        s3_reels_prefix = parameters[17]
 
         # Defensive: ensure label-to-name mapping exists even if getParameterInfo not called
         if not hasattr(self, '_step_label_to_name') or not hasattr(self, '_step_name_to_label'):
@@ -488,6 +523,15 @@ class Process360Workflow(object):
         else:
             centerline_param.clearMessage()
             route_id_param.clearMessage()
+        
+        # S3 staging messages
+        if bool(stage_from_s3.value):
+            if not (s3_reels_prefix.valueAsText and s3_reels_prefix.valueAsText.strip()):
+                s3_reels_prefix.setErrorMessage("⚠️ Please specify the S3 Reels Prefix to stage from S3.")
+            else:
+                s3_reels_prefix.clearMessage()
+        else:
+            s3_reels_prefix.clearMessage()
 
     def execute(self, parameters: list, messages: Any) -> None:
         """
@@ -512,6 +556,27 @@ class Process360Workflow(object):
         logger = cfg.get_logger(messages)
         paths = cfg.paths
 
+        # --- NEW: Support for running from AWS EC2 Instance ---
+        bucket_raw = cfg.get("aws.s3_bucket_raw", cfg.get("aws.s3_bucket"))
+        local_root = cfg.get("runtime.local_root")
+        if not local_root:
+            raise ValueError(
+                "Missing 'runtime.local_root' in configuration. "
+                "Specify it in config.yaml or set the RMI_LOCAL_ROOT environment variable."
+            )
+
+        scratch_dir = Path(local_root) / "scratch" / cfg.get("project.slug", "project")
+        scratch_dir.mkdir(parents=True, exist_ok=True)
+
+        if p.get("stage_from_s3"):
+            s3_prefix = (p.get("s3_reels_prefix") or "").strip().lstrip("/")
+            logger.info(f"Staging reels from s3://{bucket_raw}/{s3_prefix} → {scratch_dir}", indent=1)
+            local_reels = stage_reels_prefix(bucket_raw, s3_prefix, scratch_dir)
+            # Update ArcPy param and our local dict so downstream code sees the staged folder
+            parameters[1].value = str(local_reels)  # Input Reels Folder (index 1)
+            p["input_reels_folder"] = str(local_reels)
+
+        # Original code (pre-AWS EC2)
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")
         logger.custom("| --- Starting Mosaic 360 Workflow --- |", indent=0, emoji="🚀")
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")

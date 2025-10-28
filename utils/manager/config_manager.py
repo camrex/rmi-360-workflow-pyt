@@ -60,7 +60,7 @@ from utils.validators import (
     generate_oid_service_validator
 )
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.1.0"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.2.0"}
 
 
 class ConfigManager:

@@ -51,31 +51,46 @@ def validate(cfg: "ConfigManager") -> bool:
 
     # ✅ Optional keys
     optional_keys = {
+        "s3_bucket_raw": str,
         "skip_existing": bool,
         "retries": int,
         "keyring_aws": bool,
         "keyring_service_name": str,
         "access_key": str,
-        "secret_key": str
+        "secret_key": str,
+        "auth_mode": str,                 # NEW: "instance" | "keyring" | "config"
     }
 
     error_count += validate_keys_with_types(cfg, aws, optional_keys, "aws", required=False)
+
+    # ✅ auth_mode handling
+    auth_mode = (aws.get("auth_mode") or "").lower()
+    if auth_mode not in ("instance", "keyring", "config"):
+        logger.error("aws.auth_mode must be one of: instance, keyring, config", error_type=ConfigValidationError)
+        error_count += 1
+    if auth_mode == "instance" and not aws.get("s3_bucket_raw"):
+        logger.warning("aws.s3_bucket_raw is not defined. Falling back to aws.s3_bucket for raw data staging.")
 
     # ✅ Placeholder credential check if not using keyring
     use_keyring = aws.get("keyring_aws", False)
     access_key = aws.get("access_key")
     secret_key = aws.get("secret_key")
-    if not use_keyring:
-        if access_key in (None, "", "<ACCESS_KEY_ID>"):
-            logger.error(
-                "AWS config: 'aws.access_key' is not set or is a placeholder (\"<ACCESS_KEY_ID>\"). Please set a real value or enable keyring usage.",
-                error_type=ConfigValidationError)
-            error_count += 1
-        if secret_key in (None, "", "<SECRET_ACCESS_KEY>"):
-            logger.error(
-                "AWS config: 'aws.secret_key' is not set or is a placeholder (\"<SECRET_ACCESS_KEY>\"). Please set a real value or enable keyring usage.",
-                error_type=ConfigValidationError)
-            error_count += 1
+    if auth_mode == "instance":
+        # On EC2 with instance profile → do NOT require keys / keyring
+        pass
+    else:
+        # Legacy desktop modes
+        if not use_keyring:
+            if access_key in (None, "", "<ACCESS_KEY_ID>"):
+                logger.error(
+                    "AWS config: 'aws.access_key' is not set or is a placeholder (\"<ACCESS_KEY_ID>\"). Please set a real value or enable keyring usage.",
+                    error_type=ConfigValidationError)
+                error_count += 1
+            if secret_key in (None, "", "<SECRET_ACCESS_KEY>"):
+                logger.error(
+                    "AWS config: 'aws.secret_key' is not set or is a placeholder (\"<SECRET_ACCESS_KEY>\"). Please set a real value or enable keyring usage.",
+                    error_type=ConfigValidationError)
+                error_count += 1
 
     # ✅ max_workers logic: allow int or resolvable expression
     max_workers = aws.get("max_workers")

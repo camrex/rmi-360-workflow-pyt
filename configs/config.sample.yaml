@@ -5,8 +5,12 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.1.0
+schema_version: 1.2.0
 debug_messages: false
+
+# NEW RUNTIME CONFIG
+runtime:
+  local_root: "<PATH TO AWS EC2 STORAGE>"   # scratch/out on EC2 (ignored on desktop)
 
 # ------------------------------------------------------------------------------
 # 🪵 LOGGING & FILE PATHS
@@ -566,7 +570,9 @@ image_output:
 aws:
   region: "<YOUR_AWS_S3_REGION>"
   s3_bucket: "<YOUR_S3_BUCKET_NAME>"
+  s3_bucket_raw: "<YOUR_S3_RAW_BUCKET_NAME>"    # new; allows raw+prod split
   s3_bucket_folder: "config.project.slug"
+  auth_mode: "instance"     # Options: "instance", "keyring", "config"
   use_acceleration: true
 
   skip_existing: true

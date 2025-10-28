@@ -71,6 +71,7 @@ def get_aws_credentials(cfg: "ConfigManager") -> Tuple[str, str]:
         logger.custom("Retrieved AWS credentials from config.", indent=2, emoji="🔑")
         return access_key, secret_key
 
+
 def verify_aws_credentials(access_key, secret_key, region, logger):
     """
     Attempts to verify AWS credentials by calling sts.get_caller_identity().
@@ -99,3 +100,22 @@ def verify_aws_credentials(access_key, secret_key, region, logger):
     except (ClientError, NoCredentialsError, Exception) as e:
         logger.error(f"AWS credentials verification failed: {e}", indent=2)
         raise
+
+
+def get_boto3_session(cfg):
+    """
+    Returns a boto3 Session. If aws.auth_mode == 'instance', use default chain (instance profile).
+    Else, fall back to existing get_aws_credentials() + verify_aws_credentials().
+    """
+    mode = cfg.get("aws.auth_mode", "config")  # "instance" | "keyring" | "config"
+    region = cfg.get("aws.region")
+    logger = cfg.get_logger()
+
+    if mode == "instance":
+        logger.custom("Using EC2 instance profile credentials.", emoji="🔐", indent=2)
+        # Default session picks up IMDS/instance role automatically
+        return Session(region_name=region)
+    else:
+        access_key, secret_key = get_aws_credentials(cfg)
+        return verify_aws_credentials(access_key, secret_key, region, logger)
+
