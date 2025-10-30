@@ -1,8 +1,8 @@
 from utils.build_step_funcs import build_step_funcs, skip_if_copy_to_aws_disabled
 
 def test_skip_if_copy_to_aws_disabled():
-    assert skip_if_copy_to_aws_disabled({"copy_to_aws": "false"}) == "Skipped (disabled by user)"
-    assert skip_if_copy_to_aws_disabled({"copy_to_aws": "true"}) is None
+    assert skip_if_copy_to_aws_disabled({"enable_copy_to_aws": "false"}) == "Skipped (disabled by user)"
+    assert skip_if_copy_to_aws_disabled({"enable_copy_to_aws": "true"}) is None
     assert skip_if_copy_to_aws_disabled({}) == "Skipped (disabled by user)"
 
 def test_build_step_funcs_structure():
@@ -41,7 +41,7 @@ def test_build_step_funcs_structure():
     # Check all expected keys exist
     expected_keys = [
         "run_mosaic_processor", "create_oid", "add_images", "assign_group_index", "enrich_oid",
-        "smooth_gps", "correct_gps", "update_linear_custom", "enhance_images", "rename_images",
+        "smooth_gps", "correct_gps", "update_linear_custom", "rename_images",
         "update_metadata", "geocode", "build_footprints", "deploy_lambda_monitor", "copy_to_aws", "generate_service"
     ]
     assert set(step_funcs.keys()) == set(expected_keys)

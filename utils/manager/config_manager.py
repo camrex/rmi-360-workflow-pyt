@@ -38,7 +38,7 @@ from pathlib import Path
 
 if TYPE_CHECKING:
     from utils.manager.path_manager import PathManager
-    from utils.manager.log_manager import LogManager  
+    from utils.manager.log_manager import LogManager
     from utils.manager.progressor_manager import ProgressorManager
 
 from utils.validators.validate_full_config import validate_full_config
@@ -376,6 +376,7 @@ class ConfigManager:
         Returns:
             ProgressorManager: Progress tracker instance
         """
+        from utils.manager.progressor_manager import ProgressorManager
         return ProgressorManager(total=total, label=label, step=step, log_manager=self.get_logger())
 
     TOOL_VALIDATORS = {

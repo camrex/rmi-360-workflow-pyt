@@ -13,7 +13,7 @@
 #   Supports both Local and AWS-based execution environments. The tool determines which reel
 #   folders to process—either from local project directories or from an S3 bucket—and runs a
 #   configurable series of workflow steps including image rendering, OID creation, enrichment,
-#   geolocation, enhancement, AWS copy, and service publishing. Progress and results are tracked
+#   geolocation, AWS copy, and service publishing. Progress and results are tracked
 #   in a persistent report JSON for dashboarding and audit.
 #
 # File Location:      /tools/process_360_orchestrator.py
@@ -364,7 +364,7 @@ class Process360Workflow(object):
         enable_geocode_param.value = True
         params.append(enable_geocode_param)
 
-        # 14) Enable Copy to AWS
+        # 13) Enable Copy to AWS
         enable_copy_to_aws_param = arcpy.Parameter(
             displayName="Enable Copy to AWS",
             name="enable_copy_to_aws",
@@ -375,7 +375,7 @@ class Process360Workflow(object):
         enable_copy_to_aws_param.value = True
         params.append(enable_copy_to_aws_param)
 
-        # 15) Enable Deploy Lambda Monitor
+        # 14) Enable Deploy Lambda Monitor
         enable_deploy_lambda_monitor_param = arcpy.Parameter(
             displayName="Enable Deploy Lambda Monitor",
             name="enable_deploy_lambda_monitor",
@@ -386,7 +386,7 @@ class Process360Workflow(object):
         enable_deploy_lambda_monitor_param.value = True
         params.append(enable_deploy_lambda_monitor_param)
 
-        # 16) Enable Generate OID Service
+        # 15) Enable Generate OID Service
         enable_generate_service_param = arcpy.Parameter(
             displayName="Enable Generate OID Service",
             name="enable_generate_service",
@@ -397,7 +397,7 @@ class Process360Workflow(object):
         enable_generate_service_param.value = True
         params.append(enable_generate_service_param)
 
-        # 17) Centerline (Polyline)
+        # 16) Centerline (Polyline)
         centerline_param = arcpy.Parameter(
             displayName="Centerline (M-enabled, used for GPS smoothing and linear referencing)",
             name="centerline_fc",
@@ -408,7 +408,7 @@ class Process360Workflow(object):
         centerline_param.filter.list = ["Polyline"]
         params.append(centerline_param)
 
-        # 18) Route ID Field
+        # 17) Route ID Field
         route_id_param = arcpy.Parameter(
             displayName="Route ID Field",
             name="route_id_field",
@@ -420,7 +420,7 @@ class Process360Workflow(object):
         route_id_param.filter.list = ["Short", "Long", "Text"]
         params.append(route_id_param)
 
-        # 19) Generate HTML Summary Report
+        # 18) Generate HTML Summary Report
         generate_report_param = arcpy.Parameter(
             displayName="Generate HTML Summary Report",
             name="generate_report",
