@@ -71,3 +71,8 @@ build/
 # Development Docs
 dev_docs/
 
+# Sphinx Documentation Build
+docs/_build/
+docs/_static/
+docs/_templates/
+
