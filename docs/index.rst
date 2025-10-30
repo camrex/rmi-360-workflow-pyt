@@ -69,7 +69,7 @@ Quick Start
 
    .. code-block:: bash
 
-      git clone https://github.com/RMI-Valuation/rmi-360-workflow-pyt.git
+      git clone https://github.com/camrex/rmi-360-workflow-pyt.git
       cd rmi-360-workflow-pyt
 
 2. **Setup Configuration**
