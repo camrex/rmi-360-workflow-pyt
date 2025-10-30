@@ -3,13 +3,13 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Uploads JPEG images from a local directory to AWS S3 using TransferManager
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.1
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-22
+# Last Updated:        2025-10-30
 #
 # Description:
-#   Recursively uploads enhanced or renamed images from a local directory to a configured
+#   Recursively uploads renamed images from a local directory to a configured
 #   S3 bucket path using boto3's TransferManager. Supports concurrency scaling, retry logic,
 #   resumable logging, ETA progress tracking, and graceful cancellation via file or ArcGIS trigger.
 #

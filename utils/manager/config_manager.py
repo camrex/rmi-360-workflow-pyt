@@ -1,13 +1,13 @@
 # =============================================================================
-# 🧠 Config Manager Utility (utils/manager/config_manager.py)
+# 🔧 Configuration Manager (utils/manager/config_manager.py)
 # -----------------------------------------------------------------------------
 # Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360
 #                      Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.1
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-05-22
+# Last Updated:        2025-10-30
 #
 # Description:
 #   Centralized configuration manager for the toolbox. Wraps access to key config
@@ -33,8 +33,13 @@
 from __future__ import annotations
 import os
 import yaml
-from typing import Any, Optional, Union, Dict, List
+from typing import Any, Optional, Union, Dict, List, TYPE_CHECKING
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from utils.manager.path_manager import PathManager
+    from utils.manager.log_manager import LogManager  
+    from utils.manager.progressor_manager import ProgressorManager
 
 from utils.validators.validate_full_config import validate_full_config
 from utils.shared.rmi_exceptions import ConfigValidationError
@@ -50,7 +55,6 @@ from utils.validators import (
     smooth_gps_noise_validator,
     correct_gps_outliers_validator,
     update_linear_and_custom_validator,
-    enhance_images_validator,
     rename_images_validator,
     apply_exif_metadata_validator,
     geocode_images_validator,
@@ -60,7 +64,7 @@ from utils.validators import (
     generate_oid_service_validator
 )
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.2.0"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.3.0"}
 
 
 class ConfigManager:
@@ -113,7 +117,6 @@ class ConfigManager:
     @classmethod
     def from_file(cls, path: Optional[str] = None, project_base: Optional[Union[str, Path]] = None, *,
                   messages: Optional[list] = None) -> "ConfigManager":
-        from utils.manager.log_manager import LogManager
         """
         Class method to load a config file, validate schema version, and return a ConfigManager.
 
@@ -132,6 +135,7 @@ class ConfigManager:
         """
         config_path = path or cls._get_default_config_path(messages)
         config = {}
+        from utils.manager.log_manager import LogManager
         lm = LogManager(messages=messages, config=config)
 
         try:
@@ -176,8 +180,6 @@ class ConfigManager:
 
     @staticmethod
     def _get_default_config_path(messages: Optional[list] = None) -> str:
-        from utils.manager.log_manager import LogManager
-        from utils.manager.path_manager import PathManager
         """
         Resolve default config path using PathManager.
 
@@ -326,7 +328,6 @@ class ConfigManager:
 
     @property
     def paths(self) -> "PathManager":
-        from utils.manager.path_manager import PathManager
         """
         Access the initialized PathManager.
 
@@ -341,7 +342,6 @@ class ConfigManager:
         return self._paths
 
     def get_logger(self, messages: Optional[list] = None) -> "LogManager":
-        from utils.manager.log_manager import LogManager
         """
         Return a LogManager instance, optionally updating its message sink.
 
@@ -365,7 +365,6 @@ class ConfigManager:
         return self._lm
 
     def get_progressor(self, total: int, label: str = "Processing...", step: int = 1) -> "ProgressorManager":
-        from utils.manager.progressor_manager import ProgressorManager
         """
         Returns a ProgressorManager initialized with the active LogManager.
 
@@ -389,7 +388,6 @@ class ConfigManager:
         "smooth_gps_noise": smooth_gps_noise_validator.validate,
         "correct_gps_outliers": correct_gps_outliers_validator.validate,
         "update_linear_and_custom": update_linear_and_custom_validator.validate,
-        "enhance_images": enhance_images_validator.validate,
         "rename_images": rename_images_validator.validate,
         "apply_exif_metadata": apply_exif_metadata_validator.validate,
         "geocode_images": geocode_images_validator.validate,

@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Constructs an ordered dictionary of callable workflow steps for OID processing
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-20
+# Last Updated:        2025-10-30
 #
 # Description:
 #   Maps each pipeline step in the 360° imagery workflow to a labeled function. Supports conditional
@@ -15,7 +15,7 @@
 #
 # File Location:        /utils/build_step_funcs.py
 # Called By:            tools/process_360_orchestrator.py
-# Int. Dependencies:    All workflow utils (mosaic_processor, enhance_images, copy_to_aws, etc.), utils/shared/arcpy_utils
+# Int. Dependencies:    All workflow utils (mosaic_processor, copy_to_aws, etc.), utils/shared/arcpy_utils
 # Ext. Dependencies:    collections
 #
 # Documentation:
@@ -37,7 +37,6 @@ from utils.calculate_oid_attributes import enrich_oid_attributes
 from utils.smooth_gps_noise import smooth_gps_noise
 from utils.correct_gps_outliers import correct_gps_outliers
 from utils.update_linear_and_custom import update_linear_and_custom
-from utils.enhance_images import enhance_images_in_oid
 from utils.rename_images import rename_images
 from utils.apply_exif_metadata import update_metadata_from_config
 from utils.geocode_images import geocode_images
@@ -48,9 +47,7 @@ from utils.generate_oid_service import generate_oid_service
 
 StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
 
-def skip_enhance_images(params):
-    # New logic: skip if 'enable_enhance_images' is not True
-    return "Skipped (enhancement disabled)" if not params.get("enable_enhance_images", False) else None
+
 
 def skip_if_copy_to_aws_disabled(params):
     # New logic: skip if 'enable_copy_to_aws' is not True
@@ -90,8 +87,6 @@ def build_step_funcs(p, cfg):
             lambda params, config: lambda **kwargs: correct_gps_outliers(oid_fc=p["oid_fc"], cfg=cfg), skip_if_smooth_gps_disabled),
         StepSpec("update_linear_custom", "Update Linear and Custom Attributes",
             lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg), None),
-        StepSpec("enhance_images", "Enhance Images",
-            lambda params, config: lambda **kwargs: enhance_images_in_oid(oid_fc_path=p["oid_fc"], cfg=cfg), skip_enhance_images),
         StepSpec("rename_images", "Rename Images",
             lambda params, config: lambda **kwargs: rename_images(oid_fc=p["oid_fc"], cfg=cfg, enable_linear_ref=p["enable_linear_ref"]), None),
         StepSpec("update_metadata", "Update EXIF Metadata",
@@ -119,10 +114,10 @@ def build_step_funcs(p, cfg):
 def get_step_order(step_funcs: dict) -> list:
     """
     Returns a list of step keys in the order they appear in the step_funcs dictionary.
-    
+
     Args:
         step_funcs: A dictionary mapping step keys to step descriptors.
-    
+
     Returns:
         A list of step keys preserving their original order.
     """

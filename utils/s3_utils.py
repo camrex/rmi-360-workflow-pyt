@@ -1,4 +1,28 @@
-# utils/s3_utils.py
+# =============================================================================
+# ☁️ S3 Utilities (utils/s3_utils.py)
+# -----------------------------------------------------------------------------
+# Purpose:             S3 operations for staging project files and reels from AWS to local directories
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.2.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-10-28
+# Last Updated:        2025-10-30
+#
+# Description:
+#   Provides utilities for listing, staging, and managing project files stored in S3.
+#   Supports downloading reels, configuration files, and GIS data from S3 buckets
+#   to local directories for workflow processing. Includes legacy compatibility shims.
+#
+# File Location:        /utils/s3_utils.py
+# Called By:            tools/process_360_orchestrator.py, scripts/upload_to_s3.py
+# Int. Dependencies:    utils/shared/s3_* modules
+# Ext. Dependencies:    boto3, pathlib, concurrent.futures, typing
+#
+# Notes:
+#   - Includes both new preferred functions and legacy compatibility shims
+#   - Supports concurrent downloads for improved performance
+# =============================================================================
+
 from __future__ import annotations
 from pathlib import Path
 import concurrent.futures as cf

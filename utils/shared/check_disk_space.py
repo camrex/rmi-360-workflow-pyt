@@ -1,15 +1,15 @@
 # =============================================================================
 # 💾 Disk Space Checker (utils/check_disk_space.py)
 # -----------------------------------------------------------------------------
-# Purpose:             Verifies available disk space before performing image enhancement or export
+# Purpose:             Verifies available disk space before performing workflow operations
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.1
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-20
+# Last Updated:        2025-10-30
 #
 # Description:
-#   Estimates required disk space using the size of the base imagery folder (original or enhanced),
+#   Estimates required disk space using the size of the base imagery folder (original),
 #   applies a configurable buffer ratio, and compares it against available space on the drive.
 #   Prevents out-of-space failures during image-intensive steps in the pipeline.
 #
@@ -78,7 +78,7 @@ def check_sufficient_disk_space(
     """
     Checks if sufficient disk space is available for image operations on an Oriented Imagery Dataset.
 
-    Estimates the required disk space by calculating the size of the relevant 'original' or 'enhanced' image directory
+    Estimates the required disk space by calculating the size of the relevant 'original' image directory
     and applying a safety buffer. Raises an error if the available space on the drive is less than the estimated
     requirement.
 
@@ -122,13 +122,12 @@ def check_sufficient_disk_space(
     drive_root = Path(target_dir).anchor
 
     original_folder = cfg.get("image_output.folders.original", "original").lower()
-    enhanced_folder = cfg.get("image_output.folders.enhanced", "enhanced").lower()
 
-    base_dir = find_base_dir(target_dir, original_folder) or find_base_dir(target_dir, enhanced_folder)
+    base_dir = find_base_dir(target_dir, original_folder)
 
     if not base_dir:
         logger.error(
-            f"ImagePath does not include '{original_folder}' or '{enhanced_folder}' folder. Path: {target_dir}",
+            f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}",
             error_type=ValueError, indent=1)
 
     if not os.path.exists(base_dir):

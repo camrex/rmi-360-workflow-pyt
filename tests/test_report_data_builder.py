@@ -18,7 +18,6 @@ def test_initialize_report_data_basic():
     cfg.get.side_effect = lambda k, d=None: {'project': {'slug': 'slug'}, 'camera': {'focal': 'config.camera.focal'}}.get(k, d)
     cfg.resolve.side_effect = lambda v: 'resolved_' + v
     cfg.paths.original = '/orig'
-    cfg.paths.enhanced = '/enh'
     cfg.paths.renamed = '/ren'
     report = report_data_builder.initialize_report_data(paths_dict, cfg)
     assert report['paths']['oid_fc'] == 'fc'

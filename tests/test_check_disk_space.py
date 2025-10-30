@@ -7,14 +7,15 @@ class DummyLogger:
         self.warnings = []
         self.errors = []
         self.debugs = []
-    def info(self, msg):
+    def info(self, msg, context=None, indent=0):
         self.infos.append(msg)
-    def warning(self, msg):
+    def warning(self, msg, context=None, indent=0):
         self.warnings.append(msg)
-    def error(self, msg, error_type=None):
+    def error(self, msg, context=None, indent=0, error_type=None):
         self.errors.append((msg, error_type))
-        raise error_type(msg) if error_type else Exception(msg)
-    def debug(self, msg):
+        if error_type:
+            raise error_type(msg)
+    def debug(self, msg, context=None, indent=0):
         self.debugs.append(msg)
 
 class DummyConfigManager:
@@ -49,8 +50,7 @@ def test_disk_space_check_success(monkeypatch):
     cfg = DummyConfigManager(logger=logger, config={
         "disk_space.check_enabled": True,
         "disk_space.min_buffer_ratio": 1.1,
-        "image_output.folders.original": "original",
-        "image_output.folders.enhanced": "enhanced"
+        "image_output.folders.original": "original"
     })
     # Simulate a cursor returning a valid image path
     def fake_cursor(fc, fields):
@@ -83,8 +83,7 @@ def test_disk_space_insufficient(monkeypatch):
     cfg = DummyConfigManager(logger=logger, config={
         "disk_space.check_enabled": True,
         "disk_space.min_buffer_ratio": 2.0,
-        "image_output.folders.original": "original",
-        "image_output.folders.enhanced": "enhanced"
+        "image_output.folders.original": "original"
     })
     def fake_cursor(fc, fields):
         class DummyCursor:

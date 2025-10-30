@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Initializes, loads, and saves report data structures for the 360° workflow
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-10-30
 #
 # Description:
 #   Builds a structured JSON-compatible dictionary to track workflow progress, AWS info, camera metadata,
@@ -66,7 +66,6 @@ def initialize_report_data(paths_dict: Dict[str, Any], cfg: ConfigManager) -> Di
             "oid_gdb": None,
             "reels_input": paths_dict["input_reels_folder"],
             "original_images": str(paths.original),
-            "enhanced_images": str(paths.enhanced),
             "renamed_images": str(paths.renamed)
         },
         "aws": {

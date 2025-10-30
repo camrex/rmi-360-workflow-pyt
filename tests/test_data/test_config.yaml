@@ -1,7 +1,11 @@
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.1.0
+schema_version: 1.3.0
 debug_messages: true
+
+# NEW RUNTIME CONFIG
+runtime:
+  local_root: "D:/Process360_Data"   # Base path on EC2 (ignored on desktop)
 
 # ------------------------------------------------------------------------------
 # 🪵 LOGGING & FILE PATHS
@@ -31,7 +35,6 @@ debug_messages: true
 # gps_smooth_debug     (str) - CSV debug output for GPS smoothing outliers
 #
 # aws_upload_log       (str) - Main CSV log for copy_to_aws uploads
-# enhance_log          (str) - Log output for image enhancement runs
 # rename_log           (str) - File rename summary log
 # process_log          (str) - Master runtime log (used by orchestrator, messages, etc.)
 # ------------------------------------------------------------------------------
@@ -48,7 +51,6 @@ logs:
   gps_smooth_debug: "debuglog_outliers.csv"
   aws_upload_log: "aws_upload_log.csv"
   aws_upload_summary: "aws_upload_summary.csv"
-  enhance_log: "enhance_log.csv"
   rename_log: "rename_log.csv"
   process_log: "process_log.txt"
 
@@ -230,7 +232,7 @@ executables:
     exe_path: "exiftool"  # Command-line call or full path to ExifTool binary
   mosaic_processor:
     exe_path: "C:/Program Files (x86)/Mosaic Apps/Mosaic Processor/Mosaic Processor.exe"  # Full path to Mosaic Processor GUI/CLI
-    grp_path: "E:/DevProjects/rmi-360-workflow-pyt/test_data/test_grp.grp"                    # Default GRP file for Mosaic 51 camera
+    grp_path: "test_grp.grp"                    # Default GRP file for Mosaic 51 camera
     cfg_path: "DISABLED"                                                                  # RESERVED FOR FUTURE FUNCTIONALITY
 
 # --------------------------------------------------------------------
@@ -440,7 +442,6 @@ image_output:
   folders:
     parent: "panos"
     original: "original"
-    enhanced: "enhanced"
     renamed: "final"
   filename_settings:
     format: "{project_slug}_{rr}_{mp_pre}{mp_num}_{capture_datetime}_RL{reel}_FR{frame}.jpg"
@@ -684,99 +685,6 @@ geocoding:
   geoloc500_config_path: "templates/exiftool/geolocation500.config"
   geocustom_config_path: "templates/exiftool/geocustom.config"
 
-# --------------------------------------------------------------------
-# 🖼️ IMAGE ENHANCEMENT CONFIGURATION
-# --------------------------------------------------------------------
-# Applies automated enhancement to Mosaic 360 imagery using OpenCV.
-# Tuned for panoramic outdoor railroad scenes, this includes:
-#
-# ✅ White balance correction
-# ✅ Local contrast adjustment (CLAHE)
-# ✅ Optional sharpening
-# ✅ Gentle brightness recovery (if image is too dark)
-# ✅ Optional saturation boost for visual clarity
-#
-# 🛠️ This runs after Mosaic Processor, before renaming or tagging.
-# 🧠 Enhancements are applied in this order:
-#    1. White balance
-#    2. CLAHE contrast enhancement
-#    3. Saturation boost (if enabled)
-#    4. Sharpening (if enabled)
-#    5. Brightness recovery (if enabled)
-# --------------------------------------------------------------------
-image_enhancement:
-  enabled: true               # Master switch for image enhancement
-  dry_run: false
-  adaptive: true              # Enable adaptive tuning for CLAHE
-  max_workers: 16             # For high throughput without overloading
-  auto_generate_profile: true
-  profile_json: "enhancement_profile.json"
-  ai_assist: true
-  interval: 10
-
-  # ----------------------------------------------------------------
-  # 🗂️ OUTPUT MODE
-  # ----------------------------------------------------------------
-  output:
-    mode: "directory"         # Options:
-                              #   "overwrite" – Replace original images
-                              #   "suffix"    – Add suffix (e.g., _enh.jpg)
-                              #   "directory" – Save to a new folder
-    suffix: "_enh"            # Suffix for output if mode = "suffix"
-
-  # ----------------------------------------------------------------
-  # ⚪ WHITE BALANCE SETTINGS
-  # ----------------------------------------------------------------
-  apply_white_balance: true
-  white_balance:
-    enabled: true
-    method: "gray_world"      # Options:
-                              #   "gray_world" – Balance RGB to average intensity
-                              #   "simple"     – OpenCV SimpleWB (more aggressive)
-
-  # ----------------------------------------------------------------
-  # 🔳 CLAHE LOCAL CONTRAST ENHANCEMENT
-  # ----------------------------------------------------------------
-  apply_contrast_enhancement: true
-  clahe:
-    enabled: true
-    tile_grid_size: [8, 8]           # Size of local regions for CLAHE
-    contrast_thresholds: [60, 80]    # For adaptive clip limit
-                                     # contrast < 60 → use clip_limit_high
-                                     # contrast >= 60 → use clip_limit_low
-    clip_limit_low: 1.5              # CLAHE strength for normal images
-    clip_limit_high: 2.5             # CLAHE strength for low contrast scenes
-    # min_contrast_to_enhance: 85    # (Optional) Skip CLAHE if contrast too high
-
-  # ----------------------------------------------------------------
-  # ✴️ OPTIONAL SHARPENING
-  # ----------------------------------------------------------------
-  apply_sharpening: true
-  sharpen:
-    enabled: true
-    # min_contrast_to_sharpen: 50    # (Optional) Only sharpen if contrast is high enough
-    kernel:
-      - [ 0, -0.3,  0 ]
-      - [ -0.3,  2.6, -0.3 ]
-      - [ 0, -0.3,  0 ]
-
-  # ----------------------------------------------------------------
-  # 💡 BRIGHTNESS RECOVERY (GENTLE BOOST)
-  # ----------------------------------------------------------------
-  brightness_recovery: true
-  brightness:
-    enabled: true
-    threshold: 110           # Only apply if brightness falls below this value
-    factor: 1.1              # Multiplier to gently lift brightness (e.g., 1.1 = +10%)
-
-  # ----------------------------------------------------------------
-  # 🌈 SATURATION BOOST
-  # ----------------------------------------------------------------
-  apply_saturation_boost: true
-  saturation_boost:
-    enabled: true
-    factor: 1.1              # Multiply saturation (1.1 = +10%)
-
 # ----------------------------------------------------------------
 # ORCHESTRATOR CONFIG
 # ----------------------------------------------------------------
@@ -794,7 +702,6 @@ orchestrator:
   wait_before_step:
     - add_images
     - smooth_gps
-    - enhance_images
     - rename_images
     - geocode
     - build_footprints
@@ -808,19 +715,9 @@ orchestrator:
   # This protects against data loss during critical or irreversible operations.
   backup_before_step:
     - smooth_gps
-    - enhance_images
     - rename_images
     - generate_service
 
   # Location of the shared backup geodatabase where OID snapshots will be stored.
   # Backups are named like: OID_before_{step}_{timestamp}
   oid_backup_fgdb: "backups/oid_snapshots.gdb"
-
-# ----------------------------------------------------------------
-# OPENAI CONFIG
-# ----------------------------------------------------------------
-openai:
-  keyring_openai: false
-  keyring_service_name: openai_keyring
-  api_key: <YOUR_API_KEY>
-  model: "gpt-4o"

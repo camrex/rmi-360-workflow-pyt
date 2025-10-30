@@ -1,3 +1,31 @@
+# =============================================================================
+# ☁️ Unified S3 Upload Script (scripts/upload_to_s3.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Comprehensive S3 upload utility for RMI 360 workflow project files
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.2.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-10-28
+# Last Updated:        2025-10-30
+#
+# Description:
+#   Standalone script for uploading project files (reels, config, gis_data, logs, report)
+#   to S3 with crash-safe resume functionality, multi-folder-type support, live progress
+#   tracking, adaptive upload optimization, and SHA-256 verification for data integrity.
+#
+# File Location:        /scripts/upload_to_s3.py
+# Called By:            Command line, workflow scripts
+# Int. Dependencies:    utils/shared/s3_* modules, utils/shared/aws_utils
+# Ext. Dependencies:    boto3, argparse, pathlib, concurrent.futures
+#
+# Key Features:
+#   - Crash-safe resume via S3 HEAD checks and CSV log
+#   - Multi-folder-type support with flexible selection
+#   - Live progress tracking (JSON heartbeat)
+#   - Adaptive upload optimization for large files
+#   - SHA-256 verification for data integrity
+# =============================================================================
+
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """

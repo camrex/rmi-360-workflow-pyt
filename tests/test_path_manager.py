@@ -43,7 +43,7 @@ def test_path_manager_resolution():
     "templates", "configs", "lambdas",
     "primary_config_path", "fallback_config_path",
     "backups", "backup_gdb", "logs", "report",
-    "panos", "original", "enhanced", "renamed",
+    "panos", "original", "renamed",
     "oid_schema_gdb", "oid_field_registry", "oid_schema_template_name",
     "geoloc500_config_path", "geocustom_config_path",
     "exiftool_exe", "mosaic_processor_exe", "mosaic_processor_grp"
@@ -59,7 +59,6 @@ def test_path_manager_resolution():
             print(f"{attr:30}: ERROR - {e}")
             raise AssertionError(f"Failed to resolve {attr}: {e}") from e
     # Optional additional checks
-    assert isinstance(pm.get_log_file_path("enhance_log"), Path)
     assert isinstance(pm.check_exiftool_available(), bool)
     assert isinstance(pm.check_mosaic_processor_available(), bool)
 

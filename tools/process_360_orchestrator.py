@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          Process360Workflow
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.2.0
+# Version:            1.3.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
 # Last Updated:       2025-10-29
@@ -46,7 +46,6 @@
 #   - OID Dataset - Output {oid_fc_output} (Feature Class): Output OID (used only when creating a new dataset).
 #   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
-#   - Enable Enhance Images [EXPERIMENTAL] {enable_enhance_images} (Boolean): Enables AI-based image enhancement.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
 #   - Enable Deploy Lambda Monitor {enable_deploy_lambda_monitor} (Boolean): Deploys AWS monitoring Lambda (if enabled).
@@ -71,7 +70,6 @@ import time
 import os
 
 from utils.manager.config_manager import ConfigManager
-from utils.shared.arcpy_utils import str_to_bool
 from utils.generate_report import generate_report_from_json
 from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
@@ -177,14 +175,13 @@ class Process360Workflow(object):
         "6) Smooth GPS Noise (optional)\n"
         "7) Correct Flagged GPS Points (optional)\n"
         "8) Update Linear and Custom Attributes (linear referencing optional)\n"
-        "9) Enhance Images [EXPERIMENTAL] (optional)\n"
-        "10) Rename Images\n"
-        "11) Update EXIF Metadata\n"
-        "12) Geocode Images (optional)\n"
-        "13) Create OID Footprints\n"
-        "14) Deploy Lambda Monitor (optional)\n"
-        "15) Copy to AWS (optional)\n"
-        "16) Generate OID Service (optional)"
+        "9) Rename Images\n"
+        "10) Update EXIF Metadata\n"
+        "11) Geocode Images (optional)\n"
+        "12) Create OID Footprints\n"
+        "13) Deploy Lambda Monitor (optional)\n"
+        "14) Copy to AWS (optional)\n"
+        "15) Generate OID Service (optional)"
     )
     canRunInBackground = False
 
@@ -198,14 +195,13 @@ class Process360Workflow(object):
         (6, "smooth_gps", "Smooth GPS Noise"),
         (7, "correct_gps", "Correct Flagged GPS Points"),
         (8, "update_linear_custom", "Update Linear and Custom Attributes"),
-        (9, "enhance_images", "Enhance Images [EXPERIMENTAL]"),
-        (10, "rename_images", "Rename Images"),
-        (11, "update_metadata", "Update EXIF Metadata"),
-        (12, "geocode", "Geocode Images"),
-        (13, "build_footprints", "Build OID Footprints"),
-        (14, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
-        (15, "copy_to_aws", "Upload to AWS S3"),
-        (16, "generate_service", "Generate OID Service"),
+        (9, "rename_images", "Rename Images"),
+        (10, "update_metadata", "Update EXIF Metadata"),
+        (11, "geocode", "Geocode Images"),
+        (12, "build_footprints", "Build OID Footprints"),
+        (13, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
+        (14, "copy_to_aws", "Upload to AWS S3"),
+        (15, "generate_service", "Generate OID Service")
     ]
 
     # Sort by numeric index and extract step names in the correct order
@@ -357,18 +353,7 @@ class Process360Workflow(object):
         enable_linear_ref_param.value = True
         params.append(enable_linear_ref_param)
 
-        # 12) Enable Enhance Images [EXPERIMENTAL]
-        enable_enhance_images_param = arcpy.Parameter(
-            displayName="Enable Enhance Images [EXPERIMENTAL]",
-            name="enable_enhance_images",
-            datatype="GPBoolean",
-            parameterType="Optional",
-            direction="Input",
-        )
-        enable_enhance_images_param.value = False
-        params.append(enable_enhance_images_param)
-
-        # 13) Enable Geocode Images
+        # 12) Enable Geocode Images
         enable_geocode_param = arcpy.Parameter(
             displayName="Enable Geocode Images",
             name="enable_geocode",
@@ -911,7 +896,7 @@ class Process360Workflow(object):
             logger.warning(f"Failed to count reel folders: {e}", indent=1)
 
         # Folder stats, elapsed, report generation
-        self._compute_and_store_folder_stats(["original", "enhanced", "renamed"], paths, report_data, logger)
+        self._compute_and_store_folder_stats(["original", "renamed"], paths, report_data, logger)
         elapsed_total = self.time_mod.time() - t_start
         report_data["metrics"]["elapsed"] = f"{elapsed_total:.1f} sec"
         total_images = report_data["metrics"].get("total_images", 0)

@@ -1,14 +1,29 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-s3_status_tracker.py
-====================
-
-Thread-safe status tracking for S3 uploads with JSON heartbeat.
-
-Tracks upload progress globally and per-group (reels, folder types, etc.)
-with live JSON status file updates.
-"""
+# =============================================================================
+# ☁️ S3 Status Tracker (utils/shared/s3_status_tracker.py)  
+# -----------------------------------------------------------------------------
+# Purpose:             Thread-safe status tracking for S3 uploads with live JSON progress monitoring
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.2.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-10-28
+# Last Updated:        2025-10-30
+#
+# Description:
+#   Provides thread-safe upload progress tracking with live JSON status file updates.
+#   Tracks progress globally and per-group (reels, folder types, etc.) for real-time
+#   monitoring of large-scale S3 upload operations in 360° imagery workflows.
+#
+# File Location:        /utils/shared/s3_status_tracker.py
+# Called By:            scripts/upload_to_s3.py, utils/copy_to_aws.py
+# Int. Dependencies:    None
+# Ext. Dependencies:    json, threading, time, pathlib
+#
+# Features:
+#   - Thread-safe progress updates
+#   - JSON heartbeat file generation
+#   - Per-group and global progress tracking
+#   - Real-time status monitoring
+# =============================================================================
 
 from __future__ import annotations
 
