@@ -4,6 +4,87 @@
 
 > **📝 Maintenance Note**: Please update this CHANGELOG with significant changes, new features, bug fixes, and breaking changes. Follow the existing format with clear categories (Added, Changed, Fixed, Removed, etc.).
 
+## [v1.3.0] - 2025-10-30 - Major Architecture Enhancement & AWS Integration
+*Combined release including AWS/Local infrastructure (1.2.0) and Enhancement Removal (1.3.0)*
+
+### 🎯 **BREAKING CHANGES**
+> ⚠️ **Image Enhancement Removed**: Complete removal of OpenCV-based image enhancement functionality due to seam line artifacts in panoramic imagery.
+
+#### Removed
+- **Enhancement Pipeline**: Complete removal of post-stitch image enhancement functionality
+  - Deleted: `tools/enhance_images_tool.py`, `utils/enhance_images.py`, `utils/validators/enhance_images_validator.py`
+  - Deleted: `tests/test_enhance_images.py`, `docs_legacy/tools/enhance_images.md`
+- **Configuration Section**: `image_enhancement` section completely removed from config schema
+- **Workflow Step**: Reduced workflow from 16 to 15 steps (removed step 9: enhance_images)
+- **Enhanced Folder Structure**: No longer creates or references `enhanced/` image folders
+
+#### Changed - Enhancement Removal
+- **Schema Version**: Updated to `1.3.0` to reflect breaking configuration changes
+- **Workflow Pipeline**: Step numbers renumbered (enhance_images step 9 removed)
+  - Steps 10-16 became steps 9-15
+  - Updated step descriptions and orchestrator parameter handling
+- **Path Management**: Removed `enhanced` property from PathManager
+- **Disk Space Checking**: Updated to only check `original/` folder (no longer checks `enhanced/`)
+- **Report Templates**: Removed enhanced image references from HTML report template
+- **Test Infrastructure**: Consolidated test data structure (`test_data/` → `tests/test_data/`)
+
+#### Fixed - Architecture Improvements
+- **Circular Import Resolution**: Implemented proper `TYPE_CHECKING` pattern in ConfigManager
+- **Import Dependencies**: Cleaned up circular dependencies between manager classes
+- **Validator System**: Removed enhancement validator, updated validator registry
+- **Configuration Management**: Enhanced type safety with forward reference handling
+
+### 🚀 **AWS/Local Infrastructure Enhancements** *(Previously 1.2.0 features)*
+
+#### Added - S3 Integration System
+- **S3 Backup Utilities**: Comprehensive project artifact backup system
+  - `utils/shared/backup_to_s3.py`: Timestamped backup organization for reproducibility
+  - `utils/shared/s3_status_tracker.py`: Thread-safe status tracking with JSON heartbeat
+  - `utils/shared/s3_transfer_config.py`: File size-optimized transfer configurations
+  - `utils/shared/s3_upload_helpers.py`: AWS session management and integrity checking
+- **S3 Scripts Collection**: Complete suite of upload/download utilities
+  - `scripts/upload_to_s3.py`: Unified upload script with resume capability
+  - `scripts/download_project_files.py`: S3-to-local project file staging
+  - Enhanced with proper v1.2.0 header blocks and documentation
+- **S3 Utils Modernization**: Complete rewrite of `utils/s3_utils.py`
+  - Functions: `list_projects`, `list_reels`, `stage_reels`, `stage_project_files`
+  - Parallel download support with enhanced error handling
+
+#### Changed - Orchestrator Major Refactor
+- **Process360Workflow Enhancement**: Comprehensive orchestrator improvements
+  - **Parameter Reordering**: Logical flow (config → source_mode → project → workflow flags)
+  - **Source Mode Support**: Dynamic Local/AWS mode with UI population via boto3
+  - **Multiselect Reel Processing**: Process specific reels instead of all reels
+  - **Automatic Path Resolution**: Smart input path derivation based on source mode
+  - **Name-Based Parameters**: Refactored from index-based to name-based parameter handling
+- **Configuration Updates**: Enhanced `config.sample.yaml` with AWS S3 integration settings
+- **AWS Utilities**: Updated `utils/shared/aws_utils.py` with enhanced credential management
+
+### 📋 **Version Management Strategy**
+- **v1.3.0**: Files modified for enhancement removal (breaking changes)
+- **v1.2.0**: Files added/modified for AWS infrastructure (October 2025 features)
+- **Proper Headers**: All S3 utilities now have standardized header blocks
+
+### 🧪 **Testing & Quality Improvements**
+- **Test Infrastructure**: Updated all tests to match new LogManager interface
+- **Test Data Consolidation**: Moved `test_data/` into `tests/test_data/` structure
+- **Enhancement Test Removal**: Cleaned up all enhancement-related test files
+- **Validation Updates**: Updated test expectations for 15-step workflow
+
+### 📊 **Impact Summary**
+- **35 files changed**: 461 insertions, 1,462 deletions (net code reduction)
+- **Architecture Simplified**: Removed complex enhancement pipeline, improved maintainability
+- **AWS Integration**: Complete S3-based workflow support for cloud operations
+- **Breaking Changes**: Configuration schema incompatible with previous versions
+
+### 🔄 **Migration Guide**
+1. **Remove Enhancement Config**: Delete `image_enhancement:` section from config files
+2. **Update Workflow References**: Adjust any custom scripts expecting 16 workflow steps
+3. **Path Updates**: Remove references to `enhanced/` folder in custom implementations
+4. **S3 Integration**: Review new AWS configuration options for cloud workflows
+
+---
+
 ## [2025-10-30] - Documentation System Overhaul
 ### 📚 Major Documentation System Implementation
 #### Added

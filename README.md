@@ -1,7 +1,7 @@
 
 # 🧰 RMI 360 Imaging Workflow Python Toolbox
 
-![Version](https://img.shields.io/badge/version-v1.1.1-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green) [![Documentation](https://img.shields.io/badge/docs-sphinx-blue)](https://camrex.github.io/rmi-360-workflow-pyt/)
+![Version](https://img.shields.io/badge/version-v1.3.0-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green) [![Documentation](https://img.shields.io/badge/docs-sphinx-blue)](https://camrex.github.io/rmi-360-workflow-pyt/)
 
 A modular workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
 
@@ -10,13 +10,9 @@ Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes too
 > **❗ ArcGIS Pro Note:** When adding the Toolbox to ArcGIS Pro, you may see a warning icon (❗) upon loading. If this occurs, simply remove the Toolbox and add it again to resolve the issue.
 New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all required Python libraries in your ArcGIS Pro environment before running the main tools.
 
-*Tested using ArcGIS Pro 3.4.3 and 3.5.0.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
+*Tested using ArcGIS Pro 3.4.3 and 3.5.4.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 
 > ℹ️ The “Oriented Imagery” tools require **Standard or Advanced** licenses. All other functions are available with **Basic** or higher.
-
-> **⚠️ Note: ⚠️**
-> Version **v1.1.0** contained critical bugs that may render the workflow unusable.
-> Please use version **v1.1.1** or later, which resolves these issues.
 
 > **⚠️ Unit Tests Note:** Many unit tests may currently be broken due to some bug fixes in this release.
 
