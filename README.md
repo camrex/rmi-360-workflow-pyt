@@ -131,7 +131,7 @@ cp configs/config.sample.yaml configs/config.yaml
 
 ### Legacy Documentation
 
-> **Note:** The documentation below is being migrated to the new Sphinx system. 
+> **Note:** The documentation below is being migrated to the new Sphinx system.
 > For the most up-to-date information, please refer to the [Complete Documentation](https://camrex.github.io/rmi-360-workflow-pyt/) above.
 
 - 📘 [Toolbox Overview](docs_legacy/TOOL_OVERVIEW.md)
