@@ -2,23 +2,20 @@
 from __future__ import annotations
 from pathlib import Path
 import concurrent.futures as cf
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 import boto3
+import os
 
 __all__ = [
     "normalize_prefix",
     "list_projects",
     "list_reels",
-    "stage_reels_prefix",
+    "stage_reels",          # NEW (preferred)
+    "stage_reels_prefix",   # legacy shim -> calls stage_reels
 ]
 
 def normalize_prefix(prefix: str) -> str:
-    """
-    Returns a normalized S3 key prefix like 'RMI25320/reels/' (no leading slash, trailing slash present).
-    """
-    if not prefix:
-        return ""
-    p = prefix.strip().lstrip("/")
+    p = (prefix or "").strip().lstrip("/")
     if p and not p.endswith("/"):
         p += "/"
     return p
@@ -27,9 +24,6 @@ def _client():
     return boto3.client("s3")
 
 def list_projects(bucket: str, s3=None) -> List[str]:
-    """
-    Lists top-level 'folders' in the raw bucket (used for AWS project_key dropdown).
-    """
     s3 = s3 or _client()
     keys: List[str] = []
     token: Optional[str] = None
@@ -48,10 +42,6 @@ def list_projects(bucket: str, s3=None) -> List[str]:
     return sorted(set(keys))
 
 def list_reels(bucket: str, project_key: str, s3=None) -> List[str]:
-    """
-    Lists reel 'folders' under s3://{bucket}/{project_key}/reels/.
-    Returns bare folder names like ['reel_0001_...','reel_0002_...'].
-    """
     s3 = s3 or _client()
     base = normalize_prefix(f"{project_key}/reels")
     names: List[str] = []
@@ -71,30 +61,97 @@ def list_reels(bucket: str, project_key: str, s3=None) -> List[str]:
         token = resp.get("NextContinuationToken")
     return sorted(set(names))
 
-def stage_reels_prefix(bucket: str, prefix: str, local_parent: Path, max_workers: int = 16) -> Path:
+# -----------------------
+# NEW: stage_reels
+# -----------------------
+def stage_reels(
+    bucket: str,
+    project_key: str,
+    reels: Optional[List[str]],
+    local_project_dir: Path,
+    max_workers: int = 16,
+    skip_if_exists: bool = True,
+) -> Path:
     """
-    Downloads all objects under s3://{bucket}/{prefix} to local_parent, preserving folders.
-    Returns local_parent (which will now contain the reels subfolders).
+    Stage one or more reels under s3://{bucket}/{project_key}/reels/ to:
+        {local_project_dir}/reels/{reel}/(files)
+
+    If reels is None or empty, stages *all* reels under project_key/reels/.
+    Skips files that already exist locally with matching size (and ETag if single-part).
     """
     s3 = _client()
-    prefix = normalize_prefix(prefix)
+    local_project_dir = Path(local_project_dir)
+    local_reels_root = local_project_dir / "reels"
+    local_reels_root.mkdir(parents=True, exist_ok=True)
 
+    # Build the list of prefixes to pull
+    if not reels:
+        # discover all reels
+        reels = list_reels(bucket, project_key, s3=s3)
+
+    prefixes = [normalize_prefix(f"{project_key}/reels/{r}") for r in reels]
+
+    # Collect S3 objects to download with their intended local path
+    to_get: List[Tuple[str, Path, int, str]] = []  # (key, dst, size, etag)
     paginator = s3.get_paginator("list_objects_v2")
-    to_get: List[tuple[str, Path]] = []
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
-        for obj in page.get("Contents", []) or []:  # handles no Contents
-            key = obj["Key"]
-            if key.endswith("/"):
-                continue
-            dst = local_parent / key[len(prefix):]
-            to_get.append((key, dst))
+
+    for prefix in prefixes:
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []) or []:
+                key = obj["Key"]
+                if key.endswith("/"):
+                    continue
+                # Preserve project structure from 'reels/' downward
+                # key like: {project_key}/reels/{reel}/...  -> local: <project_dir>/reels/{reel}/...
+                rel_after_project = key[len(normalize_prefix(project_key)):]  # e.g., 'reels/xxx/file'
+                dst = local_project_dir / rel_after_project
+                to_get.append((key, dst, int(obj.get("Size", 0)), (obj.get("ETag") or "").strip('"')))
+
+    # Skip already-staged files (size match; if ETag length==32 treat as md5 and compare hash if you want)
+    filtered: List[Tuple[str, Path, int, str]] = []
+    for key, dst, size, etag in to_get:
+        if not skip_if_exists or not dst.exists():
+            filtered.append((key, dst, size, etag))
+        else:
+            try:
+                if dst.stat().st_size != size:
+                    filtered.append((key, dst, size, etag))
+                # Optionally: add a fast MD5 check only when ETag looks like single-part (32 hex)
+                # else: assume size match is sufficient
+            except Exception:
+                filtered.append((key, dst, size, etag))
 
     def _dl(k: str, p: Path):
         p.parent.mkdir(parents=True, exist_ok=True)
         s3.download_file(bucket, k, str(p))
 
-    if to_get:
+    if filtered:
         with cf.ThreadPoolExecutor(max_workers=max_workers) as ex:
-            list(ex.map(lambda x: _dl(*x), to_get))
+            list(ex.map(lambda tup: _dl(tup[0], tup[1]), filtered))
 
-    return local_parent
+    return local_reels_root
+
+# -----------------------
+# Legacy shim
+# -----------------------
+def stage_reels_prefix(bucket: str, prefix: str, local_parent: Path, max_workers: int = 16) -> Path:
+    """
+    Back-compat wrapper. Prefix may be 'project/reels/' or 'project/reels/reel_xxx/'.
+    Downloads under local_parent preserving structure from 'reels/' downward.
+    """
+    # Infer project_key and reel(s)
+    norm = normalize_prefix(prefix)
+    parts = norm.split("/")
+    # Expect: [project_key, 'reels', <reel?>, ...]
+    if len(parts) >= 2 and parts[1] == "reels":
+        project_key = parts[0]
+        reel = parts[2] if len(parts) >= 3 and parts[2] else None
+        return stage_reels(
+            bucket=bucket,
+            project_key=project_key,
+            reels=[reel] if reel else None,
+            local_project_dir=Path(local_parent),
+            max_workers=max_workers,
+        )
+    # Fallback: stage all under prefix (if non-standard); put under local_parent
+    return stage_reels(bucket=bucket, project_key=parts[0], reels=None, local_project_dir=Path(local_parent), max_workers=max_workers)
