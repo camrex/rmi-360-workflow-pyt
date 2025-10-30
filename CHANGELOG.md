@@ -2,6 +2,104 @@
 
 *All notable changes to this project will be documented in this file.*
 
+> **📝 Maintenance Note**: Please update this CHANGELOG with significant changes, new features, bug fixes, and breaking changes. Follow the existing format with clear categories (Added, Changed, Fixed, Removed, etc.).
+
+## [2025-10-30] - Documentation System Overhaul
+### 📚 Major Documentation System Implementation
+#### Added
+- **Comprehensive Sphinx Documentation System**: Complete implementation of professional documentation using Sphinx with ReadTheDocs theme
+  - Automated API documentation generation from Python docstrings using autodoc
+  - Professional navigation, search functionality, and cross-references
+  - Organized documentation structure: User Guide, Tools, Configuration, AWS Integration, API Reference, Developer Guide
+- **GitHub Actions CI/CD Pipeline**: Automated documentation building and deployment to GitHub Pages
+  - Builds documentation on every push to main branch
+  - Deploys to `https://camrex.github.io/rmi-360-workflow-pyt/`
+  - Uses latest GitHub Actions versions (fixed deprecation warnings)
+- **Documentation Infrastructure**: 
+  - Cross-platform build system with `Makefile` and `make.bat` for local development
+  - Comprehensive `conf.py` with theme customization, extensions, and intersphinx linking
+  - Complete documentation structure with placeholder pages for future content migration
+- **Enhanced README**: Updated with documentation badges, links to new Sphinx docs, and migration notes
+- **Build Configuration**: Updated `.gitignore` to exclude Sphinx build artifacts and added Sphinx dependencies to `requirements.txt`
+
+#### Changed
+- **Documentation Workflow**: Transitioned from legacy Markdown docs to modern Sphinx-generated documentation
+- **Project Structure**: Added `docs/` directory with complete RST-based documentation framework
+- **Development Process**: Documentation now builds automatically and deploys to GitHub Pages on commits
+
+#### Documentation Structure Added
+- **User Guide**: Installation, configuration, quick start, and ArcGIS Pro setup guides
+- **Tools Documentation**: Comprehensive tool reference with setup tools, individual tools, and orchestrator documentation
+- **Configuration**: Complete configuration system documentation with project settings, AWS settings, and field registry
+- **AWS Integration**: Setup guides, S3 uploads, and Lambda monitoring documentation  
+- **API Reference**: Auto-generated API documentation for tools, utilities, managers, and validators
+- **Developer Guide**: Contributing guidelines, testing information, and architecture documentation
+
+#### Technical Improvements
+- **Professional Theme**: Implemented ReadTheDocs theme with custom styling and navigation
+- **Cross-References**: Extensive internal linking between documentation sections
+- **API Integration**: Automatic Python API documentation generation with Napoleon extension support
+- **Search Functionality**: Full-text search across all documentation
+- **Mobile Responsive**: Documentation works on desktop and mobile devices
+
+#### Migration Notes
+- Legacy documentation in `docs_legacy/` remains available during transition period
+- New documentation system provides foundation for gradual content migration
+- All existing `.md` files preserved for reference and continued use
+- Build system supports both local development and automated CI/CD deployment
+
+### 🚀 Major Infrastructure and S3 Integration Enhancements
+#### Added
+- **S3 Backup Utilities System**: Comprehensive project artifact backup system with thread-safe operations
+  - `backup_to_s3.py`: Upload project artifacts (config, logs, reports, GIS data) with timestamp organization
+  - `s3_status_tracker.py`: Thread-safe status tracking for S3 uploads with JSON heartbeat updates
+  - `s3_transfer_config.py`: Optimized transfer configurations based on file size for reliable uploads
+  - `s3_upload_helpers.py`: Common S3 helper functions including AWS session management and file integrity checking
+- **Enhanced S3 Scripts**: New standalone and integrated upload scripts
+  - `upload_raw_reels_standalone.py`: Standalone script for uploading RAW Mosaic reels to S3
+  - `upload_raw_reels.py`: Integrated upload helper for reel processing workflows
+  - `download_project_files.py`: Download project files (config, GIS data) from S3 to local directories
+  - `upload_to_s3.py`: Unified upload script for all project file types with resume capability
+- **S3 Utils Modernization**: Complete rewrite of S3 utilities (`s3_utils.py`) with enhanced functionality
+  - Centralized S3 list/stage operations with parallel download support
+  - Functions: `list_projects`, `list_reels`, `normalize_prefix`, `stage_reels_prefix`, `stage_project_files`
+  - Improved error handling and AWS session management
+
+#### Changed  
+- **Process360Workflow Orchestrator Major Refactor**: Enhanced workflow orchestrator with improved AWS integration
+  - **Parameter Reordering**: Logical parameter flow (config_file → source_mode → project settings → workflow flags)
+  - **Source Mode Support**: Dynamic Local/AWS mode handling with UI population via boto3 helpers
+  - **Multiselect Reel Processing**: Added multiselect capability for processing specific reels
+  - **Automatic Path Resolution**: Input reels folder path now derived automatically based on source mode
+  - **Name-Based Parameter Mapping**: Refactored parameter handling to use names instead of index-based access
+  - **Always Required Project Folder**: Project folder now always required for ConfigManager project_base resolution
+- **Configuration Enhancements**: Updated `config.sample.yaml` with improved AWS S3 integration settings
+- **Legacy File Replacement**: `utils/s3_stage.py` replaced by enhanced `utils/s3_utils.py`
+
+#### Fixed
+- **File Integrity Checking**: Implemented robust file integrity verification for S3 uploads
+- **AWS Credential Management**: Enhanced AWS credential validation and session management
+- **Upload Resume Capability**: Added resume functionality for interrupted S3 uploads
+- **Progress Tracking**: Improved real-time status tracking for long-running S3 operations
+
+#### Technical Improvements
+- **Thread-Safe Operations**: S3 operations now use thread-safe status tracking and progress updates
+- **Parallel Processing**: Enhanced S3 download/upload operations with configurable parallelism
+- **Error Resilience**: Improved error handling and retry mechanisms for S3 operations
+- **Status JSON Updates**: Real-time JSON status updates for monitoring upload/download progress
+- **Shared Utilities Expansion**: Enhanced `utils/shared/` module with new infrastructure utilities
+  - Updated `aws_utils.py`, `folder_stats.py` for better S3 and file system operations
+  - New shared utilities for transfer configuration and status tracking
+
+#### Documentation Updates
+- **Comprehensive Legacy Documentation**: Added detailed documentation for new S3 features
+  - `ARTIFACT_BACKUP_GUIDE.md`: Guide for backing up project artifacts to S3
+  - `FOLDER_STRUCTURE_UPDATE.md`: Updated project folder structure documentation
+  - `UPLOAD_TO_S3_CHANGES.md`: Detailed changes to S3 upload functionality
+  - `SCRIPTS_QUICK_REFERENCE.md`: Quick reference for new upload/download scripts
+
+---
+
 ## [2025-05-23]
 ### 🧰 RMI 360 Environment Checker and other quality-of-life changes
 #### Added
