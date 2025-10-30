@@ -51,6 +51,15 @@ StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
 
 def skip_if_copy_to_aws_disabled(params):
     # New logic: skip if 'enable_copy_to_aws' is not True
+    """
+    Return a skip message when the copy-to-AWS feature is disabled in the provided parameters.
+    
+    Parameters:
+        params (dict): Pipeline or workflow parameters; expects an 'enable_copy_to_aws' key whose value indicates whether copying to AWS is enabled.
+    
+    Returns:
+        str or None: 'Skipped (disabled by user)' if 'enable_copy_to_aws' is not True, `None` otherwise.
+    """
     return "Skipped (disabled by user)" if not params.get("enable_copy_to_aws", False) else None
 
 def skip_if_smooth_gps_disabled(params):
@@ -67,8 +76,19 @@ def skip_if_generate_service_disabled(params):
 
 def build_step_funcs(p, cfg):
     """
-    Builds a dictionary of processing step descriptors for an oriented imagery workflow.
-    Now uses declarative step specs and a builder for modularity and testability.
+    Builds an ordered mapping of workflow step descriptors for the oriented imagery pipeline.
+    
+    Each mapping value is a descriptor dict containing:
+    - `label`: human-readable step name,
+    - `func`: a callable that executes the step (callable may accept keyword args),
+    - optional `skip`: a function that, given run parameters, returns a skip message or None.
+    
+    Parameters:
+        p (dict): Runtime parameters and paths used to configure each step (e.g., `input_reels_folder`, `oid_fc`, `centerline_fc`, `route_id_field`, `enable_linear_ref`, etc.).
+        cfg (Mapping): Configuration/settings object used by step implementations.
+    
+    Returns:
+        dict: An ordered dictionary mapping each step key (str) to its descriptor dict as described above.
     """
     step_specs = [
         StepSpec("run_mosaic_processor", "Run Mosaic Processor",
@@ -113,12 +133,12 @@ def build_step_funcs(p, cfg):
 
 def get_step_order(step_funcs: dict) -> list:
     """
-    Returns a list of step keys in the order they appear in the step_funcs dictionary.
-
-    Args:
-        step_funcs: A dictionary mapping step keys to step descriptors.
-
+    Return the ordered list of step keys as they appear in the provided step mapping.
+    
+    Parameters:
+        step_funcs (dict): Mapping of step keys to step descriptor dictionaries.
+    
     Returns:
-        A list of step keys preserving their original order.
+        list: Step keys in the mapping's insertion order.
     """
     return list(step_funcs.keys())

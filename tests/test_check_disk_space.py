@@ -3,19 +3,60 @@ from utils.shared.check_disk_space import check_sufficient_disk_space, find_base
 
 class DummyLogger:
     def __init__(self):
+        """
+        Initialize a DummyLogger with empty message stores.
+        
+        Creates four lists to capture logged messages by severity: `infos`, `warnings`, `errors`, and `debugs`.
+        """
         self.infos = []
         self.warnings = []
         self.errors = []
         self.debugs = []
     def info(self, msg, context=None, indent=0):
+        """
+        Record an informational message.
+        
+        Parameters:
+        	msg (str): The message text to record.
+        	context (optional): Additional context object associated with the message.
+        	indent (int): Indentation level for formatting the message.
+        """
         self.infos.append(msg)
     def warning(self, msg, context=None, indent=0):
+        """
+        Record a warning message in the logger's warnings list.
+        
+        Parameters:
+            msg (str): The warning message to record.
+            context (optional): Ignored in this test logger; present for API compatibility.
+            indent (int, optional): Ignored in this test logger; present for API compatibility.
+        """
         self.warnings.append(msg)
     def error(self, msg, context=None, indent=0, error_type=None):
+        """
+        Record an error message and, if an exception type is provided, raise that exception with the message.
+        
+        Parameters:
+        	msg (str): The error message to record.
+        	context (optional): Contextual information associated with the error (ignored by the recorder).
+        	indent (int, optional): Indentation level for logging output (ignored by the recorder).
+        	error_type (Exception class or None, optional): If provided, instantiate and raise this exception using `msg`.
+        
+        Raises:
+        	error_type: The provided exception type is raised with `msg` when `error_type` is not None.
+        """
         self.errors.append((msg, error_type))
         if error_type:
             raise error_type(msg)
     def debug(self, msg, context=None, indent=0):
+        """
+        Record a debug message by appending it to the logger's internal debug list.
+        
+        Parameters:
+            msg (str): The debug message to record.
+            context (optional): Additional context for the message; accepted but not used.
+            indent (int, optional): Indentation level for the message; accepted but not used.
+        """
         self.debugs.append(msg)
 
 class DummyConfigManager:
@@ -54,6 +95,16 @@ def test_disk_space_check_success(monkeypatch):
     })
     # Simulate a cursor returning a valid image path
     def fake_cursor(fc, fields):
+        """
+        Create a context manager that simulates a DB cursor yielding a single image-path row.
+        
+        Parameters:
+            fc: Ignored; present to match the real cursor factory signature.
+            fields: Ignored; present to match the real cursor signature.
+        
+        Returns:
+            A context manager whose __enter__ returns an iterator that yields one row: a list containing the string "C:/foo/bar/original/xyz.jpg".
+        """
         class DummyCursor:
             def __enter__(self_): return iter([[r"C:/foo/bar/original/xyz.jpg"]])
             def __exit__(self_, exc_type, exc_val, exc_tb): return None
@@ -86,6 +137,16 @@ def test_disk_space_insufficient(monkeypatch):
         "image_output.folders.original": "original"
     })
     def fake_cursor(fc, fields):
+        """
+        Create a context manager that simulates a DB cursor yielding a single image-path row.
+        
+        Parameters:
+            fc: Ignored; present to match the real cursor factory signature.
+            fields: Ignored; present to match the real cursor signature.
+        
+        Returns:
+            A context manager whose __enter__ returns an iterator that yields one row: a list containing the string "C:/foo/bar/original/xyz.jpg".
+        """
         class DummyCursor:
             def __enter__(self_): return iter([[r"C:/foo/bar/original/xyz.jpg"]])
             def __exit__(self_, exc_type, exc_val, exc_tb): return None

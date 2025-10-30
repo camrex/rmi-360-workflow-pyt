@@ -76,26 +76,24 @@ def check_sufficient_disk_space(
     folder_size_func=None
 ) -> bool:
     """
-    Checks if sufficient disk space is available for image operations on an Oriented Imagery Dataset.
-
-    Estimates the required disk space by calculating the size of the relevant 'original' image directory
-    and applying a safety buffer. Raises an error if the available space on the drive is less than the estimated
-    requirement.
-
-    Args:
-        oid_fc: Path to the Oriented Imagery Dataset feature class.
-        cfg (ConfigManager): ConfigManager instance.
-        cursor_factory: Optional; factory for creating a SearchCursor for testing.
-        disk_usage_func: Optional; function to get disk usage for testing.
-        folder_size_func: Optional; function to calculate folder size for testing.
-
+    Determine whether the drive that contains an OID image has enough free space to hold the original image folder plus the configured buffer.
+    
+    Estimates required space from the configured original image folder size multiplied by the configured buffer ratio. Honors the `disk_space.check_enabled` and `disk_space.min_buffer_ratio` configuration values and supports dependency injection for testing via `cursor_factory`, `disk_usage_func`, and `folder_size_func`.
+    
+    Parameters:
+        oid_fc (str): Path to the Oriented Imagery Dataset feature class containing an `ImagePath` field.
+        cfg (ConfigManager): Configuration manager providing logger, progressor, and disk-space settings.
+        cursor_factory (callable, optional): Factory that produces a cursor to read `ImagePath` values (used for tests).
+        disk_usage_func (callable, optional): Function returning disk usage information given a path (used for tests).
+        folder_size_func (callable, optional): Function that computes the size in bytes of a folder (used for tests).
+    
     Raises:
-        ValueError: If no valid image path is found or if the image path does not include expected folder names.
-        FileNotFoundError: If the base image directory does not exist.
-        RuntimeError: If available disk space is insufficient.
-
+        ValueError: If no valid `ImagePath` is found or if the path does not include the configured original folder.
+        FileNotFoundError: If the resolved base image directory does not exist.
+        RuntimeError: If available disk space is less than the estimated required amount.
+    
     Returns:
-        True if sufficient disk space is available.
+        bool: `True` if sufficient disk space is available.
     """
     logger = cfg.get_logger()
 

@@ -48,13 +48,24 @@ def resolve_if_expression(val: Any, cfg: ConfigManager) -> Any:
 
 def initialize_report_data(paths_dict: Dict[str, Any], cfg: ConfigManager) -> Dict[str, Any]:
     """
-    Initializes and returns a dictionary containing structured report data for a project.
-
-    Args:
-        paths_dict: Dictionary containing project folder paths and input locations.
-        cfg: Configuration manager with project configuration and metadata.
+    Create the initial structured report dictionary for a project.
+    
+    Parameters:
+    	paths_dict (Dict[str, Any]): Input paths used to populate report path fields; expected keys include
+    		'oid_fc' and 'input_reels_folder'.
+    	cfg (ConfigManager): Configuration manager used to populate project metadata, resolved AWS settings,
+    		camera configuration (expressions are resolved), and canonical path values from cfg.paths.
+    
     Returns:
-        A dictionary representing the initialized report data structure.
+    	report_data (Dict[str, Any]): A dictionary with keys:
+    		- project: project metadata from configuration
+    		- steps: list of processing steps (initialized empty)
+    		- metrics: summary metrics (initialized empty)
+    		- paths: path entries including 'oid_fc', 'oid_gdb' (None), 'reels_input', 'original_images', and 'renamed_images'
+    		- aws: resolved S3 bucket and folder
+    		- camera: camera configuration with expressions resolved
+    		- reels: list of reel records (initialized empty)
+    		- upload: upload status and counters (initialized to not_started and zeros)
     """
     paths = cfg.paths
     report_data = {

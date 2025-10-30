@@ -28,6 +28,11 @@ PROJECT_FOLDER = os.getenv("TEST_PROJECT_PATH", str(TEST_DATA_DIR))
 
 @pytest.mark.integration
 def test_path_manager_resolution():
+    """
+    Verify PathManager resolves expected path attributes to either a string, a pathlib.Path, or None and that external-tool availability checks return booleans.
+    
+    This integration test loads the test configuration, constructs a PathManager for the test project, iterates a list of expected attribute names to ensure each resolves to None or a str/Path, asserts that exiftool and mosaic processor availability checks return boolean values, and prints diagnostic output and any configuration messages.
+    """
     messages = []
 
     cfg = ConfigManager.from_file(

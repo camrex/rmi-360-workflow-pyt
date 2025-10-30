@@ -209,8 +209,12 @@ class Process360Workflow(object):
 
     def getParameterInfo(self):
         """
-        Defines and returns the list of ArcPy parameters for the Mosaic 360 workflow tool
-        in the new, AWS/Local-aware order.
+        Builds and returns the ArcPy parameter definitions for the Mosaic 360 workflow, ordered and configured for Local or AWS execution.
+        
+        This method constructs the tool parameters (including UI filters, defaults, multi-value settings, and enabled state) and stores mappings between step labels and internal step names on the instance for use by dynamic parameter/update logic.
+        
+        Returns:
+            params (List[Any]): Ordered list of ArcPy Parameter objects for the tool.
         """
         params: List[Any] = []
 
@@ -711,9 +715,13 @@ class Process360Workflow(object):
 
     def execute(self, parameters: list, messages: Any) -> None:
         """
-        Executes the full Mosaic 360 workflow with Local/AWS reel selection.
-        - Always resolves a LOCAL working folder of reels and stores it in p["input_reels_folder"]
-        - Preserves existing step runner, metrics, and report generation.
+        Orchestrates the full Mosaic 360 processing workflow: stages reels (local or S3), runs pipeline steps, and writes a persistent report.
+        
+        Performs validation of inputs, resolves a local working reels folder (stored in p["input_reels_folder"]), loads configuration, builds and executes the ordered step functions, collects post-run metrics and folder statistics, optionally generates a human-readable report, and can upload artifacts to S3. The function may exit early and log errors when required inputs (e.g., project folder for Local mode, S3 bucket/project key for AWS mode, or an OID dataset) are missing or invalid. Side effects include creating local project and reels directories, saving/updating a report JSON, and writing logs via the configured logger.
+        
+        Parameters:
+        	parameters (list): ArcPy tool parameters provided to the tool (list of GPParameter objects); used to build the runtime parameter map and flags.
+        	messages (Any): ArcPy messages interface (or compatible messaging/logger object) used to surface validation messages and progress information.
         """
 
         # ----------- Helpers (local) -----------
