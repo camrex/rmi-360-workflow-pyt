@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.rename_images &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.rename_images</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.rename_images</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🗂️ Image Renaming Utility (utils/rename_images.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Renames and organizes OID images using config-based filename expressions</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.1.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-13</span>
+<span class="c1"># Last Updated:        2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Resolves dynamic filename parts from config expressions (e.g., reel, MP, timestamp),</span>
+<span class="c1">#   renames/copies each image to a flat output folder, updates the OID’s ImagePath and Name</span>
+<span class="c1">#   fields, and logs all rename operations. Optionally deletes originals after copy.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/rename_images.py</span>
+<span class="c1"># Validator:            /utils/validators/rename_images_validator.py</span>
+<span class="c1"># Called By:            tools/rename_and_tag_tool.py, tools/process_360_orchestrator.py</span>
+<span class="c1"># Int. Dependencies:    utils/manager/config_manager, utils/shared/arcpy_utils, utils/shared/expression_utils, utils/shared/check_disk_space</span>
+<span class="c1"># Ext. Dependencies:    arcpy, os, shutil, csv, pathlib</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/rename_images.md</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Auto-detects duplicate filenames and applies numeric suffix (e.g., _v2)</span>
+<span class="c1">#   - Ensures output directory is writable and validated before execution</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;rename_images&quot;</span><span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span> <span class="nn">utils.shared.arcpy_utils</span> <span class="kn">import</span> <span class="n">validate_fields_exist</span>
+<span class="kn">from</span> <span class="nn">utils.shared.expression_utils</span> <span class="kn">import</span> <span class="n">resolve_expression</span>
+<span class="kn">from</span> <span class="nn">utils.shared.check_disk_space</span> <span class="kn">import</span> <span class="n">check_sufficient_disk_space</span>
+
+
+<span class="k">def</span> <span class="nf">_resolve_fields</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">row_dict</span><span class="p">,</span> <span class="n">parts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Resolve dynamic filename parts from config expressions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="n">key</span><span class="p">:</span> <span class="n">resolve_expression</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">row_dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">expr</span> <span class="ow">in</span> <span class="n">parts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">_get_unique_filename</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get a unique filename by appending a numeric suffix if the file already exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_v</span><span class="si">{</span><span class="n">counter</span><span class="si">}{</span><span class="n">ext</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">filename</span>
+
+
+<span class="k">def</span> <span class="nf">_copy_and_delete</span><span class="p">(</span><span class="n">old_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">delete_originals</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Copy the file and delete the original if specified.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy2</span><span class="p">(</span><span class="n">old_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">delete_originals</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">old_path</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">PermissionError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy/delete file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+
+<span class="k">def</span> <span class="nf">_update_row</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">row_dict</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the row with the new image path and filename.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;ImagePath&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_path</span><span class="p">)</span>
+    <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;Name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">filename</span>
+    <span class="n">cursor</span><span class="o">.</span><span class="n">updateRow</span><span class="p">([</span><span class="n">row_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">_write_rename_log</span><span class="p">(</span><span class="n">rename_log_path</span><span class="p">,</span> <span class="n">log_rows</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Write the rename log to a CSV file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">rename_log_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">DictWriter</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">fieldnames</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;OID&quot;</span><span class="p">,</span> <span class="s2">&quot;OriginalPath&quot;</span><span class="p">,</span> <span class="s2">&quot;OriginalName&quot;</span><span class="p">,</span> <span class="s2">&quot;NewPath&quot;</span><span class="p">,</span> <span class="s2">&quot;NewName&quot;</span><span class="p">])</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writeheader</span><span class="p">()</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">log_rows</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">PermissionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to write rename log: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+
+<div class="viewcode-block" id="rename_images">
+<a class="viewcode-back" href="../../api/utils.html#utils.rename_images.rename_images">[docs]</a>
+<span class="k">def</span> <span class="nf">rename_images</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">oid_fc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">delete_originals</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">enable_linear_ref</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Renames and copies image files for an Oriented Imagery Dataset according to configuration rules.</span>
+
+<span class="sd">    All renamed images are placed in a flat directory specified by the configuration, and the `Name` and `ImagePath`</span>
+<span class="sd">    attributes in the dataset are updated in-place. Optionally deletes original images after copying. A CSV log of</span>
+<span class="sd">    rename operations is generated. Returns a list of dictionaries with updated image metadata.</span>
+
+<span class="sd">    The filename format is selected based on the enable_linear_ref argument (passed at runtime, e.g. from ArcGIS Pro):</span>
+<span class="sd">    - If enable_linear_ref is False, uses image_output.filename_settings.format_no_lr</span>
+<span class="sd">    - If enable_linear_ref is True, uses image_output.filename_settings.format</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cfg:</span>
+<span class="sd">        oid_fc: Path to the feature class containing image records.</span>
+<span class="sd">        delete_originals: If True, deletes original image files after copying.</span>
+<span class="sd">        enable_linear_ref: If False, use the no-linear-referencing filename format.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A list of dictionaries representing updated image records, including OID, new path, filename, QC flag,</span>
+<span class="sd">        coordinates, and resolved metadata.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;rename_images&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Use format_no_lr if linear referencing is not enabled</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">enable_linear_ref</span><span class="p">:</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_output.filename_settings.format_no_lr&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{Name}</span><span class="s2">.jpg&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_output.filename_settings.format&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{Name}</span><span class="s2">.jpg&quot;</span><span class="p">)</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_output.filename_settings.parts&quot;</span><span class="p">,</span> <span class="p">{})</span>
+
+    <span class="c1"># QCFlag is optional; check if it exists in the feature class</span>
+
+    <span class="n">oid_fields</span> <span class="o">=</span> <span class="p">{</span><span class="n">f</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">ListFields</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">)}</span>
+    <span class="n">base_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;OID@&quot;</span><span class="p">,</span> <span class="s2">&quot;ImagePath&quot;</span><span class="p">,</span> <span class="s2">&quot;Name&quot;</span><span class="p">,</span> <span class="s2">&quot;X&quot;</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">]</span>
+    <span class="n">required_fields</span> <span class="o">=</span> <span class="n">base_fields</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">&quot;QCFlag&quot;</span> <span class="ow">in</span> <span class="n">oid_fields</span><span class="p">:</span>
+        <span class="n">required_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;QCFlag&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">expr</span> <span class="ow">in</span> <span class="n">parts</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expr</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">expr</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;field.&quot;</span><span class="p">):</span>
+            <span class="n">field_name</span> <span class="o">=</span> <span class="n">expr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">field_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">required_fields</span><span class="p">:</span>
+                <span class="n">required_fields</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">field_name</span><span class="p">)</span>
+
+    <span class="n">validate_fields_exist</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">,</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">required_fields</span> <span class="k">if</span> <span class="n">f</span> <span class="o">!=</span> <span class="s2">&quot;OID@&quot;</span><span class="p">])</span>
+    <span class="n">fields</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">required_fields</span><span class="p">))</span>
+
+    <span class="n">check_sufficient_disk_space</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">renamed</span>
+    <span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Verify write permissions</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">test_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;.permission_test&quot;</span>
+        <span class="n">test_file</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+        <span class="n">test_file</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">PermissionError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output directory is not writable: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">. Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">PermissionError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Prepare CSV log</span>
+    <span class="n">rename_log_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">get_log_file_path</span><span class="p">(</span><span class="s2">&quot;rename_log&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Writing rename log to: </span><span class="si">{</span><span class="n">rename_log_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">log_rows</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Writing renamed images to: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">updated_images</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">with</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">UpdateCursor</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">,</span> <span class="n">fields</span><span class="p">)</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">row_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">row</span><span class="p">))</span>
+            <span class="n">oid</span> <span class="o">=</span> <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;OID@&quot;</span><span class="p">]</span>
+            <span class="n">old_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;ImagePath&quot;</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">old_path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image path missing or invalid for OID </span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">old_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">resolved</span> <span class="o">=</span> <span class="n">_resolve_fields</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">row_dict</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
+                <span class="n">filename</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">resolved</span><span class="p">)</span>
+                <span class="n">new_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="n">_get_unique_filename</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+                <span class="n">_copy_and_delete</span><span class="p">(</span><span class="n">old_path</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">delete_originals</span><span class="p">)</span>
+                <span class="n">_update_row</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">row_dict</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">new_path</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+                <span class="n">updated_images</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;oid&quot;</span><span class="p">:</span> <span class="n">oid</span><span class="p">,</span>
+                    <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_path</span><span class="p">),</span>
+                    <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">filename</span><span class="p">,</span>
+                    <span class="s2">&quot;qcflag&quot;</span><span class="p">:</span> <span class="n">row_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;QCFlag&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">row_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;X&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">row_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Y&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">resolved</span>
+                <span class="p">})</span>
+
+                <span class="c1"># Add to CSV log</span>
+                <span class="n">log_rows</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;OID&quot;</span><span class="p">:</span> <span class="n">oid</span><span class="p">,</span>
+                    <span class="s2">&quot;OriginalPath&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">old_path</span><span class="p">),</span>
+                    <span class="s2">&quot;OriginalName&quot;</span><span class="p">:</span> <span class="n">old_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="s2">&quot;NewPath&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_path</span><span class="p">),</span>
+                    <span class="s2">&quot;NewName&quot;</span><span class="p">:</span> <span class="n">filename</span>
+                <span class="p">})</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Renamed OID </span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s2"> ➜ </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to rename/copy for OID </span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+    <span class="n">_write_rename_log</span><span class="p">(</span><span class="n">rename_log_path</span><span class="p">,</span> <span class="n">log_rows</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rename log saved to: </span><span class="si">{</span><span class="n">rename_log_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;📝&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">updated_images</span><span class="p">)</span><span class="si">}</span><span class="s2"> image(s) renamed and attributes updated.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">updated_images</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

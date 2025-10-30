@@ -1,0 +1,274 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tools.run_mosaic_processor_tool &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">tools.run_mosaic_processor_tool</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for tools.run_mosaic_processor_tool</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🎞️ Run Mosaic Processor (tools/run_mosaic_processor_tool.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Tool Name:          RunMosaicProcessorTool</span>
+<span class="c1"># Toolbox Context:    rmi_360_workflow.pyt</span>
+<span class="c1"># Version:            1.1.0</span>
+<span class="c1"># Author:             RMI Valuation, LLC</span>
+<span class="c1"># Created:            2025-05-08</span>
+<span class="c1"># Last Updated:       2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   ArcPy Tool class that wraps the Mosaic Processor command-line tool to render 360° video imagery</span>
+<span class="c1">#   and apply GPX integration. Requires a GRP file from Mosaic and proper installation of Mosaic Stitcher</span>
+<span class="c1">#   or MistikaVR. Can render full reels or specified frame ranges and supports config override. Integrates</span>
+<span class="c1">#   with Core Utils for configuration, command execution, and logging.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:      /tools/run_mosaic_processor_tool.py</span>
+<span class="c1"># Core Utils:</span>
+<span class="c1">#   - utils/mosaic_processor.py</span>
+<span class="c1">#   - utils/manager/config_manager.py</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/run_mosaic_processor.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Parameters:</span>
+<span class="c1">#   - Project Folder {project_folder} (Folder): Root folder for the Mosaic 360 project. Logs and imagery will be saved here.</span>
+<span class="c1">#   - Input Reels Folder {input_dir} (Folder): Directory containing raw `.mp4` video folders from the Mosaic 360 camera.</span>
+<span class="c1">#   - Config File {config_file} (File): Optional path to a YAML config file. If omitted, uses the default.</span>
+<span class="c1">#   - Start Frame (optional) {start_frame} (Long): First frame to render. Leave blank to start from beginning.</span>
+<span class="c1">#   - End Frame (optional) {end_frame} (Long): Last frame to render. Leave blank to render until end.</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Requires Mosaic Processor and GRP calibration files installed separately.</span>
+<span class="c1">#   - Supports partial reel rendering via start/end frame range.</span>
+<span class="c1">#   - Logs command and reel metadata to project output directory.</span>
+<span class="c1">#   - Ensure Mosaic Processor, GRP, and config files are present and valid for successful processing.</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">from</span> <span class="nn">utils.mosaic_processor</span> <span class="kn">import</span> <span class="n">run_mosaic_processor</span>
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+
+
+<div class="viewcode-block" id="RunMosaicProcessorTool">
+<a class="viewcode-back" href="../../api/tools.html#tools.run_mosaic_processor_tool.RunMosaicProcessorTool">[docs]</a>
+<span class="k">class</span> <span class="nc">RunMosaicProcessorTool</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="RunMosaicProcessorTool.__init__">
+<a class="viewcode-back" href="../../api/tools.html#tools.run_mosaic_processor_tool.RunMosaicProcessorTool.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;01 - Run Mosaic Processor&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;Runs Mosaic Processor to render 360° imagery and apply GPX integration. &quot;</span>
+            <span class="s2">&quot;Requires a GRP template file provided by Mosaic and a properly licensed installation of MistikaVR or &quot;</span>
+            <span class="s2">&quot;Mosaic Stitcher. Mosaic Processor must be installed and configured separately.&quot;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;Individual Tools&quot;</span></div>
+
+
+<div class="viewcode-block" id="RunMosaicProcessorTool.getParameterInfo">
+<a class="viewcode-back" href="../../api/tools.html#tools.run_mosaic_processor_tool.RunMosaicProcessorTool.getParameterInfo">[docs]</a>
+    <span class="k">def</span> <span class="nf">getParameterInfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Defines the input parameters for the Run Mosaic Processor ArcPy tool.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A list of ArcPy Parameter objects specifying required and optional inputs for</span>
+<span class="sd">            configuring a Mosaic 360 imagery processing project, including project folder,</span>
+<span class="sd">            input reels folder, optional configuration and GRP files, and optional frame range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">project_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Project Folder&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;project_folder&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">project_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Root folder for this Mosaic 360 imagery project. All imagery and logs will be &quot;</span>
+                                     <span class="s2">&quot;organized under this folder.&quot;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">project_param</span><span class="p">)</span>
+
+        <span class="c1"># Input folder for raw reel files</span>
+        <span class="n">input_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Input Reels Folder&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;input_dir&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">input_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Folder containing the raw video reels captured by the Mosaic 360 camera.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">input_param</span><span class="p">)</span>
+
+        <span class="c1"># Config file</span>
+        <span class="n">config_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Config File&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;config_file&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFile&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">config_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Config.yaml file containing project-specific settings.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config_param</span><span class="p">)</span>
+
+        <span class="c1"># Optional start frame</span>
+        <span class="n">start_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Start Frame (optional)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;start_frame&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPLong&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">start_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Start frame number for partial rendering. Leave blank to start from the beginning.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">start_param</span><span class="p">)</span>
+
+        <span class="c1"># Optional end frame</span>
+        <span class="n">end_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;End Frame (optional)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;end_frame&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPLong&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">end_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;End frame number for partial rendering. Leave blank to render through the last frame.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">end_param</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="RunMosaicProcessorTool.execute">
+<a class="viewcode-back" href="../../api/tools.html#tools.run_mosaic_processor_tool.RunMosaicProcessorTool.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the Mosaic Processor tool using parameters provided by the ArcPy framework.</span>
+<span class="sd">        </span>
+<span class="sd">        Extracts input values for the Mosaic 360 imagery project, including project folder, input reels, configuration,</span>
+<span class="sd">        and optional frame range, then invokes the Mosaic Processor with these settings.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">project_folder</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="n">input_dir</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="n">config_file</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">or</span> <span class="kc">None</span>
+        <span class="n">start_frame</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="n">end_frame</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">config_file</span><span class="p">,</span>
+            <span class="n">project_base</span><span class="o">=</span><span class="n">project_folder</span><span class="p">,</span>
+            <span class="n">messages</span><span class="o">=</span><span class="n">messages</span>
+        <span class="p">)</span>
+
+        <span class="n">run_mosaic_processor</span><span class="p">(</span>
+            <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+            <span class="n">input_dir</span><span class="o">=</span><span class="n">input_dir</span><span class="p">,</span>
+            <span class="n">start_frame</span><span class="o">=</span><span class="n">start_frame</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">end_frame</span><span class="o">=</span><span class="n">end_frame</span> <span class="ow">or</span> <span class="kc">None</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

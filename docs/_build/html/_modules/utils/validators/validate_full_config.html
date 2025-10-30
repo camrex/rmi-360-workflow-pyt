@@ -1,0 +1,231 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.validators.validate_full_config &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.validators.validate_full_config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.validators.validate_full_config</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># ✅ Config Validator &amp; Tool Schema Enforcer (utils/validate_full_config.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Validates the entire YAML configuration against expected structure, types, and tool-specific rules</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.0.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-08</span>
+<span class="c1"># Last Updated:        2025-05-15</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Performs comprehensive validation of the pipeline’s configuration, including schema version checks,</span>
+<span class="c1">#   required section enforcement, and dynamic expression resolution. Registers tool-specific validators</span>
+<span class="c1">#   for all supported workflow steps (e.g., enhance_images, copy_to_aws, deploy_lambda_monitor).</span>
+<span class="c1">#   Raises `ConfigValidationError` for invalid structures, missing fields, or improper expressions.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/validate_full_config.py</span>
+<span class="c1"># Called By:            orchestrator, CLI validation entrypoint</span>
+<span class="c1"># Int. Dependencies:    arcpy_utils, expression_utils, path_resolver, config_loader, schema_paths</span>
+<span class="c1"># Ext. Dependencies:    __future__,shutil, string, typing, pathlib</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/CONFIG_GUIDE.md and docs_legacy/config_schema_reference.md</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Uses per-tool validator dispatch via `TOOL_VALIDATORS` registry</span>
+<span class="c1">#   - Supports `DISABLED` flags and external command validation (e.g., exiftool path)</span>
+<span class="c1">#   - Designed to be run both via `__main__` and programmatically from tool execution</span>
+<span class="c1"># =============================================================================</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+
+<span class="kn">from</span> <span class="nn">utils.shared.rmi_exceptions</span> <span class="kn">import</span> <span class="n">ConfigValidationError</span>
+<span class="kn">from</span> <span class="nn">utils.validators.common_validators</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">validate_type</span><span class="p">,</span>
+    <span class="n">validate_config_section</span><span class="p">,</span>
+    <span class="n">validate_expression_block</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="validate_full_config">
+<a class="viewcode-back" href="../../../api/validators.html#utils.validators.validate_full_config">[docs]</a>
+<span class="k">def</span> <span class="nf">validate_full_config</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="s1">&#39;ConfigManager&#39;</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">SUPPORTED_SCHEMA_VERSIONS</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validates the entire configuration for the orchestrator workflow.</span>
+
+<span class="sd">    Checks schema version support, required top-level sections, and key types. Validates spatial reference expressions</span>
+<span class="sd">    and delegates to all tool-specific validators. Collects and logs all validation errors, reporting success only if</span>
+<span class="sd">    all checks pass.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cfg (ConfigManager): The configuration manager instance.</span>
+<span class="sd">        logger: Optional logger for testing; defaults to cfg.get_logger().</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if validation passes, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span> <span class="ow">or</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">schema_version</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_version&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">schema_version</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">SUPPORTED_SCHEMA_VERSIONS</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported schema_version &#39;</span><span class="si">{</span><span class="n">schema_version</span><span class="si">}</span><span class="s2">&#39;. Supported versions: &quot;</span>
+               <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">SUPPORTED_SCHEMA_VERSIONS</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="n">ConfigValidationError</span><span class="p">)</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">validate_type</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;debug_messages&quot;</span><span class="p">),</span> <span class="s2">&quot;debug_messages&quot;</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">ConfigValidationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">error_type</span><span class="o">=</span><span class="n">ConfigValidationError</span><span class="p">)</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+    <span class="n">required_sections</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;logs&quot;</span><span class="p">,</span> <span class="s2">&quot;project&quot;</span><span class="p">,</span> <span class="s2">&quot;camera&quot;</span><span class="p">,</span> <span class="s2">&quot;camera_offset&quot;</span><span class="p">,</span> <span class="s2">&quot;spatial_ref&quot;</span><span class="p">,</span> <span class="s2">&quot;executables&quot;</span><span class="p">,</span> <span class="s2">&quot;oid_schema_template&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;gps_smoothing&quot;</span><span class="p">,</span> <span class="s2">&quot;image_output.filename_settings&quot;</span><span class="p">,</span> <span class="s2">&quot;image_output.metadata_tags&quot;</span><span class="p">,</span> <span class="s2">&quot;aws&quot;</span><span class="p">,</span> <span class="s2">&quot;portal&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;geocoding&quot;</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">required_sections</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validate_config_section</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">section</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ConfigValidationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">error_type</span><span class="o">=</span><span class="n">ConfigValidationError</span><span class="p">)</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">spatial_ref</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;spatial_ref&quot;</span><span class="p">)</span>
+        <span class="n">validate_expression_block</span><span class="p">(</span>
+            <span class="n">spatial_ref</span><span class="p">,</span>
+            <span class="p">[</span><span class="s2">&quot;gcs_horizontal_wkid&quot;</span><span class="p">,</span> <span class="s2">&quot;vcs_vertical_wkid&quot;</span><span class="p">,</span> <span class="s2">&quot;pcs_horizontal_wkid&quot;</span><span class="p">],</span>
+            <span class="n">cfg</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="s2">&quot;spatial_ref&quot;</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="n">ConfigValidationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">error_type</span><span class="o">=</span><span class="n">ConfigValidationError</span><span class="p">)</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+
+    <span class="c1"># Tool-specific validation</span>
+    <span class="k">for</span> <span class="n">tool</span><span class="p">,</span> <span class="n">validator</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="s1">&#39;TOOL_VALIDATORS&#39;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">validator</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">tool</span><span class="si">}</span><span class="s2"> validation] passed.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ConfigValidationError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">tool</span><span class="si">}</span><span class="s2"> validation] </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="n">ConfigValidationError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tool</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">errors</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Full config validation passed.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Config validation failed with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span><span class="si">}</span><span class="s2"> error(s).&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="n">ConfigValidationError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,23 @@
+Configuration Overview
+====================
+
+This section covers the comprehensive configuration system used by the RMI 360 Imaging Workflow.
+
+The workflow uses YAML-based configuration files that control all aspects of processing, from basic project settings to advanced AWS integration.
+
+Configuration Files
+-------------------
+
+The main configuration files are:
+
+- ``config.yaml`` - Main project configuration (created from sample)
+- ``config.sample.yaml`` - Template with all available options
+- ``esri_oid_fields_registry.yaml`` - Field definitions for OID schema
+
+For detailed configuration information, see:
+
+- :doc:`project-settings` - Project metadata and basic settings
+- :doc:`aws-settings` - AWS S3 and Lambda configuration  
+- :doc:`field-registry` - OID field schema definitions
+
+Configuration sections are documented in detail in the :doc:`../user-guide/configuration` guide.

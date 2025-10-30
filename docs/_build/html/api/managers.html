@@ -1,0 +1,975 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Managers API Reference &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Validators API Reference" href="validators.html" />
+    <link rel="prev" title="Utilities API Reference" href="utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Managers API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-utils.manager.config_manager">Configuration Manager</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager"><code class="docutils literal notranslate"><span class="pre">ConfigManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager._config"><code class="docutils literal notranslate"><span class="pre">ConfigManager._config</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager._config_path"><code class="docutils literal notranslate"><span class="pre">ConfigManager._config_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager._project_base"><code class="docutils literal notranslate"><span class="pre">ConfigManager._project_base</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager._paths"><code class="docutils literal notranslate"><span class="pre">ConfigManager._paths</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager._lm"><code class="docutils literal notranslate"><span class="pre">ConfigManager._lm</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.__init__"><code class="docutils literal notranslate"><span class="pre">ConfigManager.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.from_file"><code class="docutils literal notranslate"><span class="pre">ConfigManager.from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.validate"><code class="docutils literal notranslate"><span class="pre">ConfigManager.validate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.has_section"><code class="docutils literal notranslate"><span class="pre">ConfigManager.has_section()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.get_sections"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get_sections()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.get"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.resolve"><code class="docutils literal notranslate"><span class="pre">ConfigManager.resolve()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.raw"><code class="docutils literal notranslate"><span class="pre">ConfigManager.raw</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.source_path"><code class="docutils literal notranslate"><span class="pre">ConfigManager.source_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.paths"><code class="docutils literal notranslate"><span class="pre">ConfigManager.paths</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.get_logger"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get_logger()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.get_progressor"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get_progressor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.TOOL_VALIDATORS"><code class="docutils literal notranslate"><span class="pre">ConfigManager.TOOL_VALIDATORS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager.validate_tool_config"><code class="docutils literal notranslate"><span class="pre">ConfigManager.validate_tool_config()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-utils.manager.path_manager">Path Manager</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#utils.manager.path_manager.PathManager"><code class="docutils literal notranslate"><span class="pre">PathManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.__init__"><code class="docutils literal notranslate"><span class="pre">PathManager.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.templates"><code class="docutils literal notranslate"><span class="pre">PathManager.templates</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.configs"><code class="docutils literal notranslate"><span class="pre">PathManager.configs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.lambdas"><code class="docutils literal notranslate"><span class="pre">PathManager.lambdas</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.primary_config_path"><code class="docutils literal notranslate"><span class="pre">PathManager.primary_config_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.fallback_config_path"><code class="docutils literal notranslate"><span class="pre">PathManager.fallback_config_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.backups"><code class="docutils literal notranslate"><span class="pre">PathManager.backups</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.backup_gdb"><code class="docutils literal notranslate"><span class="pre">PathManager.backup_gdb</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.logs"><code class="docutils literal notranslate"><span class="pre">PathManager.logs</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.report"><code class="docutils literal notranslate"><span class="pre">PathManager.report</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.panos"><code class="docutils literal notranslate"><span class="pre">PathManager.panos</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.original"><code class="docutils literal notranslate"><span class="pre">PathManager.original</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.enhanced"><code class="docutils literal notranslate"><span class="pre">PathManager.enhanced</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.renamed"><code class="docutils literal notranslate"><span class="pre">PathManager.renamed</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.oid_field_registry"><code class="docutils literal notranslate"><span class="pre">PathManager.oid_field_registry</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.oid_schema_gdb"><code class="docutils literal notranslate"><span class="pre">PathManager.oid_schema_gdb</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.oid_schema_template_name"><code class="docutils literal notranslate"><span class="pre">PathManager.oid_schema_template_name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.oid_schema_template_path"><code class="docutils literal notranslate"><span class="pre">PathManager.oid_schema_template_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.geoloc500_config_path"><code class="docutils literal notranslate"><span class="pre">PathManager.geoloc500_config_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.geocustom_config_path"><code class="docutils literal notranslate"><span class="pre">PathManager.geocustom_config_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.exiftool_exe"><code class="docutils literal notranslate"><span class="pre">PathManager.exiftool_exe</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.mosaic_processor_exe"><code class="docutils literal notranslate"><span class="pre">PathManager.mosaic_processor_exe</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.mosaic_processor_grp"><code class="docutils literal notranslate"><span class="pre">PathManager.mosaic_processor_grp</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.mosaic_processor_cfg"><code class="docutils literal notranslate"><span class="pre">PathManager.mosaic_processor_cfg</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.lambda_pm_path"><code class="docutils literal notranslate"><span class="pre">PathManager.lambda_pm_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.lambda_dr_path"><code class="docutils literal notranslate"><span class="pre">PathManager.lambda_dr_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.get_log_file_path"><code class="docutils literal notranslate"><span class="pre">PathManager.get_log_file_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.validate_mosaic_config"><code class="docutils literal notranslate"><span class="pre">PathManager.validate_mosaic_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.check_exiftool_available"><code class="docutils literal notranslate"><span class="pre">PathManager.check_exiftool_available()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.check_mosaic_processor_available"><code class="docutils literal notranslate"><span class="pre">PathManager.check_mosaic_processor_available()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.path_manager.PathManager.from_config_file"><code class="docutils literal notranslate"><span class="pre">PathManager.from_config_file()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-utils.manager.log_manager">Log Manager</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#utils.manager.log_manager.LogManager"><code class="docutils literal notranslate"><span class="pre">LogManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.LEVEL_PREFIX"><code class="docutils literal notranslate"><span class="pre">LogManager.LEVEL_PREFIX</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.SHOW_INDENT_LEVEL_IN_DEBUG"><code class="docutils literal notranslate"><span class="pre">LogManager.SHOW_INDENT_LEVEL_IN_DEBUG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.SHOW_CONTEXT_IN_DEBUG"><code class="docutils literal notranslate"><span class="pre">LogManager.SHOW_CONTEXT_IN_DEBUG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.__init__"><code class="docutils literal notranslate"><span class="pre">LogManager.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.log"><code class="docutils literal notranslate"><span class="pre">LogManager.log()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.debug"><code class="docutils literal notranslate"><span class="pre">LogManager.debug()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.info"><code class="docutils literal notranslate"><span class="pre">LogManager.info()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.warning"><code class="docutils literal notranslate"><span class="pre">LogManager.warning()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.error"><code class="docutils literal notranslate"><span class="pre">LogManager.error()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.success"><code class="docutils literal notranslate"><span class="pre">LogManager.success()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.custom"><code class="docutils literal notranslate"><span class="pre">LogManager.custom()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.get_messages"><code class="docutils literal notranslate"><span class="pre">LogManager.get_messages()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.export_txt"><code class="docutils literal notranslate"><span class="pre">LogManager.export_txt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.export_json"><code class="docutils literal notranslate"><span class="pre">LogManager.export_json()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.export_html"><code class="docutils literal notranslate"><span class="pre">LogManager.export_html()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.export_all"><code class="docutils literal notranslate"><span class="pre">LogManager.export_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.log_manager.LogManager.step"><code class="docutils literal notranslate"><span class="pre">LogManager.step()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#module-utils.manager.progressor_manager">Progress Manager</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#utils.manager.progressor_manager.ProgressorManager"><code class="docutils literal notranslate"><span class="pre">ProgressorManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.progressor_manager.ProgressorManager.__init__"><code class="docutils literal notranslate"><span class="pre">ProgressorManager.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.progressor_manager.ProgressorManager.__enter__"><code class="docutils literal notranslate"><span class="pre">ProgressorManager.__enter__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.progressor_manager.ProgressorManager.update"><code class="docutils literal notranslate"><span class="pre">ProgressorManager.update()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#utils.manager.progressor_manager.ProgressorManager.__exit__"><code class="docutils literal notranslate"><span class="pre">ProgressorManager.__exit__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Managers API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/managers.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="managers-api-reference">
+<h1>Managers API Reference<a class="headerlink" href="#managers-api-reference" title="Link to this heading"></a></h1>
+<p>This section documents the manager classes that handle configuration, logging, path resolution, and progress tracking.</p>
+<section id="module-utils.manager.config_manager">
+<span id="configuration-manager"></span><h2>Configuration Manager<a class="headerlink" href="#module-utils.manager.config_manager" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.manager.config_manager.</span></span><span class="sig-name descname"><span class="pre">ConfigManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Manages configuration for the RMI 360 Imaging Workflow Toolbox.</p>
+<p>This class loads YAML configuration, validates its schema, and exposes helper
+methods for retrieving nested keys, resolving expressions, and integrating with
+logging and path management. Intended for consistent environment setup across tools.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager._config">
+<span class="sig-name descname"><span class="pre">_config</span></span><a class="headerlink" href="#utils.manager.config_manager.ConfigManager._config" title="Link to this definition"></a></dt>
+<dd><p>The parsed configuration dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager._config_path">
+<span class="sig-name descname"><span class="pre">_config_path</span></span><a class="headerlink" href="#utils.manager.config_manager.ConfigManager._config_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the loaded config file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager._project_base">
+<span class="sig-name descname"><span class="pre">_project_base</span></span><a class="headerlink" href="#utils.manager.config_manager.ConfigManager._project_base" title="Link to this definition"></a></dt>
+<dd><p>Project root directory for resolving outputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Path</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager._paths">
+<span class="sig-name descname"><span class="pre">_paths</span></span><a class="headerlink" href="#utils.manager.config_manager.ConfigManager._paths" title="Link to this definition"></a></dt>
+<dd><p>Path manager instance for resolving file paths.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager">PathManager</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager._lm">
+<span class="sig-name descname"><span class="pre">_lm</span></span><a class="headerlink" href="#utils.manager.config_manager.ConfigManager._lm" title="Link to this definition"></a></dt>
+<dd><p>Logger instance for logging messages.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#utils.manager.log_manager.LogManager" title="utils.manager.log_manager.LogManager">LogManager</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="simple">
+<dt>Typical usage:</dt><dd><p>cfg = ConfigManager.from_file(“path/to/config.yaml”, project_base)
+cfg.validate(tool=”enhance”)
+log = cfg.get_logger()
+path = cfg.paths.logs</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize ConfigManager from a parsed config dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Parsed YAML configuration.</p></li>
+<li><p><strong>config_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the loaded config file.</p></li>
+<li><p><strong>project_base</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><em>Path</em><em>, </em><em>optional</em>) – Project root directory for resolving outputs.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.from_file">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">messages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#utils.manager.config_manager.ConfigManager" title="utils.manager.config_manager.ConfigManager"><span class="pre">ConfigManager</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.from_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.from_file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tool</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.validate" title="Link to this definition"></a></dt>
+<dd><p>Run schema validation on the config, optionally scoped to a tool.</p>
+<p>Validates the configuration against the expected schema. If a tool name is provided,
+only the configuration for that specific tool is validated. Otherwise, the entire
+configuration is validated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tool</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Name of the tool section to validate (e.g., “enhance_images”).</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the configuration fails validation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.has_section">
+<span class="sig-name descname"><span class="pre">has_section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">section</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.has_section"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.has_section" title="Link to this definition"></a></dt>
+<dd><p>Check if a specific section exists in the configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>section</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The top-level section name to check for.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the section exists, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<dl class="simple">
+<dt>cfg.has_section(“logs”)</dt><dd><p>True</p>
+</dd>
+<dt>cfg.has_section(“nonexistent_section”)</dt><dd><p>False</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.get_sections">
+<span class="sig-name descname"><span class="pre">get_sections</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.get_sections"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.get_sections" title="Link to this definition"></a></dt>
+<dd><p>Get a list of all top-level sections in the configuration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List of section names that are dictionaries.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<dl class="simple">
+<dt>cfg.get_sections()</dt><dd><p>[‘logs’, ‘project’, ‘camera’, ‘camera_offset’, ‘spatial_ref’, ‘executables’, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.get" title="Link to this definition"></a></dt>
+<dd><p>Access a nested config key using dot notation.</p>
+<p>Traverses the configuration dictionary using the dot-separated key path.
+Returns the default value if any part of the path is not found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Dot-separated key path, e.g., ‘logs.process_log’.</p></li>
+<li><p><strong>default</strong> (<em>Any</em>) – Value to return if key is not found.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Retrieved value or default if the key path doesn’t exist.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<dl class="simple">
+<dt>cfg.get(“logs.process_log”)</dt><dd><p>“process_log.txt”</p>
+</dd>
+<dt>cfg.get(“nonexistent.key”, “fallback”)</dt><dd><p>“fallback”</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.resolve">
+<span class="sig-name descname"><span class="pre">resolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.resolve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.resolve" title="Link to this definition"></a></dt>
+<dd><p>Resolve an expression string using config and optional row context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>expr</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>|</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>|</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Expression to resolve.</p></li>
+<li><p><strong>row</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Row context for field substitution.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Resolved expression value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.raw">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">raw</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></em><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.raw" title="Link to this definition"></a></dt>
+<dd><p>Return the full raw config dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The raw parsed configuration.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.source_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">source_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.source_path" title="Link to this definition"></a></dt>
+<dd><p>Returns the file path from which the config was loaded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Absolute path to config file or None if unknown.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.paths">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">paths</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager"><span class="pre">PathManager</span></a></em><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.paths" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.get_logger">
+<span class="sig-name descname"><span class="pre">get_logger</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">messages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><span class="pre">list</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#utils.manager.log_manager.LogManager" title="utils.manager.log_manager.LogManager"><span class="pre">LogManager</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.get_logger"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.get_logger" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.get_progressor">
+<span class="sig-name descname"><span class="pre">get_progressor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Processing...'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#utils.manager.progressor_manager.ProgressorManager" title="utils.manager.progressor_manager.ProgressorManager"><span class="pre">ProgressorManager</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.get_progressor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.get_progressor" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.TOOL_VALIDATORS">
+<span class="sig-name descname"><span class="pre">TOOL_VALIDATORS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'add_images_to_oid':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'apply_exif_metadata':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'assign_group_index':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'build_oid_footprints':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'build_oid_schema':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'calculate_oid_attributes':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'copy_to_aws':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'correct_gps_outliers':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'create_oriented_imagery_dataset':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'deploy_lambda_monitor':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'enhance_images':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'generate_oid_service':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'geocode_images':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'mosaic_processor':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'rename_images':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'smooth_gps_noise':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;,</span> <span class="pre">'update_linear_and_custom':</span> <span class="pre">&lt;function</span> <span class="pre">validate&gt;}</span></em><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.TOOL_VALIDATORS" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.config_manager.ConfigManager.validate_tool_config">
+<span class="sig-name descname"><span class="pre">validate_tool_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tool</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/config_manager.html#ConfigManager.validate_tool_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.config_manager.ConfigManager.validate_tool_config" title="Link to this definition"></a></dt>
+<dd><p>Validates the configuration for a specified tool using its registered validator.</p>
+<p>If the tool name is not recognized, logs an error and signals a configuration validation failure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>tool</strong> – The name of the tool whose configuration should be validated.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ConfigValidationError</strong> – If the tool name is not registered.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-utils.manager.path_manager">
+<span id="path-manager"></span><h2>Path Manager<a class="headerlink" href="#module-utils.manager.path_manager" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.manager.path_manager.</span></span><span class="sig-name descname"><span class="pre">PathManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#utils.manager.config_manager.ConfigManager" title="utils.manager.config_manager.ConfigManager"><span class="pre">ConfigManager</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">script_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Central path manager for RMI 360 Workflow.</p>
+<p>Resolves all paths related to:
+- 🗂 Script structure (configs/, templates/, lambdas/)
+- 📁 Project outputs (logs/, backups/, panos/, renamed/)
+- 🧩 Schema components (GDBs, registries)
+- 🔧 Executables (ExifTool, Mosaic Processor)</p>
+<p>Supports config overrides, expression-based log prefixes, and runtime executable checks.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#utils.manager.config_manager.ConfigManager" title="utils.manager.config_manager.ConfigManager"><span class="pre">ConfigManager</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">script_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the PathManager.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>project_base</strong> (<em>Path</em>) – The base path of the active project.</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> or </em><a class="reference internal" href="#utils.manager.config_manager.ConfigManager" title="utils.manager.config_manager.ConfigManager"><em>ConfigManager</em></a><em>, </em><em>optional</em>) – The loaded configuration, either raw or wrapped.</p></li>
+<li><p><strong>script_base</strong> (<em>Path</em><em>, </em><em>optional</em>) – The root folder where rmi_360_workflow.pyt lives.
+Defaults to the parent of the calling file’s parent.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.templates">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">templates</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.templates" title="Link to this definition"></a></dt>
+<dd><p>Path to template directory (configurable via oid_schema_template.template.templates_dir).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.configs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">configs</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.configs" title="Link to this definition"></a></dt>
+<dd><p>Path to configs directory under script base.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.lambdas">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lambdas</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.lambdas" title="Link to this definition"></a></dt>
+<dd><p>Path to aws_lambdas directory under script base.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.primary_config_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">primary_config_path</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.primary_config_path" title="Link to this definition"></a></dt>
+<dd><p>Returns the path to config.yaml under script base.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.fallback_config_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fallback_config_path</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.fallback_config_path" title="Link to this definition"></a></dt>
+<dd><p>Returns the path to config.sample.yaml under script base.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.backups">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">backups</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.backups" title="Link to this definition"></a></dt>
+<dd><p>Path to project backups folder (configurable via orchestrator.backup_folder).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.backup_gdb">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">backup_gdb</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.backup_gdb" title="Link to this definition"></a></dt>
+<dd><p>Path to project backup fgdb (configurable via orchestrator.oid_backup_fgdb).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.logs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">logs</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.logs" title="Link to this definition"></a></dt>
+<dd><p>Path to logs folder (configurable via logs.path).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.report">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">report</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.report" title="Link to this definition"></a></dt>
+<dd><p>Path to reports folder (configurable via logs.report_path).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.panos">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">panos</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.panos" title="Link to this definition"></a></dt>
+<dd><p>Path to the base panos folder (configurable via image_output.folders.parent).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.original">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">original</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.original" title="Link to this definition"></a></dt>
+<dd><p>Path to the original images folder (configurable via image_output.folders.original).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.enhanced">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">enhanced</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.enhanced" title="Link to this definition"></a></dt>
+<dd><p>Path to the enhanced images folder (configurable via image_output.folders.enhanced).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.renamed">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">renamed</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.renamed" title="Link to this definition"></a></dt>
+<dd><p>Path to the renamed/final images folder (configurable via image_output.folders.renamed).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.oid_field_registry">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">oid_field_registry</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.oid_field_registry" title="Link to this definition"></a></dt>
+<dd><p>Path to the ESRI OID field registry YAML (from oid_schema_template.esri_default.field_registry).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.oid_schema_gdb">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">oid_schema_gdb</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.oid_schema_gdb" title="Link to this definition"></a></dt>
+<dd><p>Path to the OID schema GDB (inside templates dir, resolved from config).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.oid_schema_template_name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">oid_schema_template_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#utils.manager.path_manager.PathManager.oid_schema_template_name" title="Link to this definition"></a></dt>
+<dd><p>Returns the configured name of the OID schema template table/feature class.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.oid_schema_template_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">oid_schema_template_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#utils.manager.path_manager.PathManager.oid_schema_template_path" title="Link to this definition"></a></dt>
+<dd><p>Returns the configured path of the OID schema template table/feature class.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.geoloc500_config_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geoloc500_config_path</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.geoloc500_config_path" title="Link to this definition"></a></dt>
+<dd><p>Resolved geolocation500 config path from config (relative to script base).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.geocustom_config_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geocustom_config_path</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.geocustom_config_path" title="Link to this definition"></a></dt>
+<dd><p>Resolved geocustom config path from config (relative to script base).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.exiftool_exe">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">exiftool_exe</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.exiftool_exe" title="Link to this definition"></a></dt>
+<dd><p>‘exiftool’).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Path to ExifTool executable (default</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.mosaic_processor_exe">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mosaic_processor_exe</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.mosaic_processor_exe" title="Link to this definition"></a></dt>
+<dd><p>Path to Mosaic Processor executable (no default).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.mosaic_processor_grp">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mosaic_processor_grp</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.mosaic_processor_grp" title="Link to this definition"></a></dt>
+<dd><p>Returns the resolved path to the Mosaic GRP calibration file, if configured.
+Returns None if unset or misconfigured.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.mosaic_processor_cfg">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mosaic_processor_cfg</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.mosaic_processor_cfg" title="Link to this definition"></a></dt>
+<dd><p>Path to Mosaic Processor config file (no default).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.lambda_pm_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lambda_pm_path</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.lambda_pm_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the lambda_progress_monitor.py.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.lambda_dr_path">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lambda_dr_path</span></span><a class="headerlink" href="#utils.manager.path_manager.PathManager.lambda_dr_path" title="Link to this definition"></a></dt>
+<dd><p>Path to the disable_rule.py.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.get_log_file_path">
+<span class="sig-name descname"><span class="pre">get_log_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="s"><span class="pre">'ConfigManager'</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager.get_log_file_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager.get_log_file_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.validate_mosaic_config">
+<span class="sig-name descname"><span class="pre">validate_mosaic_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">messages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager.validate_mosaic_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager.validate_mosaic_config" title="Link to this definition"></a></dt>
+<dd><p>Validates mosaic processor configuration and logs any errors found.</p>
+<p>Checks if the mosaic processor executable and GRP calibration file are properly
+configured and accessible. Logs errors through the provided log_func if issues are found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>messages</strong> (<em>List</em><em>, </em><em>optional</em>) – ArcGIS message object for logging. Defaults to None.</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Config dict for contextual logging. Defaults to None.</p></li>
+<li><p><strong>log_func</strong> (<em>callable</em><em>, </em><em>optional</em>) – Logging function that accepts (message, messages, level, config).
+Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if configuration is valid, False if any issues were found</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.check_exiftool_available">
+<span class="sig-name descname"><span class="pre">check_exiftool_available</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager.check_exiftool_available"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager.check_exiftool_available" title="Link to this definition"></a></dt>
+<dd><p>Checks if ExifTool is available and runnable.</p>
+<p>Tests if the ExifTool executable configured in executables.exiftool.exe_path
+can be run successfully. Uses _is_executable_available with default arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if ExifTool is available and runs without error, False otherwise</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.check_mosaic_processor_available">
+<span class="sig-name descname"><span class="pre">check_mosaic_processor_available</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager.check_mosaic_processor_available"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager.check_mosaic_processor_available" title="Link to this definition"></a></dt>
+<dd><p>Checks if Mosaic Processor is available and runnable.</p>
+<p>Tests if the Mosaic Processor executable configured in executables.mosaic_processor.exe_path
+can be run successfully. Uses _is_executable_available with default arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if Mosaic Processor is available and runs without error, False otherwise</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.path_manager.PathManager.from_config_file">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_config_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">script_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager"><span class="pre">PathManager</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/path_manager.html#PathManager.from_config_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.path_manager.PathManager.from_config_file" title="Link to this definition"></a></dt>
+<dd><p>Load configuration from a YAML file and initialize a PathManager.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config_path</strong> (<em>Path</em>) – Path to the YAML config file.</p></li>
+<li><p><strong>project_base</strong> (<em>Path</em>) – The base path of the project.</p></li>
+<li><p><strong>script_base</strong> (<em>Path</em><em>, </em><em>optional</em>) – Override script base.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Initialized instance with config loaded from the specified file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager">PathManager</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If the config file doesn’t exist.</p></li>
+<li><p><strong>yaml.YAMLError</strong> – If the config file contains invalid YAML.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-utils.manager.log_manager">
+<span id="log-manager"></span><h2>Log Manager<a class="headerlink" href="#module-utils.manager.log_manager" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.manager.log_manager.</span></span><span class="sig-name descname"><span class="pre">LogManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">messages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager"><span class="pre">PathManager</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_file_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>LogManager provides structured logging for command-line, ArcGIS, and web-based workflows.</p>
+<p>Logs are collected in plain text, HTML, and JSON formats with support for:
+- Multiple log levels (info, warning, error, debug)
+- Step-based indentation and timing
+- Context metadata (tool, file, reel, etc.)
+- ArcGIS Pro messaging (if a message object is provided)
+- Export to .txt, .html, and .json files via PathManager</p>
+<p>Designed for use in orchestration scripts, CLI tools, and ArcGIS Python Toolbox tools.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.LEVEL_PREFIX">
+<span class="sig-name descname"><span class="pre">LEVEL_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'custom':</span> <span class="pre">'',</span> <span class="pre">'debug':</span> <span class="pre">'🛠️',</span> <span class="pre">'error':</span> <span class="pre">'❌',</span> <span class="pre">'info':</span> <span class="pre">'ℹ️',</span> <span class="pre">'success':</span> <span class="pre">'✅',</span> <span class="pre">'warning':</span> <span class="pre">'⚠️'}</span></em><a class="headerlink" href="#utils.manager.log_manager.LogManager.LEVEL_PREFIX" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.SHOW_INDENT_LEVEL_IN_DEBUG">
+<span class="sig-name descname"><span class="pre">SHOW_INDENT_LEVEL_IN_DEBUG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#utils.manager.log_manager.LogManager.SHOW_INDENT_LEVEL_IN_DEBUG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.SHOW_CONTEXT_IN_DEBUG">
+<span class="sig-name descname"><span class="pre">SHOW_CONTEXT_IN_DEBUG</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#utils.manager.log_manager.LogManager.SHOW_CONTEXT_IN_DEBUG" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">messages</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager"><span class="pre">PathManager</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_file_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the LogManager.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>messages</strong> (<em>optional</em>) – ArcPy messaging object for integrated tool messages.</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Project-level configuration, including debug flag.</p></li>
+<li><p><strong>path_manager</strong> (<a class="reference internal" href="#utils.manager.path_manager.PathManager" title="utils.manager.path_manager.PathManager"><em>PathManager</em></a><em>, </em><em>optional</em>) – Provides log file directories.</p></li>
+<li><p><strong>enable_file_output</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – If True, log to .txt, .html, and .json files.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.log">
+<span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'info'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><span class="pre">Exception</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">emoji</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.log" title="Link to this definition"></a></dt>
+<dd><p>Log a message with a specified level, optional context, and explicit indentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>msg</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – The message to log.</p></li>
+<li><p><strong>level</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Logging level. One of ‘debug’, ‘info’, ‘warning’, ‘error’, ‘success’, or ‘custom’.</p></li>
+<li><p><strong>context</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Metadata context to include in the log (default: None).</p></li>
+<li><p><strong>indent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Indentation level (number of indent units, default: 0).</p></li>
+<li><p><strong>error_type</strong> (<em>Type</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><em>Exception</em></a><em>]</em><em>, </em><em>optional</em>) – Exception type to raise if level is ‘error’ (default: None).</p></li>
+<li><p><strong>emoji</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Emoji to use for ‘custom’ level messages (default: None).</p></li>
+</ul>
+</dd>
+</dl>
+<p>For ‘custom’ level, provide an emoji.
+For ‘error’, if error_type is given, raises after logging (indent forced to 0 unless overridden).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.debug">
+<span class="sig-name descname"><span class="pre">debug</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.debug"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.debug" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.info">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.info" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.warning">
+<span class="sig-name descname"><span class="pre">warning</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.warning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.warning" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.error">
+<span class="sig-name descname"><span class="pre">error</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">error_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Type" title="(in Python v3.14)"><span class="pre">Type</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><span class="pre">Exception</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.error" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.success">
+<span class="sig-name descname"><span class="pre">success</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.success"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.success" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.custom">
+<span class="sig-name descname"><span class="pre">custom</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">emoji</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.custom"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.custom" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.get_messages">
+<span class="sig-name descname"><span class="pre">get_messages</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.get_messages"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.get_messages" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.export_txt">
+<span class="sig-name descname"><span class="pre">export_txt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'process_log.txt'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.export_txt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.export_txt" title="Link to this definition"></a></dt>
+<dd><p>Export plain text log to .txt file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output filename for the text log.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.export_json">
+<span class="sig-name descname"><span class="pre">export_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'process_log.json'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.export_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.export_json" title="Link to this definition"></a></dt>
+<dd><p>Export log records to a structured JSON file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Filename for the JSON export.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.export_html">
+<span class="sig-name descname"><span class="pre">export_html</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'process_log.html'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.export_html"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.export_html" title="Link to this definition"></a></dt>
+<dd><p>Export log output to an HTML file with collapsible blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output filename for the HTML log.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.export_all">
+<span class="sig-name descname"><span class="pre">export_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basename</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'process_log'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.export_all"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.export_all" title="Link to this definition"></a></dt>
+<dd><p>Export log to .txt, .html, and .json using a common base filename.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.log_manager.LogManager.step">
+<span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">msg</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/log_manager.html#LogManager.step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.log_manager.LogManager.step" title="Link to this definition"></a></dt>
+<dd><p>Context manager for logging the start and end of a logical step.
+Logs separators before and after the step message at indent=0.
+Any log messages inside should use indent=1 for proper nesting.
+Usage:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>with logger.step(“Run Mosaic Processor”):</dt><dd><p>logger.info(“Hello”, indent=1)</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-utils.manager.progressor_manager">
+<span id="progress-manager"></span><h2>Progress Manager<a class="headerlink" href="#module-utils.manager.progressor_manager" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.manager.progressor_manager.ProgressorManager">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.manager.progressor_manager.</span></span><span class="sig-name descname"><span class="pre">ProgressorManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Processing...'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#utils.manager.log_manager.LogManager" title="utils.manager.log_manager.LogManager"><span class="pre">LogManager</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/progressor_manager.html#ProgressorManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.progressor_manager.ProgressorManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.progressor_manager.ProgressorManager.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Processing...'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#utils.manager.log_manager.LogManager" title="utils.manager.log_manager.LogManager"><span class="pre">LogManager</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/progressor_manager.html#ProgressorManager.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.progressor_manager.ProgressorManager.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initializes a Progressor instance for tracking and reporting progress.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>total</strong> – The total number of steps to track.</p></li>
+<li><p><strong>label</strong> – The label to display for the progressor.</p></li>
+<li><p><strong>step</strong> – The increment value for each progress update.</p></li>
+<li><p><strong>log_manager</strong> – Optional LogManager instance for logging errors.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.progressor_manager.ProgressorManager.__enter__">
+<span class="sig-name descname"><span class="pre">__enter__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/progressor_manager.html#ProgressorManager.__enter__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.progressor_manager.ProgressorManager.__enter__" title="Link to this definition"></a></dt>
+<dd><p>Initializes the ArcGIS Pro progressor if possible when entering the context.</p>
+<p>If initialization fails or the total is not positive, disables ArcGIS progressor usage and falls back to CLI
+output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The ProgressorManager instance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.progressor_manager.ProgressorManager.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/progressor_manager.html#ProgressorManager.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.progressor_manager.ProgressorManager.update" title="Link to this definition"></a></dt>
+<dd><p>Updates the progress display to the specified position, optionally updating the label.</p>
+<p>If the ArcGIS progressor is active, updates its label and position; otherwise, prints progress to the console
+as a percentage.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.manager.progressor_manager.ProgressorManager.__exit__">
+<span class="sig-name descname"><span class="pre">__exit__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exc_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exc_val</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exc_tb</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/utils/manager/progressor_manager.html#ProgressorManager.__exit__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.manager.progressor_manager.ProgressorManager.__exit__" title="Link to this definition"></a></dt>
+<dd><p>Cleans up progress reporting resources when exiting the context.</p>
+<p>If the ArcGIS progressor was used, attempts to reset it; otherwise, ensures CLI output formatting by printing
+a newline.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="utils.html" class="btn btn-neutral float-left" title="Utilities API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="validators.html" class="btn btn-neutral float-right" title="Validators API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

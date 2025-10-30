@@ -1,0 +1,459 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.deploy_lambda_monitor &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.deploy_lambda_monitor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.deploy_lambda_monitor</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 📡 AWS Lambda Deployment Logic (utils/deploy_lambda_monitor.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Deploys Lambda functions and schedules upload monitor for 360° image tracking</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.1.1</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-13</span>
+<span class="c1"># Last Updated:        2025-05-22</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Deploys and configures AWS Lambda functions for monitoring upload progress to S3. Sets up a CloudWatch</span>
+<span class="c1">#   Events schedule to invoke the monitoring Lambda every 5 minutes. Initializes a project-specific progress</span>
+<span class="c1">#   JSON file and verifies credentials via boto3. Uses keyring or fallback credentials defined in the config.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/deploy_lambda_monitor.py</span>
+<span class="c1"># Validator:            /utils/validators/deploy_lambda_monitor_validator.py</span>
+<span class="c1"># Called By:            tools/copy_to_aws_tool.py, tools/process_360_orchestrator.py</span>
+<span class="c1"># Int. Dependencies:    utils/manager/config_manager, utils/shared/expression_utils, utils/shared/aws_utils</span>
+<span class="c1"># Ext. Dependencies:    boto3, json, zipfile, io, contextlib, datetime, pathlib</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md, docs_legacy/tools/copy_to_aws.md, and AWS_SETUP_GUIDE.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Deploys both progress monitor and auto-disable Lambda functions</span>
+<span class="c1">#   - Configurable via standalone call or ArcGIS Python Toolbox wrapper</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;deploy_lambda_monitor&quot;</span><span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">boto3</span> <span class="kn">import</span> <span class="n">Session</span>
+
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span> <span class="nn">utils.shared.expression_utils</span> <span class="kn">import</span> <span class="n">resolve_expression</span>
+<span class="kn">from</span> <span class="nn">utils.shared.aws_utils</span> <span class="kn">import</span> <span class="n">get_aws_credentials</span><span class="p">,</span> <span class="n">verify_aws_credentials</span>
+
+
+<span class="k">def</span> <span class="nf">zip_lambda</span><span class="p">(</span><span class="n">source_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arcname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Packages a Python source file into an in-memory ZIP archive.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        source_path: Path to the source file to be zipped.</span>
+<span class="sd">        arcname: Name to assign to the file within the ZIP archive.</span>
+<span class="sd">        logger: Logger instance for logging messages.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The bytes of the ZIP archive containing the source file.</span>
+<span class="sd">    </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError: If the specified source file does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">source_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda file not found: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZIP_DEFLATED</span><span class="p">)</span> <span class="k">as</span> <span class="n">zf</span><span class="p">:</span>
+        <span class="n">zf</span><span class="o">.</span><span class="n">writestr</span><span class="p">(</span><span class="n">arcname</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">read_bytes</span><span class="p">())</span>
+
+    <span class="n">buf</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">buf</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">get_final_image_files</span><span class="p">(</span><span class="n">final_folder</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a list of JPEG image files in the given folder (recursively).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">final_folder</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">final_folder</span><span class="o">.</span><span class="n">rglob</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;.jpg&quot;</span><span class="p">,</span> <span class="s2">&quot;.jpeg&quot;</span><span class="p">]]</span>
+
+<span class="k">def</span> <span class="nf">count_final_images</span><span class="p">(</span><span class="n">cfg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Counts the number of JPEG images in the final output folder specified by the config.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The number of `.jpg` files found in the resolved final image output folder, or 0 if the folder does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">final_folder</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">renamed</span>
+    <span class="n">image_files</span> <span class="o">=</span> <span class="n">get_final_image_files</span><span class="p">(</span><span class="n">final_folder</span><span class="p">)</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">image_files</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No JPEG images found in </span><span class="si">{</span><span class="n">final_folder</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2"> JPEG images in </span><span class="si">{</span><span class="n">final_folder</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;📸&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">count</span>
+
+
+<span class="k">def</span> <span class="nf">build_progress_json</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">expected_total</span><span class="p">,</span> <span class="n">now</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builds a JSON-compatible dictionary representing the initial upload progress status.</span>
+<span class="sd">    Optionally accepts a datetime for testability.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">now</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+    <span class="n">project_info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;number&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.number&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;slug&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.slug&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;client&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.client&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;railroad_name&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.rr_name&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;railroad_code&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.rr_mark&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;description&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.description&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="n">camera_info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;make&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;camera.make&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;camera.model&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;serial_number&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;camera.sn&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;firmware&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;camera.firmware&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;software&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;camera.software&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="n">cloud_info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;bucket&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;prefix&quot;</span><span class="p">:</span> <span class="n">resolve_expression</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket_folder&quot;</span><span class="p">),</span> <span class="n">cfg</span><span class="p">),</span>
+        <span class="s2">&quot;region&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.region&quot;</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;project_slug&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.slug&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="n">now</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+        <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="n">now</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+        <span class="s2">&quot;end_time&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;upload_status&quot;</span><span class="p">:</span> <span class="s2">&quot;In Progress&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;stalls&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;expected_total&quot;</span><span class="p">:</span> <span class="n">expected_total</span><span class="p">,</span>
+        <span class="s2">&quot;percent_complete&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s2">&quot;avg_time_per_image&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;project_info&quot;</span><span class="p">:</span> <span class="n">project_info</span><span class="p">,</span>
+        <span class="s2">&quot;camera_info&quot;</span><span class="p">:</span> <span class="n">camera_info</span><span class="p">,</span>
+        <span class="s2">&quot;cloud_info&quot;</span><span class="p">:</span> <span class="n">cloud_info</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">upload_progress_json</span><span class="p">(</span><span class="n">s3_client</span><span class="p">,</span> <span class="n">progress</span><span class="p">,</span> <span class="n">bucket</span><span class="p">,</span> <span class="n">slug</span><span class="p">,</span> <span class="n">logger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Uploads the progress status JSON to an S3 bucket under the &#39;status/&#39; prefix.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        s3_client: A boto3 S3 client used to perform the upload.</span>
+<span class="sd">        progress: The progress status dictionary to upload.</span>
+<span class="sd">        bucket: The name of the S3 bucket.</span>
+<span class="sd">        slug: Project slug used to generate the filename.</span>
+<span class="sd">        logger: Logger instance for logging upload status and errors.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;progress_</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">.json&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">s3_client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span>
+            <span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">,</span>
+            <span class="n">Key</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;status/</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">Body</span><span class="o">=</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">progress</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">),</span>
+            <span class="n">ContentType</span><span class="o">=</span><span class="s2">&quot;application/json&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Uploaded </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> to s3://</span><span class="si">{</span><span class="n">bucket</span><span class="si">}</span><span class="s2">/status/&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to upload progress JSON: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_lambda_progress_monitor</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">lambda_client</span><span class="p">,</span> <span class="n">role_arn</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensures the &#39;UploadProgressMonitor&#39; Lambda function exists, deploying it if necessary.</span>
+<span class="sd">    </span>
+<span class="sd">    Checks for the existence of the &#39;UploadProgressMonitor&#39; AWS Lambda function. If it does not exist, packages the</span>
+<span class="sd">    source code and creates the Lambda function using the provided role ARN. Logs deployment status and raises a</span>
+<span class="sd">    FileNotFoundError if the source file is missing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;UploadProgressMonitor&quot;</span>
+    <span class="n">handler</span> <span class="o">=</span> <span class="s2">&quot;lambda_progress_monitor.lambda_handler&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">lambda_client</span><span class="o">.</span><span class="n">get_function</span><span class="p">(</span><span class="n">FunctionName</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; already exists.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">except</span> <span class="n">lambda_client</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ResourceNotFoundException</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;Deploying UploadProgressMonitor Lambda...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🚀&quot;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">zipped</span> <span class="o">=</span> <span class="n">zip_lambda</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">lambda_pm_path</span><span class="p">,</span> <span class="s2">&quot;lambda_progress_monitor.py&quot;</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda zip failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">raise</span>
+    <span class="n">lambda_client</span><span class="o">.</span><span class="n">create_function</span><span class="p">(</span>
+        <span class="n">FunctionName</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">Runtime</span><span class="o">=</span><span class="s2">&quot;python3.9&quot;</span><span class="p">,</span>
+        <span class="n">Role</span><span class="o">=</span><span class="n">role_arn</span><span class="p">,</span>
+        <span class="n">Handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+        <span class="n">Code</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ZipFile&quot;</span><span class="p">:</span> <span class="n">zipped</span><span class="p">},</span>
+        <span class="n">Timeout</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>
+        <span class="n">MemorySize</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+        <span class="n">Publish</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; deployed.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">ensure_lambda_deactivator</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">lambda_client</span><span class="p">,</span> <span class="n">role_arn</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensures the &#39;DisableUploadMonitorRule&#39; Lambda function exists, deploying it if necessary.</span>
+<span class="sd">    </span>
+<span class="sd">    If the Lambda function does not exist, packages its source code and creates the function using the provided role</span>
+<span class="sd">    ARN. Logs deployment status and raises FileNotFoundError if the source file is missing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;DisableUploadMonitorRule&quot;</span>
+    <span class="n">handler</span> <span class="o">=</span> <span class="s2">&quot;disable_rule.lambda_handler&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">lambda_client</span><span class="o">.</span><span class="n">get_function</span><span class="p">(</span><span class="n">FunctionName</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; already exists.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span>
+    <span class="k">except</span> <span class="n">lambda_client</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ResourceNotFoundException</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;Deploying DisableUploadMonitorRule Lambda...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🚀&quot;</span><span class="p">)</span>
+
+    <span class="c1"># 🔍 Resolve Lambda source files relative to config file</span>
+    <span class="n">deactivator_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">lambda_dr_path</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">zipped</span> <span class="o">=</span> <span class="n">zip_lambda</span><span class="p">(</span><span class="n">deactivator_path</span><span class="p">,</span> <span class="s2">&quot;disable_rule.py&quot;</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda zip failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="k">raise</span>
+
+    <span class="n">lambda_client</span><span class="o">.</span><span class="n">create_function</span><span class="p">(</span>
+        <span class="n">FunctionName</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">Runtime</span><span class="o">=</span><span class="s2">&quot;python3.9&quot;</span><span class="p">,</span>
+        <span class="n">Role</span><span class="o">=</span><span class="n">role_arn</span><span class="p">,</span>
+        <span class="n">Handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+        <span class="n">Code</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;ZipFile&quot;</span><span class="p">:</span> <span class="n">zipped</span><span class="p">},</span>
+        <span class="n">Timeout</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">MemorySize</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+        <span class="n">Publish</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lambda &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; deployed.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">setup_schedule_and_target</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">events_client</span><span class="p">,</span> <span class="n">lambda_client</span><span class="p">,</span> <span class="n">expected_total</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates or updates a CloudWatch Events rule to trigger the upload progress monitor Lambda.</span>
+<span class="sd">    </span>
+<span class="sd">    Configures a scheduled rule to invoke the &quot;UploadProgressMonitor&quot; Lambda function every 5 minutes, passing</span>
+<span class="sd">    project-specific input parameters. Ensures the Lambda has the necessary permissions to be invoked by the event rule.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+    <span class="n">rule_name</span> <span class="o">=</span> <span class="s2">&quot;UploadProgressScheduleRule&quot;</span>
+    <span class="n">target_lambda</span> <span class="o">=</span> <span class="s2">&quot;UploadProgressMonitor&quot;</span>
+
+    <span class="n">rule_arn</span> <span class="o">=</span> <span class="n">events_client</span><span class="o">.</span><span class="n">put_rule</span><span class="p">(</span>
+        <span class="n">Name</span><span class="o">=</span><span class="n">rule_name</span><span class="p">,</span>
+        <span class="n">ScheduleExpression</span><span class="o">=</span><span class="s2">&quot;rate(5 minutes)&quot;</span><span class="p">,</span>
+        <span class="n">State</span><span class="o">=</span><span class="s2">&quot;ENABLED&quot;</span>
+    <span class="p">)[</span><span class="s2">&quot;RuleArn&quot;</span><span class="p">]</span>
+
+    <span class="n">lambda_arn</span> <span class="o">=</span> <span class="n">lambda_client</span><span class="o">.</span><span class="n">get_function</span><span class="p">(</span><span class="n">FunctionName</span><span class="o">=</span><span class="n">target_lambda</span><span class="p">)[</span><span class="s2">&quot;Configuration&quot;</span><span class="p">][</span><span class="s2">&quot;FunctionArn&quot;</span><span class="p">]</span>
+
+    <span class="n">project_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;project_slug&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.slug&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;bucket&quot;</span><span class="p">:</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;prefix&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;project.number&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;expected_total&quot;</span><span class="p">:</span> <span class="n">expected_total</span>
+    <span class="p">}</span>
+
+    <span class="n">events_client</span><span class="o">.</span><span class="n">put_targets</span><span class="p">(</span>
+        <span class="n">Rule</span><span class="o">=</span><span class="n">rule_name</span><span class="p">,</span>
+        <span class="n">Targets</span><span class="o">=</span><span class="p">[{</span>
+            <span class="s2">&quot;Id&quot;</span><span class="p">:</span> <span class="s2">&quot;UploadProgressTarget&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Arn&quot;</span><span class="p">:</span> <span class="n">lambda_arn</span><span class="p">,</span>
+            <span class="s2">&quot;Input&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">project_config</span><span class="p">)</span>
+        <span class="p">}]</span>
+    <span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="n">lambda_client</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ResourceConflictException</span><span class="p">):</span>
+        <span class="n">lambda_client</span><span class="o">.</span><span class="n">add_permission</span><span class="p">(</span>
+            <span class="n">FunctionName</span><span class="o">=</span><span class="n">target_lambda</span><span class="p">,</span>
+            <span class="n">StatementId</span><span class="o">=</span><span class="s2">&quot;AllowEventsInvokeUploadProgress&quot;</span><span class="p">,</span>
+            <span class="n">Action</span><span class="o">=</span><span class="s2">&quot;lambda:InvokeFunction&quot;</span><span class="p">,</span>
+            <span class="n">Principal</span><span class="o">=</span><span class="s2">&quot;events.amazonaws.com&quot;</span><span class="p">,</span>
+            <span class="n">SourceArn</span><span class="o">=</span><span class="n">rule_arn</span>
+        <span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CloudWatch rule &#39;</span><span class="si">{</span><span class="n">rule_name</span><span class="si">}</span><span class="s2">&#39; updated with target input.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="deploy_lambda_monitor">
+<a class="viewcode-back" href="../../api/utils.html#utils.deploy_lambda_monitor.deploy_lambda_monitor">[docs]</a>
+<span class="k">def</span> <span class="nf">deploy_lambda_monitor</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Deploys and configures AWS Lambda functions and resources for monitoring image upload progress.</span>
+
+<span class="sd">    Resolves configuration, counts final images, builds and uploads initial progress status to S3, ensures required</span>
+<span class="sd">    Lambda functions are deployed, and sets up a scheduled CloudWatch Events rule to trigger progress monitoring.</span>
+<span class="sd">    Logs key steps and warnings throughout the process.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cfg: ConfigManager instance containing the application configuration</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;deploy_lambda_monitor&quot;</span><span class="p">)</span>
+
+    <span class="n">region</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.region&quot;</span><span class="p">)</span>
+    <span class="n">role_arn</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.lambda_role_arn&quot;</span><span class="p">)</span>
+    <span class="n">slug</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.slug&quot;</span><span class="p">)</span>
+    <span class="n">bucket</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Load credentials from keyring or config and verify AWS credentials</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Retrieving AWS credentials...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">access_key</span><span class="p">,</span> <span class="n">secret_key</span> <span class="o">=</span> <span class="n">get_aws_credentials</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+        <span class="n">session</span> <span class="o">=</span> <span class="n">verify_aws_credentials</span><span class="p">(</span><span class="n">access_key</span><span class="p">,</span> <span class="n">secret_key</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="c1"># Error already logged; handle accordingly</span>
+        <span class="k">return</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Preparing to deploy Lambda monitor...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">expected_total</span> <span class="o">=</span> <span class="n">count_final_images</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">expected_total</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Expected_total is 0 — progress tracking will show 0</span><span class="si">% u</span><span class="s2">ntil images appear.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">progress</span> <span class="o">=</span> <span class="n">build_progress_json</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">expected_total</span><span class="p">)</span>
+
+    <span class="n">s3</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;s3&quot;</span><span class="p">)</span>
+    <span class="n">lambda_client</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;lambda&quot;</span><span class="p">)</span>
+    <span class="n">events_client</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s2">&quot;events&quot;</span><span class="p">)</span>
+
+    <span class="n">upload_progress_json</span><span class="p">(</span><span class="n">s3</span><span class="p">,</span> <span class="n">progress</span><span class="p">,</span> <span class="n">bucket</span><span class="p">,</span> <span class="n">slug</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="n">ensure_lambda_progress_monitor</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">lambda_client</span><span class="p">,</span> <span class="n">role_arn</span><span class="p">)</span>
+    <span class="n">ensure_lambda_deactivator</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">lambda_client</span><span class="p">,</span> <span class="n">role_arn</span><span class="p">)</span>
+    <span class="n">setup_schedule_and_target</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">events_client</span><span class="p">,</span> <span class="n">lambda_client</span><span class="p">,</span> <span class="n">expected_total</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">&quot;Deployed AWS Lambda monitor.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

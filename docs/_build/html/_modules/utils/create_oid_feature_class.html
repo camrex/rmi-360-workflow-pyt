@@ -1,0 +1,232 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.create_oid_feature_class &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.create_oid_feature_class</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.create_oid_feature_class</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🏗️ OID Feature Class Creator (utils/create_oid_feature_class.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Creates a new Oriented Imagery Dataset (OID) feature class using a validated schema template</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.0.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-08</span>
+<span class="c1"># Last Updated:        2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Constructs a new OID feature class using ArcGIS Pro’s CreateOrientedImageryDataset tool. Validates schema</span>
+<span class="c1">#   compatibility via registered field templates and ensures spatial reference compatibility. Supports config-driven</span>
+<span class="c1">#   defaults for both horizontal and vertical coordinate systems and performs creation only if the OID does not exist.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/create_oid_feature_class.py</span>
+<span class="c1"># Validator:            /utils/validators/create_oid_validator.py</span>
+<span class="c1"># Called By:            tools/create_oid_tool.py, orchestrator pipeline</span>
+<span class="c1"># Int. Dependencies:    utils/manager/config_manager, utils/shared/schema_validator</span>
+<span class="c1"># Ext. Dependencies:    arcpy, os, typing</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/create_oid_and_schema.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Applies vertical WKID if defined in spatial_ref block of config</span>
+<span class="c1">#   - Uses Terrain3D as default DEM for elevation reference</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;create_oriented_imagery_dataset&quot;</span><span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span> <span class="nn">utils.shared.schema_validator</span> <span class="kn">import</span> <span class="n">ensure_valid_oid_schema_template</span>
+
+
+<div class="viewcode-block" id="create_oriented_imagery_dataset">
+<a class="viewcode-back" href="../../api/utils.html#utils.create_oid_feature_class.create_oriented_imagery_dataset">[docs]</a>
+<span class="k">def</span> <span class="nf">create_oriented_imagery_dataset</span><span class="p">(</span>
+        <span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span>
+        <span class="n">output_fc_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">spatial_reference</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates an Oriented Imagery Dataset (OID) feature class at the specified path.</span>
+
+<span class="sd">    This function generates a new OID feature class using a validated schema template, applying the provided or default</span>
+<span class="sd">    spatial reference and configuration. It ensures the output does not already exist, validates the schema, and logs</span>
+<span class="sd">    progress and errors through the configured messaging system.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cfg:</span>
+<span class="sd">        output_fc_path: Full path where the new OID feature class will be created.</span>
+<span class="sd">        spatial_reference: Optional. Horizontal spatial reference as a WKID (int), an arcpy.SpatialReference object,</span>
+<span class="sd">        or None to use defaults from configuration.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The path to the created OID feature class.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the output feature class already exists or if the spatial reference is invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;create_oriented_imagery_dataset&quot;</span><span class="p">)</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span>
+
+    <span class="n">output_gdb</span><span class="p">,</span> <span class="n">oid_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">output_fc_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Exists</span><span class="p">(</span><span class="n">output_fc_path</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output feature class already exists: </span><span class="si">{</span><span class="n">output_fc_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">FileExistsError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output_fc_path</span>
+
+    <span class="n">default_xy</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;spatial_ref.gcs_horizontal_wkid&quot;</span><span class="p">,</span> <span class="mi">4326</span><span class="p">)</span>
+    <span class="n">default_z</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;spatial_ref.vcs_vertical_wkid&quot;</span><span class="p">,</span> <span class="mi">5703</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spatial_reference</span><span class="p">,</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">):</span>
+        <span class="n">sr</span> <span class="o">=</span> <span class="n">spatial_reference</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">spatial_reference</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">sr</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">(</span><span class="n">spatial_reference</span><span class="p">,</span> <span class="n">default_z</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">spatial_reference</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sr</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">(</span><span class="n">default_xy</span><span class="p">,</span> <span class="n">default_z</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Invalid spatial_reference: </span><span class="si">{</span><span class="n">spatial_reference</span><span class="si">}</span><span class="s2">. Must be None, WKID (int), or arcpy.SpatialReference.&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_progressor</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Creating OID...&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">progressor</span><span class="p">:</span>
+        <span class="c1"># ✅ Ensure schema template is valid (and rebuild it if needed)</span>
+        <span class="n">ensure_valid_oid_schema_template</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+        <span class="n">progressor</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating Oriented Imagery Dataset at </span><span class="si">{</span><span class="n">output_fc_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">arcpy</span><span class="o">.</span><span class="n">oi</span><span class="o">.</span><span class="n">CreateOrientedImageryDataset</span><span class="p">(</span>
+                <span class="n">out_dataset_path</span><span class="o">=</span><span class="n">output_gdb</span><span class="p">,</span>
+                <span class="n">out_dataset_name</span><span class="o">=</span><span class="n">oid_name</span><span class="p">,</span>
+                <span class="n">spatial_reference</span><span class="o">=</span><span class="n">sr</span><span class="p">,</span>
+                <span class="n">elevation_source</span><span class="o">=</span><span class="s2">&quot;DEM&quot;</span><span class="p">,</span>
+                <span class="n">dem</span><span class="o">=</span><span class="s2">&quot;https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/Terrain3D/ImageServer&quot;</span><span class="p">,</span>
+                <span class="n">lod</span><span class="o">=</span><span class="s2">&quot;17&quot;</span><span class="p">,</span>
+                <span class="n">template</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">oid_schema_template_path</span><span class="p">)],</span>
+                <span class="n">has_z</span><span class="o">=</span><span class="s2">&quot;ENABLED&quot;</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">ExecuteError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Arcpy failed while creating OID: </span><span class="si">{</span><span class="n">oid_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">RuntimeError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">output_fc_path</span>  <span class="c1"># or `raise` to propagate the error</span>
+
+        <span class="n">progressor</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OID created successfully: </span><span class="si">{</span><span class="n">output_fc_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">output_fc_path</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

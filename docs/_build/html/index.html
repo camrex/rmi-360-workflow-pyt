@@ -1,0 +1,371 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RMI 360 Imaging Workflow Documentation &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=a34f1657"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="user-guide/installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools/overview.html">Tools Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/setup-tools.html">Setup Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/individual-tools.html">Individual Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/orchestrator.html">Orchestrator</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="config/overview.html">Configuration Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config/project-settings.html">Project Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config/aws-settings.html">AWS Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config/field-registry.html">Field Registry</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">AWS Integration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="aws/setup-guide.html">AWS Setup Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aws/s3-uploads.html">S3 Uploads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aws/lambda-monitoring.html">Lambda Monitoring</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/validators.html">Validators API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developer/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/changelog.html">Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">RMI 360 Imaging Workflow Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="rmi-360-imaging-workflow-documentation">
+<h1>RMI 360 Imaging Workflow Documentation<a class="headerlink" href="#rmi-360-imaging-workflow-documentation" title="Link to this heading"></a></h1>
+<img alt="Version" src="https://img.shields.io/badge/version-v1.1.1-blue" />
+<img alt="Python Version" src="https://img.shields.io/badge/python-3.11%2B-blue" />
+<img alt="ArcGIS Pro Version" src="https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green" />
+<p>A modular workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.</p>
+<p>Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for enhancement, OID creation, AWS publishing, and detailed reporting.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>ArcGIS Pro Note:</strong> When adding the Toolbox to ArcGIS Pro, you may see a warning icon (❗) upon loading. If this occurs, simply remove the Toolbox and add it again to resolve the issue.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The “Oriented Imagery” tools require <strong>Standard or Advanced</strong> licenses. All other functions are available with <strong>Basic</strong> or higher.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Version <strong>v1.1.0</strong> contained critical bugs that may render the workflow unusable. Please use version <strong>v1.1.1</strong> or later, which resolves these issues.</p>
+</div>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The RMI 360 Imaging Workflow provides comprehensive tools for:</p>
+<ul class="simple">
+<li><p>🎞️ Processing captured imagery using Mosaic Processor (with support for MistikaVR or MosaicStitcher)</p></li>
+<li><p>🧭 ArcGIS Oriented Imagery Dataset (OID) creation and enrichment</p></li>
+<li><p>🏷️ EXIF metadata tagging</p></li>
+<li><p>🛣️ Linear referencing support for image positioning</p></li>
+<li><p>🧩 Custom attributing based on config-driven logic</p></li>
+<li><p>🌍 Geocoding of image locations using spatial reference datasets</p></li>
+<li><p>🗂️ File renaming and organization</p></li>
+<li><p>☁️ AWS S3 upload with resumable transfer logic</p></li>
+<li><p>📈 Lambda-based progress monitoring and status dashboard</p></li>
+<li><p>📊 HTML &amp; JSON reporting of process steps and status</p></li>
+<li><p>🖼️ <em>Experimental:</em> Image enhancement (contrast, white balance, sharpening)</p></li>
+</ul>
+</section>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 80.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Feature</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Toolbox Structure</p></td>
+<td><p>Built as an ArcGIS <code class="docutils literal notranslate"><span class="pre">.pyt</span></code> Toolbox + modular tool wrappers &amp; utilities</p></td>
+</tr>
+<tr class="row-odd"><td><p>Config-Driven</p></td>
+<td><p>YAML-based config with expression resolution and field registries</p></td>
+</tr>
+<tr class="row-even"><td><p>AWS Integration</p></td>
+<td><p>Upload to S3 with TransferManager + Lambda schedule tracking</p></td>
+</tr>
+<tr class="row-odd"><td><p>Resumable Transfers</p></td>
+<td><p>Upload interruption protection + log recovery</p></td>
+</tr>
+<tr class="row-even"><td><p>HTML &amp; JSON Reporting</p></td>
+<td><p>Auto-generated step summaries and final status reports</p></td>
+</tr>
+<tr class="row-odd"><td><p>Image Metadata Support</p></td>
+<td><p>Auto tag EXIF metadata + rename by GPS, time, reel, frame, etc.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Clone the Repository</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/RMI-Valuation/rmi-360-workflow-pyt.git
+<span class="nb">cd</span><span class="w"> </span>rmi-360-workflow-pyt
+</pre></div>
+</div>
+</li>
+<li><p><strong>Setup Configuration</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Copy and edit config</span>
+cp<span class="w"> </span>configs/config.sample.yaml<span class="w"> </span>configs/config.yaml
+</pre></div>
+</div>
+</li>
+<li><p><strong>ArcGIS Pro Setup</strong></p>
+<ul class="simple">
+<li><p>Open <strong>ArcGIS Pro</strong> and load a project (.aprx)</p></li>
+<li><p>Add the environment checker toolbox: <code class="docutils literal notranslate"><span class="pre">rmi_360_env_checker.pyt</span></code></p></li>
+<li><p>Run the <strong>Check Required Python Packages</strong> tool</p></li>
+<li><p>Add the main toolbox: <code class="docutils literal notranslate"><span class="pre">rmi_360_workflow.pyt</span></code></p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="table-of-contents">
+<h2>Table of Contents<a class="headerlink" href="#table-of-contents" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#python-dependencies">Python Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#installing-dependencies">Installing Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#environment-verification">Environment Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#installation-steps">Installation Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/installation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/configuration.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#configuration-file-structure">Configuration File Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#key-configuration-sections">Key Configuration Sections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#field-registry">Field Registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#configuration-validation">Configuration Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#environment-specific-configs">Environment-Specific Configs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#advanced-configuration">Advanced Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#configuration-best-practices">Configuration Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/configuration.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/quick-start.html">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#step-1-installation">Step 1: Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#step-2-basic-configuration">Step 2: Basic Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#step-3-prepare-your-data">Step 3: Prepare Your Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#step-4-run-your-first-workflow">Step 4: Run Your First Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#step-5-review-results">Step 5: Review Results</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#common-use-cases">Common Use Cases</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#next-steps">Next Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/quick-start.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user-guide/arcgis-setup.html">ArcGIS Pro Setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#environment-verification">Environment Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#adding-the-main-toolbox">Adding the Main Toolbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#troubleshooting">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#license-requirements">License Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#project-setup-recommendations">Project Setup Recommendations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user-guide/arcgis-setup.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tools/overview.html">Tools Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tools/overview.html#tool-categories">Tool Categories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools/overview.html#typical-workflow-sequence">Typical Workflow Sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools/overview.html#common-usage-patterns">Common Usage Patterns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools/overview.html#tool-parameters">Tool Parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tools/overview.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tools/setup-tools.html">Setup Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/individual-tools.html">Individual Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/orchestrator.html">Orchestrator</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Configuration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="config/overview.html">Configuration Overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="config/overview.html#configuration-files">Configuration Files</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="config/project-settings.html">Project Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config/aws-settings.html">AWS Settings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config/field-registry.html">Field Registry</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">AWS Integration</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="aws/setup-guide.html">AWS Setup Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aws/s3-uploads.html">S3 Uploads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="aws/lambda-monitoring.html">Lambda Monitoring</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/tools.html">Tools API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#module-tools.create_oid_template_tool">Setup Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#individual-processing-tools">Individual Processing Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#module-tools.process_360_orchestrator">Orchestrator</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/utils.html">Utilities API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/utils.html#core-processing-utilities">Core Processing Utilities</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/managers.html">Managers API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/managers.html#module-utils.manager.config_manager">Configuration Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/managers.html#module-utils.manager.path_manager">Path Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/managers.html#module-utils.manager.log_manager">Log Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/managers.html#module-utils.manager.progressor_manager">Progress Manager</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/validators.html">Validators API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/validators.html#utils.validators.validate_full_config"><code class="docutils literal notranslate"><span class="pre">validate_full_config()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="developer/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/testing.html">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer/changelog.html">Changelog</a></li>
+</ul>
+</div>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="user-guide/installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,290 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tools.copy_to_aws_tool &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">tools.copy_to_aws_tool</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for tools.copy_to_aws_tool</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># ☁️ Copy to AWS (tools/copy_to_aws_tool.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Tool Name:          CopyToAwsTool</span>
+<span class="c1"># Toolbox Context:    rmi_360_workflow.pyt</span>
+<span class="c1"># Version:            1.1.0</span>
+<span class="c1"># Author:             RMI Valuation, LLC</span>
+<span class="c1"># Created:            2025-05-08</span>
+<span class="c1"># Last Updated:       2025-05-15</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   ArcPy Tool class for uploading enhanced or renamed images to AWS S3 using TransferManager.</span>
+<span class="c1">#   Optionally deploys a Lambda-based monitor to track upload progress via CloudWatch Events.</span>
+<span class="c1">#   Reads from a config YAML and supports skipping existing uploads, robust logging, and progress tracking.</span>
+<span class="c1">#   Integrates with the RMI 360 workflow CORE utils for configuration, error handling, and AWS interaction.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:      /tools/copy_to_aws_tool.py</span>
+<span class="c1"># Core Utils:</span>
+<span class="c1">#   - utils/copy_to_aws.py</span>
+<span class="c1">#   - utils/deploy_lambda_monitor.py</span>
+<span class="c1">#   - utils/shared/arcpy_utils.py</span>
+<span class="c1">#   - utils/manager/config_manager.py</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/copy_to_aws.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Parameters:</span>
+<span class="c1">#   - Input Folder for Images to be Uploaded {input_image_folder} (Folder): Directory containing images to upload to AWS S3.</span>
+<span class="c1">#   - Skip Existing Files in S3? {skip_existing} (Boolean): If checked, skips files that already exist in the target S3 location.</span>
+<span class="c1">#   - Project Folder {project_folder} (Folder): Root folder for the project; used for resolving logs and asset paths.</span>
+<span class="c1">#   - Config File {config_file} (File): Path to the project YAML config file with AWS and path settings.</span>
+<span class="c1">#   - Deploy Upload Monitor? {enable_monitor} (Boolean): Whether to deploy the AWS Lambda upload monitor before transfer.</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Supports optional Lambda monitor deployment before upload for real-time tracking.</span>
+<span class="c1">#   - Skips re-uploading files already present in S3 if specified.</span>
+<span class="c1">#   - Uses resumable upload strategy with retry handling for reliability.</span>
+<span class="c1">#   - Ensure AWS credentials and permissions are correctly configured in the config file.</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">from</span> <span class="nn">utils.deploy_lambda_monitor</span> <span class="kn">import</span> <span class="n">deploy_lambda_monitor</span>
+<span class="kn">from</span> <span class="nn">utils.copy_to_aws</span> <span class="kn">import</span> <span class="n">copy_to_aws</span>
+<span class="kn">from</span> <span class="nn">utils.shared.arcpy_utils</span> <span class="kn">import</span> <span class="n">str_to_bool</span>
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+
+
+<div class="viewcode-block" id="CopyToAwsTool">
+<a class="viewcode-back" href="../../api/tools.html#tools.copy_to_aws_tool.CopyToAwsTool">[docs]</a>
+<span class="k">class</span> <span class="nc">CopyToAwsTool</span><span class="p">:</span>
+<div class="viewcode-block" id="CopyToAwsTool.__init__">
+<a class="viewcode-back" href="../../api/tools.html#tools.copy_to_aws_tool.CopyToAwsTool.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;09 - Copy To AWS&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Uploads renamed and tagged images to AWS S3 using the project config.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;Individual Tools&quot;</span></div>
+
+
+<div class="viewcode-block" id="CopyToAwsTool.getParameterInfo">
+<a class="viewcode-back" href="../../api/tools.html#tools.copy_to_aws_tool.CopyToAwsTool.getParameterInfo">[docs]</a>
+    <span class="k">def</span> <span class="nf">getParameterInfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Defines the input parameters for the CopyToAwsTool ArcPy geoprocessing tool.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            A list of ArcPy Parameter objects specifying required and optional inputs for</span>
+<span class="sd">            uploading images to AWS S3, including image folder, configuration file,</span>
+<span class="sd">            project folder, and upload options.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Input folder with images to be exported</span>
+        <span class="n">in_image_folder</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Input Folder for Images to be Uploaded&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;input_image_folder&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">in_image_folder</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Folder where images to be uploaded to AWS are located.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">in_image_folder</span><span class="p">)</span>
+
+        <span class="c1"># Skip uploading files to AWS if they already exist</span>
+        <span class="n">skip_exist_aws_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Skip Existing Files in S3?&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;skip_existing&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">skip_exist_aws_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">skip_exist_aws_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;If checked, skips uploading files that already exist in S3.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">skip_exist_aws_param</span><span class="p">)</span>
+
+        <span class="c1"># Config file</span>
+        <span class="n">config_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Config File&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;config_file&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFile&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">config_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Config.yaml file containing project-specific settings.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config_param</span><span class="p">)</span>
+
+        <span class="c1"># (0) Project folder - Root folder for this Mosaic 360 imagery project. All imagery and logs will be organized</span>
+        <span class="c1"># under this folder.</span>
+        <span class="n">project_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Project Folder&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;project_folder&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">project_param</span><span class="p">)</span>
+
+        <span class="n">enable_monitor</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Deploy Upload Monitor?&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_monitor&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">enable_monitor</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_monitor</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="CopyToAwsTool.execute">
+<a class="viewcode-back" href="../../api/tools.html#tools.copy_to_aws_tool.CopyToAwsTool.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the tool to optionally deploy an AWS upload monitor and upload images to S3.</span>
+<span class="sd">        </span>
+<span class="sd">        Extracts user-specified parameters, deploys an AWS Lambda monitor if enabled, and uploads images from the</span>
+<span class="sd">        specified local folder to AWS S3 using project configuration settings. Logs progress and errors, raising</span>
+<span class="sd">        exceptions on failure.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">{</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">}</span>
+
+        <span class="n">all_messages</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;config_file&quot;</span><span class="p">],</span>  <span class="c1"># may be None</span>
+            <span class="n">project_base</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;project_folder&quot;</span><span class="p">],</span>
+            <span class="n">messages</span><span class="o">=</span><span class="n">messages</span>
+        <span class="p">)</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">str_to_bool</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_monitor&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Deploying AWS upload monitor...&quot;</span><span class="p">)</span>
+                <span class="n">deploy_lambda_monitor</span><span class="p">(</span><span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to deploy AWS Monitor: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">RuntimeError</span><span class="p">)</span>
+                <span class="k">raise</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;📤 Starting AWS Upload...&quot;</span><span class="p">)</span>
+            <span class="n">copy_to_aws</span><span class="p">(</span>
+                <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+                <span class="n">local_dir</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;input_image_folder&quot;</span><span class="p">],</span>
+                <span class="n">skip_existing</span><span class="o">=</span><span class="n">str_to_bool</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;skip_existing&quot;</span><span class="p">)),</span>
+                <span class="n">messages</span><span class="o">=</span><span class="n">messages</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Upload failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">RuntimeError</span><span class="p">)</span>
+            <span class="k">raise</span>
+
+        <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">all_messages</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">messages</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+Contributing
+============
+
+*This section is under development.*
+
+Guidelines for contributing to the RMI 360 Imaging Workflow project including:
+
+- Development setup
+- Code standards
+- Testing requirements
+- Pull request process
+
+For now, see the project README and existing code structure for development guidance.

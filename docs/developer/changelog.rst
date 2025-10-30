@@ -1,0 +1,11 @@
+Changelog
+=========
+
+*This section is under development.*
+
+For current changelog information, see:
+
+- :doc:`../../CHANGELOG.md` - Main project changelog
+- :doc:`../../TODO.md` - Upcoming features and improvements
+
+Version history and release notes will be documented here in future releases.

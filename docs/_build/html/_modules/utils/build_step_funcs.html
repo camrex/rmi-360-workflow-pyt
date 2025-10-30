@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.build_step_funcs &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.build_step_funcs</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.build_step_funcs</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🧭 Workflow Step Function Builder (utils/build_step_funcs.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Constructs an ordered dictionary of callable workflow steps for OID processing</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.1.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-08</span>
+<span class="c1"># Last Updated:        2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Maps each pipeline step in the 360° imagery workflow to a labeled function. Supports conditional</span>
+<span class="c1">#   skipping, parameter injection, and integration with orchestrator tools. Used to define the full</span>
+<span class="c1">#   ordered execution sequence from raw video to cloud-published OID feature service.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/build_step_funcs.py</span>
+<span class="c1"># Called By:            tools/process_360_orchestrator.py</span>
+<span class="c1"># Int. Dependencies:    All workflow utils (mosaic_processor, enhance_images, copy_to_aws, etc.), utils/shared/arcpy_utils</span>
+<span class="c1"># Ext. Dependencies:    collections</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/TOOL_OVERVIEW.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Controls step label mapping, execution logic, and skip conditions</span>
+<span class="c1">#   - Central entry point for orchestrator workflow automation</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+
+<span class="kn">from</span> <span class="nn">utils.mosaic_processor</span> <span class="kn">import</span> <span class="n">run_mosaic_processor</span>
+<span class="kn">from</span> <span class="nn">utils.create_oid_feature_class</span> <span class="kn">import</span> <span class="n">create_oriented_imagery_dataset</span>
+<span class="kn">from</span> <span class="nn">utils.add_images_to_oid_fc</span> <span class="kn">import</span> <span class="n">add_images_to_oid</span>
+<span class="kn">from</span> <span class="nn">utils.assign_group_index</span> <span class="kn">import</span> <span class="n">assign_group_index</span>
+<span class="kn">from</span> <span class="nn">utils.calculate_oid_attributes</span> <span class="kn">import</span> <span class="n">enrich_oid_attributes</span>
+<span class="kn">from</span> <span class="nn">utils.smooth_gps_noise</span> <span class="kn">import</span> <span class="n">smooth_gps_noise</span>
+<span class="kn">from</span> <span class="nn">utils.correct_gps_outliers</span> <span class="kn">import</span> <span class="n">correct_gps_outliers</span>
+<span class="kn">from</span> <span class="nn">utils.update_linear_and_custom</span> <span class="kn">import</span> <span class="n">update_linear_and_custom</span>
+<span class="kn">from</span> <span class="nn">utils.enhance_images</span> <span class="kn">import</span> <span class="n">enhance_images_in_oid</span>
+<span class="kn">from</span> <span class="nn">utils.rename_images</span> <span class="kn">import</span> <span class="n">rename_images</span>
+<span class="kn">from</span> <span class="nn">utils.apply_exif_metadata</span> <span class="kn">import</span> <span class="n">update_metadata_from_config</span>
+<span class="kn">from</span> <span class="nn">utils.geocode_images</span> <span class="kn">import</span> <span class="n">geocode_images</span>
+<span class="kn">from</span> <span class="nn">utils.build_oid_footprints</span> <span class="kn">import</span> <span class="n">build_oid_footprints</span>
+<span class="kn">from</span> <span class="nn">utils.deploy_lambda_monitor</span> <span class="kn">import</span> <span class="n">deploy_lambda_monitor</span>
+<span class="kn">from</span> <span class="nn">utils.copy_to_aws</span> <span class="kn">import</span> <span class="n">copy_to_aws</span>
+<span class="kn">from</span> <span class="nn">utils.generate_oid_service</span> <span class="kn">import</span> <span class="n">generate_oid_service</span>
+
+<span class="n">StepSpec</span> <span class="o">=</span> <span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;StepSpec&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;key&quot;</span><span class="p">,</span> <span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="s2">&quot;func_builder&quot;</span><span class="p">,</span> <span class="s2">&quot;skip_fn&quot;</span><span class="p">])</span>
+
+<div class="viewcode-block" id="skip_enhance_images">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.skip_enhance_images">[docs]</a>
+<span class="k">def</span> <span class="nf">skip_enhance_images</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="c1"># New logic: skip if &#39;enable_enhance_images&#39; is not True</span>
+    <span class="k">return</span> <span class="s2">&quot;Skipped (enhancement disabled)&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_enhance_images&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="skip_if_copy_to_aws_disabled">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.skip_if_copy_to_aws_disabled">[docs]</a>
+<span class="k">def</span> <span class="nf">skip_if_copy_to_aws_disabled</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="c1"># New logic: skip if &#39;enable_copy_to_aws&#39; is not True</span>
+    <span class="k">return</span> <span class="s2">&quot;Skipped (disabled by user)&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_copy_to_aws&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="skip_if_smooth_gps_disabled">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.skip_if_smooth_gps_disabled">[docs]</a>
+<span class="k">def</span> <span class="nf">skip_if_smooth_gps_disabled</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;Skipped (disabled by user)&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_smooth_gps&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="skip_if_geocode_disabled">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.skip_if_geocode_disabled">[docs]</a>
+<span class="k">def</span> <span class="nf">skip_if_geocode_disabled</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;Skipped (disabled by user)&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_geocode&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="skip_if_deploy_lambda_monitor_disabled">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.skip_if_deploy_lambda_monitor_disabled">[docs]</a>
+<span class="k">def</span> <span class="nf">skip_if_deploy_lambda_monitor_disabled</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;Skipped (disabled by user)&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_deploy_lambda_monitor&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="skip_if_generate_service_disabled">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.skip_if_generate_service_disabled">[docs]</a>
+<span class="k">def</span> <span class="nf">skip_if_generate_service_disabled</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;Skipped (disabled by user)&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_generate_service&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="build_step_funcs">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.build_step_funcs">[docs]</a>
+<span class="k">def</span> <span class="nf">build_step_funcs</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cfg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Builds a dictionary of processing step descriptors for an oriented imagery workflow.</span>
+<span class="sd">    Now uses declarative step specs and a builder for modularity and testability.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">step_specs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;run_mosaic_processor&quot;</span><span class="p">,</span> <span class="s2">&quot;Run Mosaic Processor&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">run_mosaic_processor</span><span class="p">(</span><span class="n">input_dir</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;input_reels_folder&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;create_oid&quot;</span><span class="p">,</span> <span class="s2">&quot;Create Oriented Imagery Dataset&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">create_oriented_imagery_dataset</span><span class="p">(</span><span class="n">output_fc_path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;add_images&quot;</span><span class="p">,</span> <span class="s2">&quot;Add Images to OID&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">add_images_to_oid</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;assign_group_index&quot;</span><span class="p">,</span> <span class="s2">&quot;Assign Group Index&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">assign_group_index</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;enrich_oid&quot;</span><span class="p">,</span> <span class="s2">&quot;Calculate OID Attributes&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">enrich_oid_attributes</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;smooth_gps&quot;</span><span class="p">,</span> <span class="s2">&quot;Smooth GPS Noise&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">smooth_gps_noise</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">centerline_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;centerline_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="n">skip_if_smooth_gps_disabled</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;correct_gps&quot;</span><span class="p">,</span> <span class="s2">&quot;Correct Flagged GPS Points&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">correct_gps_outliers</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="n">skip_if_smooth_gps_disabled</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;update_linear_custom&quot;</span><span class="p">,</span> <span class="s2">&quot;Update Linear and Custom Attributes&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">update_linear_and_custom</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">centerline_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;centerline_fc&quot;</span><span class="p">],</span> <span class="n">route_id_field</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;route_id_field&quot;</span><span class="p">],</span> <span class="n">enable_linear_ref</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;enable_linear_ref&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;enhance_images&quot;</span><span class="p">,</span> <span class="s2">&quot;Enhance Images&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">enhance_images_in_oid</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="n">skip_enhance_images</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;rename_images&quot;</span><span class="p">,</span> <span class="s2">&quot;Rename Images&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">rename_images</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span> <span class="n">enable_linear_ref</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;enable_linear_ref&quot;</span><span class="p">]),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;update_metadata&quot;</span><span class="p">,</span> <span class="s2">&quot;Update EXIF Metadata&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">update_metadata_from_config</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;geocode&quot;</span><span class="p">,</span> <span class="s2">&quot;Geocode Images&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">geocode_images</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="n">skip_if_geocode_disabled</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;build_footprints&quot;</span><span class="p">,</span> <span class="s2">&quot;Build OID Footprints&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">build_oid_footprints</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="kc">None</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;deploy_lambda_monitor&quot;</span><span class="p">,</span> <span class="s2">&quot;Deploy Lambda AWS Monitor&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">deploy_lambda_monitor</span><span class="p">(</span><span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="n">skip_if_deploy_lambda_monitor_disabled</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;copy_to_aws&quot;</span><span class="p">,</span> <span class="s2">&quot;Upload to AWS S3&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">copy_to_aws</span><span class="p">(</span><span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">),</span> <span class="n">skip_if_copy_to_aws_disabled</span><span class="p">),</span>
+        <span class="n">StepSpec</span><span class="p">(</span><span class="s2">&quot;generate_service&quot;</span><span class="p">,</span> <span class="s2">&quot;Generate OID Service&quot;</span><span class="p">,</span>
+            <span class="k">lambda</span> <span class="n">params</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="k">lambda</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">generate_oid_service</span><span class="p">(</span><span class="n">oid_fc</span><span class="o">=</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">),</span> <span class="n">skip_if_generate_service_disabled</span><span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">step_funcs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">step_specs</span><span class="p">:</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;label&quot;</span><span class="p">:</span> <span class="n">spec</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="s2">&quot;func&quot;</span><span class="p">:</span> <span class="n">spec</span><span class="o">.</span><span class="n">func_builder</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)}</span>
+        <span class="k">if</span> <span class="n">spec</span><span class="o">.</span><span class="n">skip_fn</span><span class="p">:</span>
+            <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;skip&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">skip_fn</span>
+        <span class="n">step_funcs</span><span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
+    <span class="k">return</span> <span class="n">step_funcs</span></div>
+
+
+
+<div class="viewcode-block" id="get_step_order">
+<a class="viewcode-back" href="../../api/utils.html#utils.build_step_funcs.get_step_order">[docs]</a>
+<span class="k">def</span> <span class="nf">get_step_order</span><span class="p">(</span><span class="n">step_funcs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a list of step keys in the order they appear in the step_funcs dictionary.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        step_funcs: A dictionary mapping step keys to step descriptors.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A list of step keys preserving their original order.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">step_funcs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

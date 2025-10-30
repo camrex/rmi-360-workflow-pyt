@@ -1,0 +1,286 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.step_runner &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.step_runner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.step_runner</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🔁 Step Runner Orchestration Logic (utils/step_runner.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Executes a sequence of configured workflow steps with progress logging</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.0.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-08</span>
+<span class="c1"># Last Updated:        2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Iterates through workflow step functions, checking for skip conditions, handling wait intervals,</span>
+<span class="c1">#   and optionally backing up the OID feature class between steps. Tracks progress, captures run timing,</span>
+<span class="c1">#   appends results to a shared report object, and saves state to JSON after each step. Designed for use</span>
+<span class="c1">#   by the orchestrator tool and developer automation.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/step_runner.py</span>
+<span class="c1"># Called By:            tools/process_360_orchestrator.py</span>
+<span class="c1"># Int. Dependencies:    utils/shared/arcpy_utils, utils/shared/report_data_builder, utils/manager/config_manager</span>
+<span class="c1"># Ext. Dependencies:    time, datetime, typing, traceback</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Logs each step with emoji-coded status (✅, ❌, ⏭️)</span>
+<span class="c1">#   - Stops execution on first failure by default (can be customized)</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="kn">from</span> <span class="nn">utils.shared.arcpy_utils</span> <span class="kn">import</span> <span class="n">backup_oid</span>
+<span class="kn">from</span> <span class="nn">utils.shared.report_data_builder</span> <span class="kn">import</span> <span class="n">save_report_json</span>
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+
+
+<div class="viewcode-block" id="run_steps">
+<a class="viewcode-back" href="../../api/utils.html#utils.step_runner.run_steps">[docs]</a>
+<span class="k">def</span> <span class="nf">run_steps</span><span class="p">(</span>
+    <span class="n">step_funcs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+    <span class="n">step_order</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">start_index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">param_values</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">report_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span>
+    <span class="n">wait_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Executes a sequence of pipeline steps with logging, optional waiting, and OID backups.</span>
+
+<span class="sd">    Iterates through the specified steps in order, starting from the given index. For each step, checks if it should be</span>
+<span class="sd">    skipped, optionally performs an OID backup and/or waits before execution, and logs the step&#39;s status and timing.</span>
+<span class="sd">    Updates the report data after each step and saves it to JSON. Stops execution if a step fails.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        step_funcs: Mapping of step keys to dictionaries containing step metadata, including the function to execute</span>
+<span class="sd">        and optional skip logic.</span>
+<span class="sd">        step_order: Ordered list of step keys defining execution sequence.</span>
+<span class="sd">        start_index: Index in step_order to begin execution.</span>
+<span class="sd">        param_values: Dictionary of parameters, including ArcPy parameters.</span>
+<span class="sd">        report_data: Dictionary representing the report, updated incrementally with step results.</span>
+<span class="sd">        cfg (ConfigManager): Active configuration object with access to logging and paths.</span>
+<span class="sd">        wait_config: Optional dictionary controlling waiting and OID backup behavior.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A list of dictionaries, each summarizing the outcome of a step, including status, timing, and notes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">ensure_report_steps</span><span class="p">(</span><span class="n">report</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;steps&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">report</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s2">&quot;steps&quot;</span><span class="p">],</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">report</span><span class="p">[</span><span class="s2">&quot;steps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">append_step_result</span><span class="p">(</span><span class="n">report</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">result</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ensure_report_steps</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">[</span><span class="s2">&quot;steps&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">should_skip_step</span><span class="p">(</span><span class="n">stp</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="n">skip_fn</span> <span class="o">=</span> <span class="n">stp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;skip&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">skip_fn</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">skip_fn</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skip-check for &#39;</span><span class="si">{</span><span class="n">stp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;label&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">perform_oid_backup</span><span class="p">(</span><span class="n">stp_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">config</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">wait_cfg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">wait_cfg</span> <span class="ow">and</span> <span class="n">wait_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;backup_oid_between_steps&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">backup_steps</span> <span class="o">=</span> <span class="n">wait_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;backup_before_step&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="n">stp_key</span> <span class="ow">in</span> <span class="n">backup_steps</span><span class="p">:</span>
+                <span class="k">if</span> <span class="s2">&quot;oid_fc&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;`oid_fc` not supplied skipping OID backup&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">backup_oid</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">],</span> <span class="n">stp_key</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="kc">True</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to back up OID before step &#39;</span><span class="si">{</span><span class="n">stp_key</span><span class="si">}</span><span class="s2">&#39;: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">perform_wait</span><span class="p">(</span><span class="n">stp_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">lbl</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">wait_cfg</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">wait_cfg</span> <span class="ow">and</span> <span class="n">wait_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;wait_between_steps&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">wait_steps</span> <span class="o">=</span> <span class="n">wait_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;wait_before_step&quot;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">wait_seconds</span> <span class="o">=</span> <span class="n">wait_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;wait_duration_sec&quot;</span><span class="p">,</span> <span class="mi">60</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">stp_key</span> <span class="ow">in</span> <span class="n">wait_steps</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Waiting </span><span class="si">{</span><span class="n">wait_seconds</span><span class="si">}</span><span class="s2"> seconds before running step: </span><span class="si">{</span><span class="n">lbl</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;⏳&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">wait_seconds</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">execute_step</span><span class="p">(</span><span class="n">lbl</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">function</span><span class="p">,</span> <span class="n">rpt_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">step_key</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">stp_start</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">logger</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">lbl</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;step_key&quot;</span><span class="p">:</span> <span class="n">step_key</span><span class="p">}</span> <span class="k">if</span> <span class="n">step_key</span> <span class="k">else</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="n">function</span><span class="p">(</span><span class="n">report_data</span><span class="o">=</span><span class="n">rpt_data</span><span class="p">)</span>
+            <span class="n">stts</span> <span class="o">=</span> <span class="s2">&quot;✅&quot;</span>
+            <span class="n">note</span> <span class="o">=</span> <span class="s2">&quot;Success&quot;</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">stts</span> <span class="o">=</span> <span class="s2">&quot;❌&quot;</span>
+            <span class="n">tb</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
+            <span class="n">note</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">tb</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">stp_end</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="n">elpsd</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="p">(</span><span class="n">stp_end</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">stp_start</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> sec&quot;</span>
+        <span class="k">return</span> <span class="n">stts</span><span class="p">,</span> <span class="n">note</span><span class="p">,</span> <span class="n">stp_start</span><span class="p">,</span> <span class="n">stp_end</span><span class="p">,</span> <span class="n">elpsd</span>
+
+    <span class="k">for</span> <span class="n">step_key</span> <span class="ow">in</span> <span class="n">step_order</span><span class="p">[</span><span class="n">start_index</span><span class="p">:]:</span>
+        <span class="k">if</span> <span class="n">step_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">step_funcs</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step &#39;</span><span class="si">{</span><span class="n">step_key</span><span class="si">}</span><span class="s2">&#39; not found in step_funcs dictionary&quot;</span><span class="p">,</span> <span class="n">error_type</span><span class="o">=</span><span class="ne">KeyError</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="n">step_funcs</span><span class="p">[</span><span class="n">step_key</span><span class="p">]</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;label&quot;</span><span class="p">,</span> <span class="n">step_key</span><span class="p">)</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">step</span><span class="p">[</span><span class="s2">&quot;func&quot;</span><span class="p">]</span>
+        <span class="n">skip_reason</span> <span class="o">=</span> <span class="n">should_skip_step</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">param_values</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">skip_reason</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> — </span><span class="si">{</span><span class="n">skip_reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;⏭️&quot;</span><span class="p">)</span>
+            <span class="n">step_result</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;⏭️&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="s2">&quot;—&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="n">skip_reason</span>
+            <span class="p">}</span>
+            <span class="n">append_step_result</span><span class="p">(</span><span class="n">report_data</span><span class="p">,</span> <span class="n">step_result</span><span class="p">)</span>
+            <span class="n">save_report_json</span><span class="p">(</span><span class="n">report_data</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+            <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step_result</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">backup_occurred</span> <span class="o">=</span> <span class="n">perform_oid_backup</span><span class="p">(</span><span class="n">step_key</span><span class="p">,</span> <span class="n">param_values</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">wait_config</span><span class="p">)</span>
+        <span class="n">perform_wait</span><span class="p">(</span><span class="n">step_key</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">wait_config</span><span class="p">)</span>
+        <span class="n">status</span><span class="p">,</span> <span class="n">notes</span><span class="p">,</span> <span class="n">step_start</span><span class="p">,</span> <span class="n">step_end</span><span class="p">,</span> <span class="n">elapsed</span> <span class="o">=</span> <span class="n">execute_step</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">report_data</span><span class="p">,</span> <span class="n">step_key</span><span class="o">=</span><span class="n">step_key</span><span class="p">)</span>
+
+        <span class="n">step_result</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">label</span><span class="p">,</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+            <span class="s2">&quot;step_started&quot;</span><span class="p">:</span> <span class="n">step_start</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;step_ended&quot;</span><span class="p">:</span> <span class="n">step_end</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">T%H:%M:%SZ&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">elapsed</span><span class="p">,</span>
+            <span class="s2">&quot;notes&quot;</span><span class="p">:</span> <span class="n">notes</span> <span class="o">+</span> <span class="p">(</span><span class="s2">&quot; (OID backup created before step)&quot;</span> <span class="k">if</span> <span class="n">backup_occurred</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">backup_occurred</span><span class="p">:</span>
+            <span class="n">step_result</span><span class="p">[</span><span class="s2">&quot;backup_created&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+        <span class="n">append_step_result</span><span class="p">(</span><span class="n">report_data</span><span class="p">,</span> <span class="n">step_result</span><span class="p">)</span>
+        <span class="n">save_report_json</span><span class="p">(</span><span class="n">report_data</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step_result</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;❌&quot;</span><span class="p">:</span>
+            <span class="k">break</span>
+    <span class="k">return</span> <span class="n">results</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

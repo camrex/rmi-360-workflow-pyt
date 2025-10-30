@@ -1,0 +1,361 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.update_linear_and_custom &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.update_linear_and_custom</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.update_linear_and_custom</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🧭 Linear Referencing + Custom Attribute Updater (utils/update_linear_and_custom.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Assigns route ID, milepost, and custom fields to OID features using config-driven expressions</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.1.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-13</span>
+<span class="c1"># Last Updated:        2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Performs linear referencing of image points against an M-enabled centerline using LocateFeaturesAlongRoutes.</span>
+<span class="c1">#   Updates route and MP fields as well as user-defined custom fields from config expressions.</span>
+<span class="c1">#   Supports dynamic expression evaluation and field type coercion with warning messaging on failure.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/update_linear_and_custom.py</span>
+<span class="c1"># Validator:            /utils/validators/update_linear_and_custom_validator.py</span>
+<span class="c1"># Called By:            tools/update_linear_and_custom_tool.py, orchestrator</span>
+<span class="c1"># Int. Dependencies:    utils.manager.config_manager, utils.shared.expression_utils</span>
+<span class="c1"># Ext. Dependencies:    arcpy, typing</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/update_linear_and_custom.md</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Automatically projects OID to match centerline SR for referencing</span>
+<span class="c1">#   - Supports optional disabling of linear referencing via config/tool parameter</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;update_linear_and_custom&quot;</span><span class="p">]</span>
+
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span> <span class="nn">utils.shared.expression_utils</span> <span class="kn">import</span> <span class="n">resolve_expression</span>
+
+
+<span class="k">def</span> <span class="nf">get_located_points</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">centerline_fc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">route_id_field</span><span class="p">:</span><span class="nb">str</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finds the route identifier and milepost value for each point in the OID feature class by projecting it to the</span>
+<span class="sd">    centerline&#39;s spatial reference and locating features along routes.</span>
+<span class="sd">    </span>
+<span class="sd">    Projects the input feature class to match the centerline&#39;s spatial reference, computes a suitable search tolerance</span>
+<span class="sd">    based on the maximum distance from points to routes, and uses ArcPy&#39;s LocateFeaturesAlongRoutes to associate each</span>
+<span class="sd">    point with its nearest route and milepost value.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A mapping from each object ID (OID) to a dictionary with &#39;route_id&#39; and &#39;mp_value&#39; keys.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Get target spatial reference</span>
+        <span class="n">route_sr</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Describe</span><span class="p">(</span><span class="n">centerline_fc</span><span class="p">)</span><span class="o">.</span><span class="n">spatialReference</span>
+
+        <span class="c1">#Project OID feature class once</span>
+        <span class="n">projected_oid_fc</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">management</span><span class="o">.</span><span class="n">Project</span><span class="p">(</span>
+            <span class="n">oid_fc</span><span class="p">,</span>
+            <span class="n">arcpy</span><span class="o">.</span><span class="n">CreateUniqueName</span><span class="p">(</span><span class="s2">&quot;projected_oid_fc&quot;</span><span class="p">,</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">scratchGDB</span><span class="p">),</span>
+            <span class="n">route_sr</span>
+        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Load all route geometries</span>
+        <span class="n">routes</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">SearchCursor</span><span class="p">(</span><span class="n">centerline_fc</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;SHAPE@&quot;</span><span class="p">])]</span>
+
+        <span class="c1"># Compute adaptive tolerance based on max distance from OID points to nearest route</span>
+        <span class="n">max_dist</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">with</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">SearchCursor</span><span class="p">(</span><span class="n">projected_oid_fc</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;SHAPE@&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="k">for</span> <span class="p">(</span><span class="n">point_geom</span><span class="p">,)</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+                <span class="n">point</span> <span class="o">=</span> <span class="n">point_geom</span><span class="o">.</span><span class="n">centroid</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">routes</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No route geometries found - skipping linear referencing.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="p">{}</span>
+                <span class="n">min_dist</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">route</span><span class="o">.</span><span class="n">queryPointAndDistance</span><span class="p">(</span><span class="n">point</span><span class="p">,</span> <span class="n">use_percentage</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">2</span><span class="p">]</span> <span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="n">routes</span><span class="p">)</span>
+                <span class="n">max_dist</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">max_dist</span><span class="p">,</span> <span class="n">min_dist</span><span class="p">)</span>
+        <span class="n">tolerance</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">max_dist</span> <span class="o">+</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📏 Max distance to nearest route: </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">max_dist</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> → Using </span><span class="si">{</span><span class="nb">round</span><span class="p">(</span><span class="n">tolerance</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="si">}</span><span class="s2"> tolerance&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Perform location along routes</span>
+        <span class="n">oid_table</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">CreateUniqueName</span><span class="p">(</span><span class="s2">&quot;oid_temp_table&quot;</span><span class="p">,</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">scratchGDB</span><span class="p">)</span>
+        <span class="n">arcpy</span><span class="o">.</span><span class="n">lr</span><span class="o">.</span><span class="n">LocateFeaturesAlongRoutes</span><span class="p">(</span>
+            <span class="n">in_features</span><span class="o">=</span><span class="n">projected_oid_fc</span><span class="p">,</span>
+            <span class="n">in_routes</span><span class="o">=</span><span class="n">centerline_fc</span><span class="p">,</span>
+            <span class="n">route_id_field</span><span class="o">=</span><span class="n">route_id_field</span><span class="p">,</span>
+            <span class="n">radius_or_tolerance</span><span class="o">=</span><span class="n">tolerance</span><span class="p">,</span>
+            <span class="n">out_table</span><span class="o">=</span><span class="n">oid_table</span><span class="p">,</span>
+            <span class="n">out_event_properties</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">route_id_field</span><span class="si">}</span><span class="s2"> POINT MP&quot;</span><span class="p">,</span>
+            <span class="n">route_locations</span><span class="o">=</span><span class="s2">&quot;FIRST&quot;</span><span class="p">,</span>
+            <span class="n">distance_field</span><span class="o">=</span><span class="s2">&quot;NO_DISTANCE&quot;</span><span class="p">,</span>
+            <span class="n">in_fields</span><span class="o">=</span><span class="s2">&quot;NO_FIELDS&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Parse result table into a dict</span>
+        <span class="n">oid_to_loc</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">with</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">SearchCursor</span><span class="p">(</span><span class="n">oid_table</span><span class="p">,</span> <span class="p">[</span><span class="n">route_id_field</span><span class="p">,</span> <span class="s2">&quot;MP&quot;</span><span class="p">,</span> <span class="s2">&quot;OID@&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">route_id_val</span><span class="p">,</span> <span class="n">mp</span><span class="p">,</span> <span class="n">oid</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+                <span class="n">oid_to_loc</span><span class="p">[</span><span class="n">oid</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;route_id&quot;</span><span class="p">:</span> <span class="n">route_id_val</span><span class="p">,</span> <span class="s2">&quot;mp_value&quot;</span><span class="p">:</span> <span class="n">mp</span><span class="p">}</span>
+        <span class="k">return</span> <span class="n">oid_to_loc</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Linear referencing failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="k">def</span> <span class="nf">compute_linear_and_custom_updates</span><span class="p">(</span>
+    <span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span>
+    <span class="n">row</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="n">update_fields</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">linear_fields</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">custom_field_defs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span>
+    <span class="n">oid_to_loc</span><span class="p">:</span> <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">enable_linear_ref</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+    <span class="n">logger</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">bool</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given a row and config, return the updated row and a boolean indicating if it was changed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">update</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">context</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">update_fields</span><span class="p">,</span> <span class="n">row</span><span class="p">))</span>
+    <span class="n">oid</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Linear reference updates</span>
+    <span class="k">if</span> <span class="n">enable_linear_ref</span><span class="p">:</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">oid_to_loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+        <span class="n">route_id</span> <span class="o">=</span> <span class="n">mp_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">loc</span><span class="p">:</span>
+            <span class="n">route_id</span> <span class="o">=</span> <span class="n">loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_id&quot;</span><span class="p">)</span>
+            <span class="n">mp_value</span> <span class="o">=</span> <span class="n">loc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mp_value&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">field_def</span> <span class="ow">in</span> <span class="n">linear_fields</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">field_name</span> <span class="o">=</span> <span class="n">field_def</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;route_identifier&quot;</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">route_id</span>
+            <span class="k">elif</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;route_measure&quot;</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">mp_value</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">update_fields</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">field_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">field_def</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;DOUBLE&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not convert value for </span><span class="si">{</span><span class="n">field_name</span><span class="si">}</span><span class="s2"> to float.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">row</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">update</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="c1"># Custom field updates</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">target_field</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">field_type</span> <span class="ow">in</span> <span class="n">custom_field_defs</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># resolve_expression may raise</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">resolve_expression</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">row</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">field_type</span> <span class="o">==</span> <span class="s2">&quot;DOUBLE&quot;</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not convert value for </span><span class="si">{</span><span class="n">target_field</span><span class="si">}</span><span class="s2"> to float.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                    <span class="k">continue</span>
+            <span class="n">row</span><span class="p">[</span><span class="n">update_fields</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">target_field</span><span class="p">)]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">update</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to resolve expression for </span><span class="si">{</span><span class="n">target_field</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">row</span><span class="p">,</span> <span class="n">update</span>
+
+<div class="viewcode-block" id="update_linear_and_custom">
+<a class="viewcode-back" href="../../api/utils.html#utils.update_linear_and_custom.update_linear_and_custom">[docs]</a>
+<span class="k">def</span> <span class="nf">update_linear_and_custom</span><span class="p">(</span>
+        <span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span>
+        <span class="n">oid_fc_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">centerline_fc</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">route_id_field</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">enable_linear_ref</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Updates linear referencing and custom attribute fields for an Oriented Imagery Dataset feature class.</span>
+
+<span class="sd">    If linear referencing is enabled, locates each image point along M-enabled centerlines and updates route identifier</span>
+<span class="sd">    and milepost fields. Also evaluates and updates custom attribute fields based on configured expressions.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cfg: ConfigManager instance (must be validated).</span>
+<span class="sd">        oid_fc_path: Path to the OID feature class.</span>
+<span class="sd">        centerline_fc: Path to centerline routes (optional).</span>
+<span class="sd">        route_id_field: Field name used for route matching (if linear ref is enabled).</span>
+<span class="sd">        enable_linear_ref: Whether to compute linear route measures.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;update_linear_and_custom&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Load linear field definitions</span>
+    <span class="n">linear_fields</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_schema_template.linear_ref_fields&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="k">if</span> <span class="n">enable_linear_ref</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="n">route_id_field_config</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_schema_template.linear_ref_fields.route_identifier.name&quot;</span><span class="p">)</span>
+    <span class="n">route_meas_field_config</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_schema_template.linear_ref_fields.route_measure.name&quot;</span><span class="p">)</span>
+    <span class="n">linear_field_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">route_id_field_config</span><span class="p">,</span> <span class="n">route_meas_field_config</span><span class="p">]</span> <span class="k">if</span> <span class="n">enable_linear_ref</span> <span class="k">else</span> <span class="p">[]</span>
+
+    <span class="c1"># Load custom field definitions</span>
+    <span class="n">custom_fields</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_schema_template.custom_fields&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="n">custom_field_defs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">field</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">field</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;expression&quot;</span><span class="p">),</span> <span class="n">field</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">custom_fields</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;expression&quot;</span> <span class="ow">in</span> <span class="n">field</span>
+    <span class="p">]</span>
+    <span class="n">custom_field_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">custom_field_defs</span><span class="p">]</span>
+
+    <span class="n">update_fields</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;OID@&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">linear_field_names</span> <span class="o">+</span> <span class="n">custom_field_names</span>
+
+    <span class="c1"># 🔁 Only run linear referencing if requested</span>
+    <span class="n">oid_to_loc</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">enable_linear_ref</span> <span class="ow">and</span> <span class="n">centerline_fc</span> <span class="ow">and</span> <span class="n">route_id_field</span><span class="p">:</span>
+        <span class="n">oid_to_loc</span> <span class="o">=</span> <span class="n">get_located_points</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="p">,</span> <span class="n">centerline_fc</span><span class="p">,</span> <span class="n">route_id_field</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+    <span class="n">row_count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">arcpy</span><span class="o">.</span><span class="n">management</span><span class="o">.</span><span class="n">GetCount</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="c1"># Update records</span>
+    <span class="n">updated_oids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">failed_oids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_progressor</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="n">row_count</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Updating linear/custom fields&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">progressor</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">UpdateCursor</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="p">,</span> <span class="n">update_fields</span><span class="p">)</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cursor</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">oid</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">new_row</span><span class="p">,</span> <span class="n">update</span> <span class="o">=</span> <span class="n">compute_linear_and_custom_updates</span><span class="p">(</span>
+                        <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+                        <span class="n">row</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">row</span><span class="p">),</span>
+                        <span class="n">update_fields</span><span class="o">=</span><span class="n">update_fields</span><span class="p">,</span>
+                        <span class="n">linear_fields</span><span class="o">=</span><span class="n">linear_fields</span><span class="p">,</span>
+                        <span class="n">custom_field_defs</span><span class="o">=</span><span class="n">custom_field_defs</span><span class="p">,</span>
+                        <span class="n">oid_to_loc</span><span class="o">=</span><span class="n">oid_to_loc</span><span class="p">,</span>
+                        <span class="n">enable_linear_ref</span><span class="o">=</span><span class="n">enable_linear_ref</span><span class="p">,</span>
+                        <span class="n">logger</span><span class="o">=</span><span class="n">logger</span>
+                    <span class="p">)</span>
+                    <span class="k">if</span> <span class="n">update</span><span class="p">:</span>
+                        <span class="n">cursor</span><span class="o">.</span><span class="n">updateRow</span><span class="p">(</span><span class="n">new_row</span><span class="p">)</span>
+                        <span class="n">updated_oids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">failed_oids</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">oid</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to update OID </span><span class="si">{</span><span class="n">oid</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">progressor</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">updated_oids</span><span class="p">)</span><span class="si">}</span><span class="s2"> feature(s) with linear and custom attributes.&quot;</span> <span class="o">+</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; Failed to update </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_oids</span><span class="p">)</span><span class="si">}</span><span class="s2"> OIDs.&quot;</span> <span class="k">if</span> <span class="n">failed_oids</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">),</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">updated_oids</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated OIDs: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">updated_oids</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">failed_oids</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed OIDs: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">failed_oids</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

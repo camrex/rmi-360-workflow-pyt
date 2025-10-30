@@ -14,8 +14,8 @@ New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all requ
 
 > ℹ️ The “Oriented Imagery” tools require **Standard or Advanced** licenses. All other functions are available with **Basic** or higher.
 
-> **⚠️ Note: ⚠️**  
-> Version **v1.1.0** contained critical bugs that may render the workflow unusable.  
+> **⚠️ Note: ⚠️**
+> Version **v1.1.0** contained critical bugs that may render the workflow unusable.
 > Please use version **v1.1.1** or later, which resolves these issues.
 
 > **⚠️ Unit Tests Note:** Many unit tests may currently be broken due to some bug fixes in this release.
@@ -91,15 +91,15 @@ cp configs/config.sample.yaml configs/config.yaml
 ## 🧭 ArcGIS Pro Environment Setup
 
 1. Open **ArcGIS Pro** and load a project (.aprx).
-2. **Verify Python Environment:**  
-   In the Catalog pane, right-click **Toolboxes** → **Add Toolbox**, and add `rmi_360_env_checker.pyt`.  
-   Run the **Check Required Python Packages** tool to ensure all required libraries are installed.  
+2. **Verify Python Environment:**
+   In the Catalog pane, right-click **Toolboxes** → **Add Toolbox**, and add `rmi_360_env_checker.pyt`.
+   Run the **Check Required Python Packages** tool to ensure all required libraries are installed.
    *If any libraries are missing, install them using the Python Command Prompt or the ArcGIS Pro Package Manager before proceeding.*
 
-3. **Add the Workflow Toolbox:**  
+3. **Add the Workflow Toolbox:**
    Again in the Catalog pane, right-click **Toolboxes** → **Add Toolbox**, and add `rmi_360_workflow.pyt`.
 
-4. **Access the Toolbox Tools:**  
+4. **Access the Toolbox Tools:**
    Tools are grouped under:
    - **Setup**
    - **Individual Tools**
@@ -118,7 +118,18 @@ cp configs/config.sample.yaml configs/config.yaml
 
 ---
 
-## 📖 Documentation Index
+## 📖 Documentation
+
+**📚 [Complete Documentation](https://camrex.github.io/rmi-360-workflow-pyt/)** - Comprehensive Sphinx-generated documentation including:
+
+- 🚀 **User Guide**: Installation, configuration, and quick start
+- 🛠️ **Tools Documentation**: Detailed tool guides and usage
+- ⚙️ **Configuration**: Complete configuration reference
+- ☁️ **AWS Integration**: Setup guides and best practices
+- 📋 **API Reference**: Full Python API documentation
+- 👨‍💻 **Developer Guide**: Contributing and architecture
+
+### Legacy Documentation
 
 - 📘 [Toolbox Overview](docs_legacy/TOOL_OVERVIEW.md)
 - 🔧 [Tool Guides](docs_legacy/TOOL_GUIDES.md)
@@ -130,12 +141,26 @@ cp configs/config.sample.yaml configs/config.yaml
 - 📝 [Changelog](./CHANGELOG.md)
 - 🛣 [Roadmap](docs_legacy/ROADMAP.md)
 
+### Building Documentation Locally
+
+```bash
+# Install documentation dependencies
+pip install sphinx sphinx_rtd_theme
+
+# Build documentation
+cd docs
+make html
+
+# View documentation
+# Open docs/_build/html/index.html in your browser
+```
+
 ---
 
 ## 📝 License
 
-Licensed under the [MIT License](./LICENSE).  
+Licensed under the [MIT License](./LICENSE).
 © 2025 RMI Valuation.
 
-This project integrates with external proprietary software (e.g., ArcGIS Pro, Mosaic Processor, MistikaVR).  
+This project integrates with external proprietary software (e.g., ArcGIS Pro, Mosaic Processor, MistikaVR).
 Use of those tools is governed by their respective licenses and is not covered by this repository's license.

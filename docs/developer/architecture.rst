@@ -1,0 +1,13 @@
+Architecture
+============
+
+*This section is under development.*
+
+Overview of the project architecture including:
+
+- Module organization
+- Design patterns
+- Data flow
+- Extension points
+
+For now, see the :doc:`../api/utils` and :doc:`../api/managers` API documentation for technical details.

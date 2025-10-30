@@ -1,0 +1,1090 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tools.process_360_orchestrator &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">tools.process_360_orchestrator</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for tools.process_360_orchestrator</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🧰 Process Full Mosaic 360 Workflow (tools/process_360_orchestrator.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Tool Name:          Process360Workflow</span>
+<span class="c1"># Toolbox Context:    rmi_360_workflow.pyt</span>
+<span class="c1"># Version:            1.2.0</span>
+<span class="c1"># Author:             RMI Valuation, LLC</span>
+<span class="c1"># Created:            2025-05-08</span>
+<span class="c1"># Last Updated:       2025-10-29</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Orchestrates the full end-to-end Mosaic 360 image processing pipeline within ArcGIS Pro.</span>
+<span class="c1">#   Supports both Local and AWS-based execution environments. The tool determines which reel</span>
+<span class="c1">#   folders to process—either from local project directories or from an S3 bucket—and runs a</span>
+<span class="c1">#   configurable series of workflow steps including image rendering, OID creation, enrichment,</span>
+<span class="c1">#   geolocation, enhancement, AWS copy, and service publishing. Progress and results are tracked</span>
+<span class="c1">#   in a persistent report JSON for dashboarding and audit.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:      /tools/process_360_orchestrator.py</span>
+<span class="c1">#</span>
+<span class="c1"># Core Utils:</span>
+<span class="c1">#   - utils/build_step_funcs.py</span>
+<span class="c1">#   - utils/step_runner.py</span>
+<span class="c1">#   - utils/generate_report.py</span>
+<span class="c1">#   - utils/manager/config_manager.py</span>
+<span class="c1">#   - utils/shared/report_data_builder.py</span>
+<span class="c1">#   - utils/shared/folder_stats.py</span>
+<span class="c1">#   - utils/shared/gather_metrics.py</span>
+<span class="c1">#   - utils/shared/arcpy_utils.py</span>
+<span class="c1">#   - utils/s3_utils.py  ← (replaces old utils/s3_stage.py)</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/process_360_orchestrator.md</span>
+<span class="c1">#   (Ensure these docs are updated to reflect Local/AWS workflow parity.)</span>
+<span class="c1">#</span>
+<span class="c1"># Parameters:</span>
+<span class="c1">#   - Config File {config_file} (File): Optional override for the default config.yaml path.</span>
+<span class="c1">#   - Source Mode {source_mode} (String): Select processing environment: Local | AWS.</span>
+<span class="c1">#   - Project Folder {project_folder} (Folder): Root project directory (required in both Local and AWS modes).</span>
+<span class="c1">#   - Raw S3 Bucket {raw_s3_bucket} (String): S3 bucket name containing raw 360 data (AWS mode).</span>
+<span class="c1">#   - Project Key {project_key} (String): Selected project folder in the raw S3 bucket (AWS mode).</span>
+<span class="c1">#   - Reels to Process {reels_to_process} (Multivalue String): Reel folders to process; if none selected, all reels are used.</span>
+<span class="c1">#   - Staging Folder {staging_folder} (Folder): Optional local folder where reels are staged for processing.</span>
+<span class="c1">#   - Start From Step {start_step} (String): Step label to begin from; earlier steps are skipped.</span>
+<span class="c1">#   - OID Dataset - Input {oid_fc_input} (Feature Class): Existing Oriented Imagery Dataset (OID) to update.</span>
+<span class="c1">#   - OID Dataset - Output {oid_fc_output} (Feature Class): Output OID (used only when creating a new dataset).</span>
+<span class="c1">#   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.</span>
+<span class="c1">#   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.</span>
+<span class="c1">#   - Enable Enhance Images [EXPERIMENTAL] {enable_enhance_images} (Boolean): Enables AI-based image enhancement.</span>
+<span class="c1">#   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.</span>
+<span class="c1">#   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.</span>
+<span class="c1">#   - Enable Deploy Lambda Monitor {enable_deploy_lambda_monitor} (Boolean): Deploys AWS monitoring Lambda (if enabled).</span>
+<span class="c1">#   - Enable Generate Service {enable_generate_service} (Boolean): Publishes an OID web feature service.</span>
+<span class="c1">#   - Centerline (M-enabled) {centerline_fc} (Feature Class): Polyline for GPS smoothing or referencing.</span>
+<span class="c1">#   - Route ID Field {route_id_field} (Field): Field identifying route IDs in the centerline dataset.</span>
+<span class="c1">#   - Generate HTML Report {generate_report} (Boolean): Whether to generate a visual report at the end.</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - New &quot;Source Mode&quot; logic (Local vs AWS) replaces legacy stage_from_s3/s3_reels_prefix parameters.</span>
+<span class="c1">#   - Local mode assumes reels are under &lt;project_folder&gt;/reels.</span>
+<span class="c1">#   - AWS mode lists projects/reels directly from the S3 bucket and stages selected reels locally.</span>
+<span class="c1">#   - Reels are always processed from a local folder—either directly (Local) or via staging (AWS).</span>
+<span class="c1">#   - The tool maintains persistent JSON-based reporting and supports resumable workflows.</span>
+<span class="c1">#   - Ensure all Core Utils and config files are synchronized for consistent behavior.</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span> <span class="nn">utils.shared.arcpy_utils</span> <span class="kn">import</span> <span class="n">str_to_bool</span>
+<span class="kn">from</span> <span class="nn">utils.generate_report</span> <span class="kn">import</span> <span class="n">generate_report_from_json</span>
+<span class="kn">from</span> <span class="nn">utils.step_runner</span> <span class="kn">import</span> <span class="n">run_steps</span>
+<span class="kn">from</span> <span class="nn">utils.build_step_funcs</span> <span class="kn">import</span> <span class="n">build_step_funcs</span><span class="p">,</span> <span class="n">get_step_order</span>
+<span class="kn">from</span> <span class="nn">utils.shared.gather_metrics</span> <span class="kn">import</span> <span class="n">collect_oid_metrics</span><span class="p">,</span> <span class="n">summarize_oid_metrics</span>
+<span class="kn">from</span> <span class="nn">utils.shared.folder_stats</span> <span class="kn">import</span> <span class="n">folder_stats</span>
+<span class="kn">from</span> <span class="nn">utils.shared.report_data_builder</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">initialize_report_data</span><span class="p">,</span>
+    <span class="n">save_report_json</span><span class="p">,</span>
+    <span class="n">load_report_json_if_exists</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">utils.s3_utils</span> <span class="kn">import</span> <span class="n">stage_reels</span><span class="p">,</span> <span class="n">list_projects</span><span class="p">,</span> <span class="n">list_reels</span>
+
+
+<div class="viewcode-block" id="Process360Workflow">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow">[docs]</a>
+<span class="k">class</span> <span class="nc">Process360Workflow</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="Process360Workflow.__init__">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">arcpy_mod</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">os_mod</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">time_mod</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">collect_oid_metrics_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">summarize_oid_metrics_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">folder_stats_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">build_step_funcs_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">get_step_order_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">run_steps_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">initialize_report_data_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">save_report_json_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">load_report_json_if_exists_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">generate_report_from_json_fn</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Allows injection of dependencies for testability.</span>
+<span class="sd">        Defaults to real modules/functions if not provided.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">arcpy_mod</span> <span class="o">=</span> <span class="n">arcpy_mod</span> <span class="ow">or</span> <span class="n">arcpy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span> <span class="o">=</span> <span class="n">os_mod</span> <span class="ow">or</span> <span class="n">os</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time_mod</span> <span class="o">=</span> <span class="n">time_mod</span> <span class="ow">or</span> <span class="n">time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">collect_oid_metrics_fn</span> <span class="o">=</span> <span class="n">collect_oid_metrics_fn</span> <span class="ow">or</span> <span class="n">collect_oid_metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">summarize_oid_metrics_fn</span> <span class="o">=</span> <span class="n">summarize_oid_metrics_fn</span> <span class="ow">or</span> <span class="n">summarize_oid_metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">folder_stats_fn</span> <span class="o">=</span> <span class="n">folder_stats_fn</span> <span class="ow">or</span> <span class="n">folder_stats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_step_funcs_fn</span> <span class="o">=</span> <span class="n">build_step_funcs_fn</span> <span class="ow">or</span> <span class="n">build_step_funcs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_step_order_fn</span> <span class="o">=</span> <span class="n">get_step_order_fn</span> <span class="ow">or</span> <span class="n">get_step_order</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_steps_fn</span> <span class="o">=</span> <span class="n">run_steps_fn</span> <span class="ow">or</span> <span class="n">run_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialize_report_data_fn</span> <span class="o">=</span> <span class="n">initialize_report_data_fn</span> <span class="ow">or</span> <span class="n">initialize_report_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_report_json_fn</span> <span class="o">=</span> <span class="n">save_report_json_fn</span> <span class="ow">or</span> <span class="n">save_report_json</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">load_report_json_if_exists_fn</span> <span class="o">=</span> <span class="n">load_report_json_if_exists_fn</span> <span class="ow">or</span> <span class="n">load_report_json_if_exists</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generate_report_from_json_fn</span> <span class="o">=</span> <span class="n">generate_report_from_json_fn</span> <span class="ow">or</span> <span class="n">generate_report_from_json</span></div>
+
+
+<div class="viewcode-block" id="Process360Workflow.parameters_to_dict">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow.parameters_to_dict">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">parameters_to_dict</span><span class="p">(</span><span class="n">parameters</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Converts ArcPy tool parameters to a dictionary keyed by parameter name.</span>
+<span class="sd">        Ensures all GPBoolean and &#39;enable_*&#39; parameters are Python bools for skip logic.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="s2">&quot;datatype&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;GPBoolean&quot;</span> <span class="ow">or</span> <span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;enable_&quot;</span><span class="p">):</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">result</span><span class="p">[</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_symlink_or_copy</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">dst</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Try to create a symlink; on Windows without elevation or if symlink fails,</span>
+<span class="sd">        fall back to a directory copy (preserves behavior).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">symlink</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">target_is_directory</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Symlinked: </span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">dst</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">logger</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Symlink failed (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">); copying instead: </span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">dst</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="kn">import</span> <span class="nn">shutil</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">dirs_exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_compute_and_store_folder_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">paths</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">report_data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">logger</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Helper to compute and store folder stats for the given labels.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">folder_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                <span class="n">count</span><span class="p">,</span> <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">folder_stats_fn</span><span class="p">(</span><span class="n">folder_path</span><span class="p">)</span>
+                <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;paths&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_images&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">folder_path</span><span class="p">)</span>
+                <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
+                <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_size&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">size</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">_size&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0 B&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to compute folder stats for </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;Process Full Mosaic 360 Workflow&quot;</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Runs the full Mosaic 360 image processing pipeline including:</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;1) Run Mosaic Processor</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;2) Create Oriented Imagery Dataset</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;3) Add Images to OID</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;4) Assign Group Index</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;5) Calculate OID Attributes</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;6) Smooth GPS Noise (optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;7) Correct Flagged GPS Points (optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;8) Update Linear and Custom Attributes (linear referencing optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;9) Enhance Images [EXPERIMENTAL] (optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;10) Rename Images</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;11) Update EXIF Metadata</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;12) Geocode Images (optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;13) Create OID Footprints</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;14) Deploy Lambda Monitor (optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;15) Copy to AWS (optional)</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="s2">&quot;16) Generate OID Service (optional)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">canRunInBackground</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Explicitly define the steps with a numeric index to ensure correct order</span>
+    <span class="n">STEP_FUNCTIONS</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;run_mosaic_processor&quot;</span><span class="p">,</span> <span class="s2">&quot;Run Mosaic Processor&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;create_oid&quot;</span><span class="p">,</span> <span class="s2">&quot;Create Oriented Imagery Dataset&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;add_images&quot;</span><span class="p">,</span> <span class="s2">&quot;Add Images to OID&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;assign_group_index&quot;</span><span class="p">,</span> <span class="s2">&quot;Assign Group Index&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;enrich_oid&quot;</span><span class="p">,</span> <span class="s2">&quot;Calculate OID Attributes&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s2">&quot;smooth_gps&quot;</span><span class="p">,</span> <span class="s2">&quot;Smooth GPS Noise&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">7</span><span class="p">,</span> <span class="s2">&quot;correct_gps&quot;</span><span class="p">,</span> <span class="s2">&quot;Correct Flagged GPS Points&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;update_linear_custom&quot;</span><span class="p">,</span> <span class="s2">&quot;Update Linear and Custom Attributes&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="s2">&quot;enhance_images&quot;</span><span class="p">,</span> <span class="s2">&quot;Enhance Images [EXPERIMENTAL]&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;rename_images&quot;</span><span class="p">,</span> <span class="s2">&quot;Rename Images&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="s2">&quot;update_metadata&quot;</span><span class="p">,</span> <span class="s2">&quot;Update EXIF Metadata&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="s2">&quot;geocode&quot;</span><span class="p">,</span> <span class="s2">&quot;Geocode Images&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">13</span><span class="p">,</span> <span class="s2">&quot;build_footprints&quot;</span><span class="p">,</span> <span class="s2">&quot;Build OID Footprints&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="s2">&quot;deploy_lambda_monitor&quot;</span><span class="p">,</span> <span class="s2">&quot;Deploy Lambda Monitor&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="s2">&quot;copy_to_aws&quot;</span><span class="p">,</span> <span class="s2">&quot;Upload to AWS S3&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="s2">&quot;generate_service&quot;</span><span class="p">,</span> <span class="s2">&quot;Generate OID Service&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Sort by numeric index and extract step names in the correct order</span>
+    <span class="n">STEP_ORDER</span> <span class="o">=</span> <span class="p">[</span><span class="n">step</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">STEP_FUNCTIONS</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+
+<div class="viewcode-block" id="Process360Workflow.getParameterInfo">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow.getParameterInfo">[docs]</a>
+    <span class="k">def</span> <span class="nf">getParameterInfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Defines and returns the list of ArcPy parameters for the Mosaic 360 workflow tool</span>
+<span class="sd">        in the new, AWS/Local-aware order.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># -- Build step labels</span>
+        <span class="n">label_to_name</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">name</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+        <span class="n">name_to_label</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+        <span class="n">step_labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">]</span>
+
+        <span class="c1"># 0) Config File</span>
+        <span class="n">config_file_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Config File&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;config_file&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFile&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">config_file_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;yaml&quot;</span><span class="p">,</span> <span class="s2">&quot;yml&quot;</span><span class="p">]</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config_file_param</span><span class="p">)</span>
+
+        <span class="c1"># 1) Source Mode</span>
+        <span class="n">source_mode_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Source Mode&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;source_mode&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPString&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">source_mode_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Local&quot;</span><span class="p">,</span> <span class="s2">&quot;AWS&quot;</span><span class="p">]</span>
+        <span class="n">source_mode_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;Local&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source_mode_param</span><span class="p">)</span>
+
+        <span class="c1"># 2) Project Folder (required in both modes)</span>
+        <span class="n">project_folder_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Project Folder&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;project_folder&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">project_folder_param</span><span class="p">)</span>
+
+        <span class="c1"># 3) Raw S3 Bucket (AWS only)</span>
+        <span class="n">s3_bucket_raw_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Raw S3 Bucket (AWS)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;raw_s3_bucket&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPString&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s3_bucket_raw_param</span><span class="p">)</span>
+
+        <span class="c1"># 4) AWS Project Key (AWS; dropdown)</span>
+        <span class="n">aws_project_key_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Project Key (AWS)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;project_key&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPString&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">aws_project_key_param</span><span class="p">)</span>
+
+        <span class="c1"># 5) Reels to Process (multiselect; optional)</span>
+        <span class="n">reels_to_process_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Reels to Process&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;reels_to_process&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPString&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+            <span class="n">multiValue</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reels_to_process_param</span><span class="p">)</span>
+
+        <span class="c1"># 6) Staging Folder</span>
+        <span class="n">staging_folder_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Staging Folder (Optional)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;staging_folder&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">staging_folder_param</span><span class="p">)</span>
+
+        <span class="c1"># 7) Start From Step</span>
+        <span class="n">start_step_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Start From Step (Optional)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;start_step&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPString&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">start_step_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;--SELECT STEP--&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">step_labels</span>
+        <span class="n">start_step_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;--SELECT STEP--&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">start_step_param</span><span class="p">)</span>
+
+        <span class="c1"># Save label/name maps for dynamic code</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span> <span class="o">=</span> <span class="n">label_to_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_step_name_to_label</span> <span class="o">=</span> <span class="n">name_to_label</span>
+
+        <span class="c1"># 8) OID Input</span>
+        <span class="n">oid_fc_input_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;OID Dataset - Input (used in most steps)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;oid_fc_input&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFeatureClass&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">oid_fc_input_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">oid_fc_input_param</span><span class="p">)</span>
+
+        <span class="c1"># 9) OID Output</span>
+        <span class="n">oid_fc_output_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;OID Dataset - Output (used only when creating a new OID)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;oid_fc_output&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFeatureClass&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Output&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">oid_fc_output_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">oid_fc_output_param</span><span class="p">)</span>
+
+        <span class="c1"># 10) Enable Smooth GPS</span>
+        <span class="n">enable_smooth_gps_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Smooth GPS (and Correct GPS)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_smooth_gps&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_smooth_gps_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_smooth_gps_param</span><span class="p">)</span>
+
+        <span class="c1"># 11) Enable Linear Referencing</span>
+        <span class="n">enable_linear_ref_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Linear Referencing&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_linear_ref&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_linear_ref_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_linear_ref_param</span><span class="p">)</span>
+
+        <span class="c1"># 12) Enable Enhance Images [EXPERIMENTAL]</span>
+        <span class="n">enable_enhance_images_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Enhance Images [EXPERIMENTAL]&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_enhance_images&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_enhance_images_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_enhance_images_param</span><span class="p">)</span>
+
+        <span class="c1"># 13) Enable Geocode Images</span>
+        <span class="n">enable_geocode_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Geocode Images&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_geocode&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_geocode_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_geocode_param</span><span class="p">)</span>
+
+        <span class="c1"># 14) Enable Copy to AWS</span>
+        <span class="n">enable_copy_to_aws_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Copy to AWS&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_copy_to_aws&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_copy_to_aws_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_copy_to_aws_param</span><span class="p">)</span>
+
+        <span class="c1"># 15) Enable Deploy Lambda Monitor</span>
+        <span class="n">enable_deploy_lambda_monitor_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Deploy Lambda Monitor&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_deploy_lambda_monitor&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_deploy_lambda_monitor_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_deploy_lambda_monitor_param</span><span class="p">)</span>
+
+        <span class="c1"># 16) Enable Generate OID Service</span>
+        <span class="n">enable_generate_service_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Enable Generate OID Service&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;enable_generate_service&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">enable_generate_service_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enable_generate_service_param</span><span class="p">)</span>
+
+        <span class="c1"># 17) Centerline (Polyline)</span>
+        <span class="n">centerline_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Centerline (M-enabled, used for GPS smoothing and linear referencing)&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;centerline_fc&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFeatureClass&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">centerline_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Polyline&quot;</span><span class="p">]</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">centerline_param</span><span class="p">)</span>
+
+        <span class="c1"># 18) Route ID Field</span>
+        <span class="n">route_id_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Route ID Field&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;route_id_field&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;Field&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">route_id_param</span><span class="o">.</span><span class="n">parameterDependencies</span> <span class="o">=</span> <span class="p">[</span><span class="n">centerline_param</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">route_id_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Short&quot;</span><span class="p">,</span> <span class="s2">&quot;Long&quot;</span><span class="p">,</span> <span class="s2">&quot;Text&quot;</span><span class="p">]</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">route_id_param</span><span class="p">)</span>
+
+        <span class="c1"># 19) Generate HTML Summary Report</span>
+        <span class="n">generate_report_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Generate HTML Summary Report&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;generate_report&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;GPBoolean&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">generate_report_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">generate_report_param</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="Process360Workflow.updateParameters">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow.updateParameters">[docs]</a>
+    <span class="k">def</span> <span class="nf">updateParameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Dynamic UI logic for Process360Workflow — name-based (no indices).</span>
+<span class="sd">        - Drives Local vs AWS discovery</span>
+<span class="sd">        - Populates project_key + reels_to_process</span>
+<span class="sd">        - Mirrors existing OID/centerline/route + copy→lambda/service gating</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pmap</span> <span class="o">=</span> <span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">}</span>
+
+        <span class="c1"># Ensure label maps exist</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_step_label_to_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_step_name_to_label&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">name</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_name_to_label</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+
+        <span class="c1"># Shorthands</span>
+        <span class="n">source_mode</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_mode&quot;</span><span class="p">)</span>
+        <span class="n">project_folder</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_folder&quot;</span><span class="p">)</span>
+        <span class="n">config_file</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config_file&quot;</span><span class="p">)</span>
+        <span class="n">raw_s3_bucket</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_s3_bucket&quot;</span><span class="p">)</span>
+        <span class="n">project_key</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_key&quot;</span><span class="p">)</span>
+        <span class="n">reels_param</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reels_to_process&quot;</span><span class="p">)</span>
+        <span class="n">staging_folder</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;staging_folder&quot;</span><span class="p">)</span>
+
+        <span class="n">start_step</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_step&quot;</span><span class="p">)</span>
+        <span class="n">oid_in</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc_input&quot;</span><span class="p">)</span>
+        <span class="n">oid_out</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc_output&quot;</span><span class="p">)</span>
+        <span class="n">enable_smooth_gps</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_smooth_gps&quot;</span><span class="p">)</span>
+        <span class="n">enable_linear_ref</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_linear_ref&quot;</span><span class="p">)</span>
+
+        <span class="n">centerline_param</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;centerline_fc&quot;</span><span class="p">)</span>
+        <span class="n">route_id_param</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_id_field&quot;</span><span class="p">)</span>
+
+        <span class="n">enable_copy_to_aws</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_copy_to_aws&quot;</span><span class="p">)</span>
+        <span class="n">enable_deploy_lambda_monitor</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_deploy_lambda_monitor&quot;</span><span class="p">)</span>
+        <span class="n">enable_generate_service</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_generate_service&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 1) Local vs AWS</span>
+        <span class="n">is_aws</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_mode</span><span class="o">.</span><span class="n">valueAsText</span> <span class="o">==</span> <span class="s2">&quot;AWS&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">source_mode</span> <span class="ow">and</span> <span class="n">source_mode</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="kc">False</span>
+
+        <span class="c1"># Always enable Project Folder (required in both modes)</span>
+        <span class="k">if</span> <span class="n">project_folder</span><span class="p">:</span>
+            <span class="n">project_folder</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">raw_s3_bucket</span><span class="p">:</span>
+            <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="n">is_aws</span>
+
+        <span class="k">if</span> <span class="n">project_key</span><span class="p">:</span>
+            <span class="n">project_key</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="n">is_aws</span>
+            <span class="n">project_key</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">staging_folder</span><span class="p">:</span>
+            <span class="n">staging_folder</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># Seed raw bucket from config (lightweight)</span>
+        <span class="k">if</span> <span class="n">is_aws</span> <span class="ow">and</span> <span class="n">raw_s3_bucket</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">cfg</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+                    <span class="n">path</span><span class="o">=</span><span class="n">config_file</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">config_file</span> <span class="ow">and</span> <span class="n">config_file</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">project_base</span><span class="o">=</span><span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">project_folder</span> <span class="ow">and</span> <span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">messages</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">default_raw</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket_raw&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket&quot;</span><span class="p">))</span> <span class="k">if</span> <span class="n">cfg</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">default_raw</span><span class="p">:</span>
+                    <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">default_raw</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># 2) Populate AWS Project Key dropdown</span>
+        <span class="k">if</span> <span class="n">is_aws</span> <span class="ow">and</span> <span class="n">raw_s3_bucket</span> <span class="ow">and</span> <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">and</span> <span class="n">project_key</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">project_key</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="n">list_projects</span><span class="p">(</span><span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># 3) Populate Reels multiselect</span>
+        <span class="k">if</span> <span class="n">reels_param</span><span class="p">:</span>
+            <span class="n">reels_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_aws</span><span class="p">:</span>
+                <span class="n">base</span> <span class="o">=</span> <span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">project_folder</span> <span class="k">else</span> <span class="kc">None</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">base</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">base</span><span class="p">):</span>
+                        <span class="n">reels_root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s2">&quot;reels&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">reels_root</span><span class="p">):</span>
+                            <span class="n">names</span> <span class="o">=</span> <span class="p">[</span>
+                                <span class="n">d</span>
+                                <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">reels_root</span><span class="p">)</span>
+                                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">reels_root</span><span class="p">,</span> <span class="n">d</span><span class="p">))</span>
+                            <span class="p">]</span>
+                            <span class="n">reels_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="n">reels_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">bucket</span> <span class="o">=</span> <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">if</span> <span class="n">raw_s3_bucket</span> <span class="ow">and</span> <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                    <span class="n">proj</span> <span class="o">=</span> <span class="n">project_key</span><span class="o">.</span><span class="n">valueAsText</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">project_key</span> <span class="ow">and</span> <span class="n">project_key</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+                    <span class="k">if</span> <span class="n">bucket</span> <span class="ow">and</span> <span class="n">proj</span><span class="p">:</span>
+                        <span class="n">reels_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="n">list_reels</span><span class="p">(</span><span class="n">bucket</span><span class="p">,</span> <span class="n">proj</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="n">reels_param</span><span class="o">.</span><span class="n">filter</span><span class="o">.</span><span class="n">list</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 4) Start step → OID in/out enablement</span>
+        <span class="k">if</span> <span class="n">start_step</span><span class="p">:</span>
+            <span class="n">step_label</span> <span class="o">=</span> <span class="n">start_step</span><span class="o">.</span><span class="n">valueAsText</span>
+            <span class="n">step_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_label</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">step_label</span> <span class="ow">and</span> <span class="n">step_label</span> <span class="o">!=</span> <span class="s2">&quot;--SELECT STEP--&quot;</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">step_name</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;run_mosaic_processor&quot;</span><span class="p">,</span> <span class="s2">&quot;create_oid&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">oid_in</span><span class="p">:</span>
+                    <span class="n">oid_in</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">oid_in</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">oid_out</span><span class="p">:</span>
+                    <span class="n">oid_out</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="n">step_name</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">oid_in</span><span class="p">:</span>
+                    <span class="n">oid_in</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">if</span> <span class="n">oid_out</span><span class="p">:</span>
+                    <span class="n">oid_out</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">oid_out</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">oid_in</span><span class="p">:</span>
+                    <span class="n">oid_in</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">oid_in</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">oid_out</span><span class="p">:</span>
+                    <span class="n">oid_out</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="n">oid_out</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 5) Linear Ref vs Smooth GPS → Centerline/Route gating</span>
+        <span class="n">linear_ref_enabled</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">enable_linear_ref</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="n">smooth_gps_enabled</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">enable_smooth_gps</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">linear_ref_enabled</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">centerline_param</span><span class="p">:</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">parameterType</span> <span class="o">=</span> <span class="s2">&quot;Required&quot;</span>
+            <span class="k">if</span> <span class="n">route_id_param</span><span class="p">:</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">parameterType</span> <span class="o">=</span> <span class="s2">&quot;Required&quot;</span>
+        <span class="k">elif</span> <span class="n">smooth_gps_enabled</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">centerline_param</span><span class="p">:</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">parameterType</span> <span class="o">=</span> <span class="s2">&quot;Optional&quot;</span>
+            <span class="k">if</span> <span class="n">route_id_param</span><span class="p">:</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">parameterType</span> <span class="o">=</span> <span class="s2">&quot;Optional&quot;</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">centerline_param</span><span class="p">:</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">parameterType</span> <span class="o">=</span> <span class="s2">&quot;Optional&quot;</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">route_id_param</span><span class="p">:</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">parameterType</span> <span class="o">=</span> <span class="s2">&quot;Optional&quot;</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 6) Copy to AWS → (Deploy Lambda / Generate Service) gating</span>
+        <span class="k">if</span> <span class="n">enable_copy_to_aws</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="n">enable_copy_to_aws</span><span class="o">.</span><span class="n">value</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">enable_deploy_lambda_monitor</span><span class="p">:</span>
+                <span class="n">enable_deploy_lambda_monitor</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">enable_deploy_lambda_monitor</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">if</span> <span class="n">enable_generate_service</span><span class="p">:</span>
+                <span class="n">enable_generate_service</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="n">enable_generate_service</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">enable_deploy_lambda_monitor</span><span class="p">:</span>
+                <span class="n">enable_deploy_lambda_monitor</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">enable_generate_service</span><span class="p">:</span>
+                <span class="n">enable_generate_service</span><span class="o">.</span><span class="n">enabled</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="Process360Workflow.updateMessages">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow.updateMessages">[docs]</a>
+    <span class="k">def</span> <span class="nf">updateMessages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate parameters and surface helpful guidance (name-based; no index math).</span>
+<span class="sd">        - Start step &amp; OID input/output checks</span>
+<span class="sd">        - Local vs AWS source checks (project folder / raw bucket / project key)</span>
+<span class="sd">        - Centerline/Route ID checks based on Linear Ref / Smooth GPS toggles</span>
+<span class="sd">        - Non-blocking info when no reels are selected (we&#39;ll process ALL)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">{</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_step_label_to_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_step_name_to_label&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">name</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_name_to_label</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+
+        <span class="c1"># Shorthands</span>
+        <span class="n">source_mode</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_mode&quot;</span><span class="p">)</span>
+        <span class="n">project_folder</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_folder&quot;</span><span class="p">)</span>
+        <span class="n">raw_s3_bucket</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_s3_bucket&quot;</span><span class="p">)</span>
+        <span class="n">project_key</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_key&quot;</span><span class="p">)</span>
+        <span class="n">reels_param</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reels_to_process&quot;</span><span class="p">)</span>
+
+        <span class="n">start_step_param</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_step&quot;</span><span class="p">)</span>
+        <span class="n">oid_in</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc_input&quot;</span><span class="p">)</span>
+        <span class="n">oid_out</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc_output&quot;</span><span class="p">)</span>
+
+        <span class="n">enable_linear_ref</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_linear_ref&quot;</span><span class="p">)</span>
+        <span class="n">enable_smooth_gps</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_smooth_gps&quot;</span><span class="p">)</span>
+        <span class="n">centerline_param</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;centerline_fc&quot;</span><span class="p">)</span>
+        <span class="n">route_id_param</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;route_id_field&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 1) Start step &amp; OID messages</span>
+        <span class="n">step_label</span> <span class="o">=</span> <span class="n">start_step_param</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">start_step_param</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="n">step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_label</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">step_label</span> <span class="ow">and</span> <span class="n">step_label</span> <span class="o">!=</span> <span class="s2">&quot;--SELECT STEP--&quot;</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">start_step_param</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">step_label</span> <span class="o">==</span> <span class="s2">&quot;--SELECT STEP--&quot;</span><span class="p">:</span>
+                <span class="n">start_step_param</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Please select a valid Start Step before running.&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">start_step_param</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">oid_in</span> <span class="ow">and</span> <span class="n">oid_out</span><span class="p">:</span>
+            <span class="n">oid_in</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+            <span class="n">oid_out</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">step</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;run_mosaic_processor&quot;</span><span class="p">,</span> <span class="s2">&quot;create_oid&quot;</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">oid_out</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+                    <span class="n">oid_out</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Please specify the output path for the new OID dataset.&quot;</span><span class="p">)</span>
+                <span class="n">oid_out</span><span class="o">.</span><span class="n">setWarningMessage</span><span class="p">(</span><span class="s2">&quot;ℹ️ A new OID will be created or an existing one will be overwritten.&quot;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">step</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">oid_in</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+                    <span class="n">oid_in</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Please specify the existing OID dataset.&quot;</span><span class="p">)</span>
+                <span class="n">oid_in</span><span class="o">.</span><span class="n">setWarningMessage</span><span class="p">(</span><span class="s2">&quot;ℹ️ The existing OID will be used and preserved.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 2) Source Mode checks</span>
+        <span class="n">is_aws</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_mode</span><span class="o">.</span><span class="n">valueAsText</span> <span class="o">==</span> <span class="s2">&quot;AWS&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">source_mode</span> <span class="ow">and</span> <span class="n">source_mode</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="kc">False</span>
+
+        <span class="c1"># Project Folder is always required</span>
+        <span class="k">if</span> <span class="n">project_folder</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+            <span class="n">project_folder</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Please specify the Project Folder.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">project_folder</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+
+        <span class="c1"># Local nicety: warn if &lt;project&gt;\reels missing</span>
+        <span class="k">if</span> <span class="n">project_folder</span> <span class="ow">and</span> <span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">and</span> <span class="p">(</span><span class="n">source_mode</span><span class="o">.</span><span class="n">valueAsText</span> <span class="o">!=</span> <span class="s2">&quot;AWS&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">reels_root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">,</span> <span class="s2">&quot;reels&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">reels_root</span><span class="p">):</span>
+                    <span class="n">project_folder</span><span class="o">.</span><span class="n">setWarningMessage</span><span class="p">(</span><span class="s2">&quot;ℹ️ Expected folder &#39;&lt;project&gt;</span><span class="se">\\</span><span class="s2">reels&#39; was not found.&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># AWS: require raw bucket and project key</span>
+        <span class="k">if</span> <span class="n">is_aws</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raw_s3_bucket</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">and</span> <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
+                    <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Please specify the Raw S3 Bucket (e.g., rmi-360-raw).&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">project_key</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">project_key</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">and</span> <span class="n">project_key</span><span class="o">.</span><span class="n">valueAsText</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
+                    <span class="n">project_key</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Please select a Project Key from the Raw S3 Bucket.&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">project_key</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+
+        <span class="c1"># Reels selection: non-blocking note (empty =&gt; ALL)</span>
+        <span class="k">if</span> <span class="n">reels_param</span><span class="p">:</span>
+            <span class="n">reels_param</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+            <span class="n">basics_ok</span> <span class="o">=</span> <span class="p">(</span><span class="ow">not</span> <span class="n">is_aws</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">project_folder</span> <span class="ow">and</span> <span class="n">project_folder</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">))</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="n">is_aws</span> <span class="ow">and</span> <span class="nb">bool</span><span class="p">(</span><span class="n">raw_s3_bucket</span> <span class="ow">and</span> <span class="n">raw_s3_bucket</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">and</span> <span class="n">project_key</span> <span class="ow">and</span> <span class="n">project_key</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">basics_ok</span><span class="p">:</span>
+                <span class="n">selected</span> <span class="o">=</span> <span class="p">(</span><span class="n">reels_param</span><span class="o">.</span><span class="n">valueAsText</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">selected</span><span class="p">:</span>
+                    <span class="n">reels_param</span><span class="o">.</span><span class="n">setWarningMessage</span><span class="p">(</span><span class="s2">&quot;ℹ️ No reels selected — the tool will process ALL reels in the source.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 3) Centerline / Route ID messages</span>
+        <span class="n">linear_ref_enabled</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">enable_linear_ref</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+        <span class="n">smooth_gps_enabled</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">enable_smooth_gps</span><span class="p">,</span> <span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">centerline_param</span><span class="p">:</span>
+            <span class="n">centerline_param</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">route_id_param</span><span class="p">:</span>
+            <span class="n">route_id_param</span><span class="o">.</span><span class="n">clearMessage</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">linear_ref_enabled</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">centerline_param</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">centerline_param</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+                <span class="n">centerline_param</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Centerline is required when Linear Referencing is enabled.&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">route_id_param</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">route_id_param</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+                <span class="n">route_id_param</span><span class="o">.</span><span class="n">setErrorMessage</span><span class="p">(</span><span class="s2">&quot;⚠️ Route ID is required when Linear Referencing is enabled.&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Process360Workflow.execute">
+<a class="viewcode-back" href="../../api/tools.html#tools.process_360_orchestrator.Process360Workflow.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">messages</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Executes the full Mosaic 360 workflow with Local/AWS reel selection.</span>
+<span class="sd">        - Always resolves a LOCAL working folder of reels and stores it in p[&quot;input_reels_folder&quot;]</span>
+<span class="sd">        - Preserves existing step runner, metrics, and report generation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># ----------- Helpers (local) -----------</span>
+        <span class="k">def</span> <span class="nf">_parse_multi</span><span class="p">(</span><span class="n">gp_param</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">gp_param</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">gp_param</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[]</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">gp_param</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;;&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+
+        <span class="c1"># ----------- Map params by name -----------</span>
+        <span class="n">pmap</span> <span class="o">=</span> <span class="p">{</span><span class="n">param</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">parameters</span><span class="p">}</span>
+
+        <span class="c1"># Build dict with typed booleans for enable_* flags</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters_to_dict</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+
+        <span class="c1"># Determine which OID path is active</span>
+        <span class="n">oid_in_param</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc_input&quot;</span><span class="p">)</span>
+        <span class="n">oid_out_param</span> <span class="o">=</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc_output&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">oid_out_param</span> <span class="ow">and</span> <span class="n">oid_out_param</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+            <span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">oid_out_param</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">oid_in_param</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">oid_in_param</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="n">generate_report_flag</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;generate_report&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">))</span>
+
+        <span class="c1"># ----------- Load config, logger, paths -----------</span>
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config_file&quot;</span><span class="p">),</span>
+            <span class="n">project_base</span><span class="o">=</span><span class="p">(</span><span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_folder&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_folder&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">),</span>
+            <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span>
+
+        <span class="c1"># --- Runtime roots &amp; project directory ---</span>
+        <span class="n">local_root</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runtime.local_root&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">local_root</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Missing &#39;runtime.local_root&#39; in configuration. &quot;</span>
+                <span class="s2">&quot;Specify it in config.yaml or set the RMI_LOCAL_ROOT environment variable.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># New structure: D:/Process360_Data/projects/{project_key}/</span>
+        <span class="n">project_key_value</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.slug&quot;</span><span class="p">,</span> <span class="s2">&quot;project&quot;</span><span class="p">)</span>
+        <span class="n">project_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">local_root</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;projects&quot;</span> <span class="o">/</span> <span class="n">project_key_value</span>
+        <span class="n">project_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Resolve staging location and reels root under project directory</span>
+        <span class="n">staging_override</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">pmap</span><span class="p">[</span><span class="s2">&quot;staging_folder&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span><span class="p">)</span> <span class="k">if</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;staging_folder&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">pmap</span><span class="p">[</span><span class="s2">&quot;staging_folder&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="p">)</span>
+        <span class="n">work_project_dir</span> <span class="o">=</span> <span class="n">staging_override</span> <span class="k">if</span> <span class="n">staging_override</span> <span class="k">else</span> <span class="n">project_dir</span>  <span class="c1"># .../projects/&lt;slug&gt;</span>
+        <span class="n">reels_root</span> <span class="o">=</span> <span class="n">work_project_dir</span> <span class="o">/</span> <span class="s2">&quot;reels&quot;</span>
+        <span class="n">reels_root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># ----------- Resolve reels locally based on Source Mode -----------</span>
+        <span class="n">source_mode</span> <span class="o">=</span> <span class="p">(</span><span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_mode&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;source_mode&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;Local&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;Local&quot;</span>
+        <span class="n">selected_reels</span> <span class="o">=</span> <span class="n">_parse_multi</span><span class="p">(</span><span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reels_to_process&quot;</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">source_mode</span> <span class="o">==</span> <span class="s2">&quot;Local&quot;</span><span class="p">:</span>
+            <span class="n">project_folder</span> <span class="o">=</span> <span class="n">pmap</span><span class="p">[</span><span class="s2">&quot;project_folder&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_folder&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">project_folder</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Project Folder is required for Local mode.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">project_reels</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">project_folder</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;reels&quot;</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">project_reels</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Local reels folder not found: </span><span class="si">{</span><span class="n">project_reels</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="k">if</span> <span class="n">selected_reels</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">selected_reels</span><span class="p">:</span>
+                    <span class="n">src</span> <span class="o">=</span> <span class="n">project_reels</span> <span class="o">/</span> <span class="n">r</span>
+                    <span class="n">dst</span> <span class="o">=</span> <span class="n">reels_root</span> <span class="o">/</span> <span class="n">r</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">src</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Skipping missing reel folder: </span><span class="si">{</span><span class="n">src</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="k">continue</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_symlink_or_copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># No selection → include all subfolders in &lt;project&gt;\reels</span>
+                <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">project_reels</span><span class="p">):</span>
+                    <span class="n">src</span> <span class="o">=</span> <span class="n">project_reels</span> <span class="o">/</span> <span class="n">name</span>
+                    <span class="k">if</span> <span class="n">src</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+                        <span class="n">dst</span> <span class="o">=</span> <span class="n">reels_root</span> <span class="o">/</span> <span class="n">name</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_symlink_or_copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+
+            <span class="c1"># Downstream expects a local folder that CONTAINS reel folders</span>
+            <span class="n">p</span><span class="p">[</span><span class="s2">&quot;input_reels_folder&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">reels_root</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># AWS</span>
+            <span class="n">raw_s3_bucket</span> <span class="o">=</span> <span class="p">(</span><span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_s3_bucket&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;raw_s3_bucket&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;aws.s3_bucket_raw&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aws.s3_bucket&quot;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">project_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_key&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">valueAsText</span> <span class="k">if</span> <span class="n">pmap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project_key&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">raw_s3_bucket</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">project_key</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Raw S3 Bucket and Project Key are required for AWS mode.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Staging reels from s3://</span><span class="si">{</span><span class="n">raw_s3_bucket</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">project_key</span><span class="si">}</span><span class="s2">/reels/ → </span><span class="si">{</span><span class="n">work_project_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">staged_root</span> <span class="o">=</span> <span class="n">stage_reels</span><span class="p">(</span>
+                <span class="n">bucket</span><span class="o">=</span><span class="n">raw_s3_bucket</span><span class="p">,</span>
+                <span class="n">project_key</span><span class="o">=</span><span class="n">project_key</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">),</span>
+                <span class="n">reels</span><span class="o">=</span><span class="n">selected_reels</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># None =&gt; all reels</span>
+                <span class="n">local_project_dir</span><span class="o">=</span><span class="n">work_project_dir</span><span class="p">,</span>  <span class="c1"># ensures projects/&lt;slug&gt;/reels/&lt;reel&gt;/...</span>
+                <span class="n">max_workers</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>
+                <span class="n">skip_if_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># don&#39;t re-download existing files</span>
+            <span class="p">)</span>
+
+            <span class="c1"># stage_reels returns &lt;local_project_dir&gt;/reels</span>
+            <span class="n">p</span><span class="p">[</span><span class="s2">&quot;input_reels_folder&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">staged_root</span><span class="p">)</span>
+
+        <span class="c1"># ----------- Orchestrator flow -----------</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🚀&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;| --- Starting Mosaic 360 Workflow --- |&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🚀&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🚀&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using config: </span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">source_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Project root: </span><span class="si">{</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;__project_root__&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;OID dataset not specified; cannot continue.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Validate config</span>
+        <span class="n">cfg</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
+
+        <span class="c1"># Build steps + order</span>
+        <span class="n">step_funcs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_step_funcs_fn</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+        <span class="n">step_order</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_step_order_fn</span><span class="p">(</span><span class="n">step_funcs</span><span class="p">)</span>
+
+        <span class="c1"># Initialize or load report data</span>
+        <span class="n">report_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_report_json_if_exists_fn</span><span class="p">(</span><span class="n">cfg</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">report_data</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">report_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialize_report_data_fn</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_report_json_fn</span><span class="p">(</span><span class="n">report_data</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;Loaded existing report JSON — appending new steps&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🔄&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Run steps</span>
+        <span class="n">t_start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_mod</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_step_label_to_name&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_step_name_to_label&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">name</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_name_to_label</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">label</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">STEP_FUNCTIONS</span><span class="p">}</span>
+
+        <span class="n">step_label</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start_step&quot;</span><span class="p">)</span>
+        <span class="n">start_step</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_step_label_to_name</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step_label</span><span class="p">,</span> <span class="n">step_order</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="n">step_label</span> <span class="ow">and</span> <span class="n">step_label</span> <span class="o">!=</span> <span class="s2">&quot;--SELECT STEP--&quot;</span> <span class="k">else</span> <span class="n">step_order</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">start_step</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">step_order</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid start_step &#39;</span><span class="si">{</span><span class="n">start_step</span><span class="si">}</span><span class="s2">&#39; provided. Falling back to default &#39;</span><span class="si">{</span><span class="n">step_order</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">start_step</span> <span class="o">=</span> <span class="n">step_order</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">start_index</span> <span class="o">=</span> <span class="n">step_order</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">start_step</span><span class="p">)</span>
+
+        <span class="n">wait_config</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;orchestrator&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">run_steps_fn</span><span class="p">(</span><span class="n">step_funcs</span><span class="p">,</span> <span class="n">step_order</span><span class="p">,</span> <span class="n">start_index</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">report_data</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">wait_config</span><span class="o">=</span><span class="n">wait_config</span><span class="p">)</span>
+
+        <span class="c1"># Post-run: OID path, metrics, reel count, folder stats</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;paths&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">&quot;oid_gdb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arcpy_mod</span><span class="o">.</span><span class="n">Describe</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not describe OID FC yet: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">report_data</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;paths&quot;</span><span class="p">,</span> <span class="p">{})[</span><span class="s2">&quot;oid_gdb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Unavailable&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">raw_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_oid_metrics_fn</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">])</span>
+            <span class="n">summary</span><span class="p">,</span> <span class="n">reels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">summarize_oid_metrics_fn</span><span class="p">(</span><span class="n">raw_metrics</span><span class="p">)</span>
+            <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>
+            <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;reels&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reels</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not gather OID stats: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Count reel folders under the resolved local input path</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">reel_folders</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">f</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;input_reels_folder&quot;</span><span class="p">])</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;input_reels_folder&quot;</span><span class="p">],</span> <span class="n">f</span><span class="p">))</span>
+            <span class="p">]</span>
+            <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">][</span><span class="s2">&quot;reel_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">reel_folders</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">][</span><span class="s2">&quot;reel_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;—&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to count reel folders: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Folder stats, elapsed, report generation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_and_store_folder_stats</span><span class="p">([</span><span class="s2">&quot;original&quot;</span><span class="p">,</span> <span class="s2">&quot;enhanced&quot;</span><span class="p">,</span> <span class="s2">&quot;renamed&quot;</span><span class="p">],</span> <span class="n">paths</span><span class="p">,</span> <span class="n">report_data</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+        <span class="n">elapsed_total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_mod</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t_start</span>
+        <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">][</span><span class="s2">&quot;elapsed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">elapsed_total</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> sec&quot;</span>
+        <span class="n">total_images</span> <span class="o">=</span> <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_images&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">total_images</span><span class="p">:</span>
+            <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">][</span><span class="s2">&quot;time_per_image&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">elapsed_total</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">total_images</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> sec/image&quot;</span>
+
+        <span class="n">report_dir</span> <span class="o">=</span> <span class="n">paths</span><span class="o">.</span><span class="n">report</span>
+        <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;paths&quot;</span><span class="p">][</span><span class="s2">&quot;report_dir&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">report_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_report_json_fn</span><span class="p">(</span><span class="n">report_data</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">generate_report_flag</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">report_data</span><span class="p">[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">raw</span>
+                <span class="n">slug</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;project.slug&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
+                <span class="n">json_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">os_mod</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">report</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;report_data_</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">.json&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">generate_report_from_json_fn</span><span class="p">(</span><span class="n">json_path</span><span class="o">=</span><span class="n">json_path</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final report and JSON saved to: </span><span class="si">{</span><span class="n">report_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;📄&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">export_html</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;Skipping report generation (disabled by user)&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;⏭️&quot;</span><span class="p">)</span>
+
+        <span class="c1"># --- Upload artifacts to S3 (optional) ---</span>
+        <span class="n">upload_artifacts</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;orchestrator.upload_artifacts_to_s3&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">upload_artifacts</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span> <span class="nn">utils.shared.backup_to_s3</span> <span class="kn">import</span> <span class="n">upload_project_artifacts</span>
+                <span class="n">artifact_types</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;orchestrator.artifact_types&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">,</span> <span class="s1">&#39;logs&#39;</span><span class="p">,</span> <span class="s1">&#39;report&#39;</span><span class="p">])</span>
+                <span class="n">timestamp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_mod</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;Uploading project artifacts to S3 for backup...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;📤&quot;</span><span class="p">)</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="n">upload_project_artifacts</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span> <span class="n">artifact_types</span><span class="o">=</span><span class="n">artifact_types</span><span class="p">,</span> <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">results</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Artifacts uploaded: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;✅&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to upload artifacts to S3: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🎉&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;| --- Mosaic 360 Workflow Complete --- |&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🎉&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🎉&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

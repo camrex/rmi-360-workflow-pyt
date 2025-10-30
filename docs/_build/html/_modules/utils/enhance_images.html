@@ -1,0 +1,647 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>utils.enhance_images &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">utils.enhance_images</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for utils.enhance_images</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🖼️ Image Enhancement Pipeline (utils/enhance_images.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Purpose:             Enhances 360° images using white balance, contrast, saturation, and sharpening</span>
+<span class="c1"># Project:             RMI 360 Imaging Workflow Python Toolbox</span>
+<span class="c1"># Version:             1.1.0</span>
+<span class="c1"># Author:              RMI Valuation, LLC</span>
+<span class="c1"># Created:             2025-05-13</span>
+<span class="c1"># Last Updated:        2025-05-20</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   Loads enhancement configuration, checks disk space, and processes all images in an OID</span>
+<span class="c1">#   feature class using OpenCV-based image enhancement operations. Enhancements include</span>
+<span class="c1">#   white balance correction, CLAHE contrast, saturation boost, sharpening, and brightness recovery.</span>
+<span class="c1">#   Supports batch multiprocessing, progress tracking, EXIF metadata preservation, and logging.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:        /utils/enhance_images.py</span>
+<span class="c1"># Called By:            tools/enhance_images_tool.py, tools/process_360_orchestrator.py</span>
+<span class="c1"># Int. Dependencies:    utils/manager/config_manager, utils/shared/check_disk_space</span>
+<span class="c1"># Ext. Dependencies:    cv2, numpy, arcpy, csv, os, pathlib, subprocess, concurrent.futures</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/enhance_images.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Automatically determines parallelism via available CPU cores unless overridden</span>
+<span class="c1">#   - Recovers EXIF metadata after enhancement using ExifTool</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">csv</span>
+<span class="kn">import</span> <span class="nn">cv2</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
+
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+<span class="kn">from</span> <span class="nn">utils.shared.check_disk_space</span> <span class="kn">import</span> <span class="n">check_sufficient_disk_space</span>
+
+
+<div class="viewcode-block" id="compute_image_stats">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.compute_image_stats">[docs]</a>
+<span class="k">def</span> <span class="nf">compute_image_stats</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the brightness and contrast of an image.</span>
+<span class="sd">    </span>
+<span class="sd">    The image is converted to grayscale before computing the mean (brightness) and standard deviation (contrast) of</span>
+<span class="sd">    pixel intensities.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">    	img: Input image as a NumPy array in BGR color format.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    	A tuple containing the brightness (float) and contrast (float) of the image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gray</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">)</span>
+    <span class="n">brightness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">gray</span><span class="p">)</span>
+    <span class="n">contrast</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">gray</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">brightness</span><span class="p">,</span> <span class="n">contrast</span></div>
+
+
+
+<div class="viewcode-block" id="apply_white_balance">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.apply_white_balance">[docs]</a>
+<span class="k">def</span> <span class="nf">apply_white_balance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;gray_world&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies white balance correction to an image using the specified method.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        img: Input image as a NumPy array in BGR format.</span>
+<span class="sd">        method: White balance method to use (&quot;gray_world&quot; or &quot;simple&quot;).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple containing the white-balanced image, the mean values of the B, G, R channels before correction, and</span>
+<span class="sd">        the mean values after correction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pre_means</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>  <span class="c1"># B, G, R</span>
+
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;gray_world&quot;</span><span class="p">:</span>
+        <span class="n">avg_b</span><span class="p">,</span> <span class="n">avg_g</span><span class="p">,</span> <span class="n">avg_r</span> <span class="o">=</span> <span class="n">pre_means</span>
+        <span class="n">avg_gray</span> <span class="o">=</span> <span class="p">(</span><span class="n">avg_b</span> <span class="o">+</span> <span class="n">avg_g</span> <span class="o">+</span> <span class="n">avg_r</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span>
+        <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-6</span>  <span class="c1"># avoid div/0</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">addWeighted</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">avg_gray</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">avg_b</span><span class="p">,</span> <span class="n">eps</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">addWeighted</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">avg_gray</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">avg_g</span><span class="p">,</span> <span class="n">eps</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">addWeighted</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">avg_gray</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">avg_r</span><span class="p">,</span> <span class="n">eps</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">])</span>
+    <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;simple&quot;</span><span class="p">:</span>
+        <span class="n">wb</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">xphoto</span><span class="o">.</span><span class="n">createSimpleWB</span><span class="p">()</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">wb</span><span class="o">.</span><span class="n">balanceWhite</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+
+    <span class="n">post_means</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">img</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">pre_means</span><span class="p">,</span> <span class="n">post_means</span></div>
+
+
+
+<div class="viewcode-block" id="apply_clahe">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.apply_clahe">[docs]</a>
+<span class="k">def</span> <span class="nf">apply_clahe</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">clip_limit</span><span class="p">,</span> <span class="n">tile_grid_size</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enhances image contrast using CLAHE on the luminance channel.</span>
+<span class="sd">    </span>
+<span class="sd">    Converts the input image to LAB color space, applies Contrast Limited Adaptive Histogram Equalization (CLAHE) to</span>
+<span class="sd">    the L (luminance) channel, and returns the result converted back to BGR color space.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        img: Input image in BGR format.</span>
+<span class="sd">        clip_limit: Threshold for contrast limiting in CLAHE.</span>
+<span class="sd">        tile_grid_size: Size of the grid for histogram equalization.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The contrast-enhanced image in BGR format.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lab</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2LAB</span><span class="p">)</span>
+    <span class="n">l_channel</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">lab</span><span class="p">)</span>
+    <span class="n">clahe</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">createCLAHE</span><span class="p">(</span><span class="n">clipLimit</span><span class="o">=</span><span class="n">clip_limit</span><span class="p">,</span> <span class="n">tileGridSize</span><span class="o">=</span><span class="n">tile_grid_size</span><span class="p">)</span>
+    <span class="n">cl</span> <span class="o">=</span> <span class="n">clahe</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">l_channel</span><span class="p">)</span>
+    <span class="n">merged</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">merge</span><span class="p">((</span><span class="n">cl</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_LAB2BGR</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="apply_saturation_boost">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.apply_saturation_boost">[docs]</a>
+<span class="k">def</span> <span class="nf">apply_saturation_boost</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Boosts the color saturation of an image by a specified factor.</span>
+<span class="sd">    </span>
+<span class="sd">    Converts the image to HSV color space, multiplies the saturation channel by the given factor (clipped to 255), and</span>
+<span class="sd">    converts the result back to BGR.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        img: Input image in BGR format.</span>
+<span class="sd">        factor: Multiplicative factor for the saturation channel.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The image with enhanced color saturation in BGR format.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">hsv</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2HSV</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">hsv</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">hsv</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">factor</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">hsv</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">),</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_HSV2BGR</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="apply_sharpening">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.apply_sharpening">[docs]</a>
+<span class="k">def</span> <span class="nf">apply_sharpening</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">kernel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Applies a sharpening filter to an image using a specified convolution kernel.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        img: Input image in BGR format.</span>
+<span class="sd">    	kernel: A 2D list or array representing the sharpening kernel to apply.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    	The sharpened image as a NumPy array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">kernel_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">filter2D</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">kernel_np</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="copy_exif_metadata">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.copy_exif_metadata">[docs]</a>
+<span class="k">def</span> <span class="nf">copy_exif_metadata</span><span class="p">(</span><span class="n">original</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">enhanced</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">exiftool_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;exiftool&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Copies all EXIF metadata from the original image to the enhanced image using exiftool.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        original: Path to the source image with desired EXIF metadata.</span>
+<span class="sd">        enhanced: Path to the target image to receive the metadata.</span>
+<span class="sd">        exiftool_path: Path to the exiftool executable (default is &quot;exiftool&quot;).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        True if metadata was copied successfully, False if the subprocess call failed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Suppress console window on Windows</span>
+        <span class="n">startupinfo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;nt&quot;</span><span class="p">:</span>  <span class="c1"># Windows only</span>
+            <span class="n">startupinfo</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTUPINFO</span><span class="p">()</span>
+            <span class="n">startupinfo</span><span class="o">.</span><span class="n">dwFlags</span> <span class="o">|=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">STARTF_USESHOWWINDOW</span>
+
+        <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">exiftool_path</span><span class="p">,</span> <span class="s2">&quot;-TagsFromFile&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">original</span><span class="p">),</span> <span class="s2">&quot;-overwrite_original&quot;</span><span class="p">,</span> <span class="s2">&quot;-all:all&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">enhanced</span><span class="p">)],</span>
+            <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">DEVNULL</span><span class="p">,</span>
+            <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">DEVNULL</span><span class="p">,</span>
+            <span class="n">startupinfo</span><span class="o">=</span><span class="n">startupinfo</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="enhance_image">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.enhance_image">[docs]</a>
+<span class="k">def</span> <span class="nf">enhance_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">contrast</span><span class="p">,</span> <span class="n">logger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enhances an image using configurable white balance, contrast, saturation, and sharpening.</span>
+<span class="sd">    </span>
+<span class="sd">    Applies a sequence of image enhancement operations based on the provided configuration, including optional white</span>
+<span class="sd">    balance correction, CLAHE contrast enhancement, saturation boost, sharpening, and brightness recovery if needed.</span>
+<span class="sd">    Tracks which methods were applied and collects pre- and post-enhancement brightness and contrast statistics.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        img: Input image as a NumPy array in BGR format.</span>
+<span class="sd">        cfg:</span>
+<span class="sd">        contrast: Initial contrast value of the image, used for adaptive CLAHE.</span>
+<span class="sd">        logger:</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A tuple containing:</span>
+<span class="sd">            - The enhanced image as a NumPy array.</span>
+<span class="sd">            - The CLAHE clip limit used (if applied), otherwise None.</span>
+<span class="sd">            - A dictionary indicating which enhancement methods were applied.</span>
+<span class="sd">            - A dictionary of pre- and post-enhancement statistics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">clip_limit_used</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">methods_applied</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;white_balance&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;clahe&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;sharpen&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;pre_rgb_means&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;post_rgb_means&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;brightness_before&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">)),</span>
+        <span class="s2">&quot;contrast_before&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">)),</span>
+        <span class="s2">&quot;brightness_after&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;contrast_after&quot;</span><span class="p">:</span> <span class="kc">None</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.white_balance.enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.white_balance.method&quot;</span><span class="p">,</span> <span class="s2">&quot;gray_world&quot;</span><span class="p">)</span>
+        <span class="n">img</span><span class="p">,</span> <span class="n">pre_means</span><span class="p">,</span> <span class="n">post_means</span> <span class="o">=</span> <span class="n">apply_white_balance</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+        <span class="n">methods_applied</span><span class="p">[</span><span class="s2">&quot;white_balance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;pre_rgb_means&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pre_means</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;post_rgb_means&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">post_means</span>
+
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.clahe.enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="n">grid_size</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.clahe.tile_grid_size&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">]))</span>
+        <span class="n">clip_limit</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.clahe.clip_limit_low&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.adaptive&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">thresholds</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.clahe.contrast_thresholds&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">60</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">contrast</span> <span class="o">&lt;</span> <span class="n">thresholds</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                <span class="n">clip_limit</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.clahe.clip_limit_high&quot;</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">apply_clahe</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">clip_limit</span><span class="p">,</span> <span class="n">grid_size</span><span class="p">)</span>
+        <span class="n">clip_limit_used</span> <span class="o">=</span> <span class="n">clip_limit</span>
+        <span class="n">methods_applied</span><span class="p">[</span><span class="s2">&quot;clahe&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.saturation_boost.enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.saturation_boost.factor&quot;</span><span class="p">,</span> <span class="mf">1.1</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">apply_saturation_boost</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">factor</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.sharpen.enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+        <span class="n">kernel</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.sharpen.kernel&quot;</span><span class="p">,</span> <span class="p">[</span>
+            <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+            <span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="p">])</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">apply_sharpening</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">kernel</span><span class="p">)</span>
+        <span class="n">methods_applied</span><span class="p">[</span><span class="s2">&quot;sharpen&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># Post-enhancement stats</span>
+    <span class="n">brightness_after</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">))</span>
+    <span class="n">contrast_after</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">))</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;brightness_after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">brightness_after</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;contrast_after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">contrast_after</span>
+
+    <span class="c1"># Optional brightness recovery</span>
+    <span class="k">if</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.brightness.enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">threshold</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.brightness.threshold&quot;</span><span class="p">,</span> <span class="mi">110</span><span class="p">)</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.brightness.factor&quot;</span><span class="p">,</span> <span class="mf">1.15</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">brightness_after</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔧 Brightness </span><span class="si">{</span><span class="n">brightness_after</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> &lt; </span><span class="si">{</span><span class="n">threshold</span><span class="si">}</span><span class="s2">, applying recovery factor </span><span class="si">{</span><span class="n">factor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="o">*</span> <span class="n">factor</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="c1"># Recompute stats after brightening</span>
+            <span class="n">brightness_after</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">))</span>
+            <span class="n">contrast_after</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGR2GRAY</span><span class="p">))</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;brightness_after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">brightness_after</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;contrast_after&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">contrast_after</span>
+
+    <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">clip_limit_used</span><span class="p">,</span> <span class="n">methods_applied</span><span class="p">,</span> <span class="n">stats</span></div>
+
+
+
+<div class="viewcode-block" id="update_oid_image_paths">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.update_oid_image_paths">[docs]</a>
+<span class="k">def</span> <span class="nf">update_oid_image_paths</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">path_map</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">logger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Updates the &quot;ImagePath&quot; field in an OID feature class to reference enhanced image paths.</span>
+<span class="sd">    </span>
+<span class="sd">    Replaces original image paths with corresponding enhanced paths from the provided mapping.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">UpdateCursor</span><span class="p">(</span><span class="n">oid_fc</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;ImagePath&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">:</span>
+            <span class="n">original</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">original</span> <span class="ow">in</span> <span class="n">path_map</span><span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">path_map</span><span class="p">[</span><span class="n">original</span><span class="p">]</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">updateRow</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="s2">&quot;OID ImagePath updated to reflect enhanced images.&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;✅&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="write_log">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.write_log">[docs]</a>
+<span class="k">def</span> <span class="nf">write_log</span><span class="p">(</span><span class="n">log_rows</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">logger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Writes a CSV log file summarizing image enhancement details.</span>
+<span class="sd">    </span>
+<span class="sd">    The log includes statistics such as brightness, contrast, applied enhancement methods, and output paths for each</span>
+<span class="sd">    processed image. Handles permission errors gracefully by logging a warning if the file cannot be written.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">get_log_file_path</span><span class="p">(</span><span class="s2">&quot;enhance_log&quot;</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Attempting to write enhance log to: </span><span class="si">{</span><span class="n">log_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">([</span>
+                <span class="s2">&quot;Filename&quot;</span><span class="p">,</span> <span class="s2">&quot;BrightnessBefore&quot;</span><span class="p">,</span> <span class="s2">&quot;ContrastBefore&quot;</span><span class="p">,</span> <span class="s2">&quot;ClipLimit&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;WhiteBalance&quot;</span><span class="p">,</span> <span class="s2">&quot;CLAHE&quot;</span><span class="p">,</span> <span class="s2">&quot;Sharpen&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;BrightnessAfter&quot;</span><span class="p">,</span> <span class="s2">&quot;ContrastAfter&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;RGBMeansBeforeWB&quot;</span><span class="p">,</span> <span class="s2">&quot;RGBMeansAfterWB&quot;</span><span class="p">,</span> <span class="s2">&quot;OutputPath&quot;</span>
+            <span class="p">])</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">(</span><span class="n">log_rows</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhancement log saved to: </span><span class="si">{</span><span class="n">log_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">PermissionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to write enhance log: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="enhance_single_image">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.enhance_single_image">[docs]</a>
+<span class="k">def</span> <span class="nf">enhance_single_image</span><span class="p">(</span><span class="n">original_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">logger</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enhances a single image file and writes the result to disk, handling output path logic and EXIF metadata copying.</span>
+
+<span class="sd">    Reads the image, applies configured enhancement steps, determines the output path based on the specified mode</span>
+<span class="sd">    (overwrite, suffix, or folder tag replacement), writes the enhanced image, and attempts to copy EXIF metadata from</span>
+<span class="sd">    the original. Returns enhancement statistics and output paths, or an error message if processing fails.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">     original_path: Path to the original image file.</span>
+<span class="sd">     cfg:</span>
+<span class="sd">     logger:</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">     A tuple containing:</span>
+<span class="sd">         - The original image path as a string.</span>
+<span class="sd">         - The output image path as a string.</span>
+<span class="sd">         - A list of enhancement statistics for logging.</span>
+<span class="sd">         - A boolean indicating if EXIF metadata copy failed.</span>
+<span class="sd">     If an error occurs, returns (None, error_message).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">original_path</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Failed to read image: </span><span class="si">{</span><span class="n">original_path</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">err</span>
+
+    <span class="n">output_mode</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.output.mode&quot;</span><span class="p">,</span> <span class="s2">&quot;directory&quot;</span><span class="p">)</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.output.suffix&quot;</span><span class="p">,</span> <span class="s2">&quot;_enh&quot;</span><span class="p">)</span>
+    <span class="n">original_tag</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_output.folders.original&quot;</span><span class="p">)</span>
+    <span class="n">enhanced_tag</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_output.folders.enhanced&quot;</span><span class="p">)</span>
+
+
+    <span class="n">brightness</span><span class="p">,</span> <span class="n">contrast</span> <span class="o">=</span> <span class="n">compute_image_stats</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">enhanced</span><span class="p">,</span> <span class="n">clip_limit</span><span class="p">,</span> <span class="n">methods</span><span class="p">,</span> <span class="n">stats</span> <span class="o">=</span> <span class="n">enhance_image</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">contrast</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">output_mode</span> <span class="o">==</span> <span class="s2">&quot;overwrite&quot;</span><span class="p">:</span>
+        <span class="n">out_path</span> <span class="o">=</span> <span class="n">original_path</span>
+    <span class="k">elif</span> <span class="n">output_mode</span> <span class="o">==</span> <span class="s2">&quot;suffix&quot;</span><span class="p">:</span>
+        <span class="n">out_path</span> <span class="o">=</span> <span class="n">original_path</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">original_path</span><span class="o">.</span><span class="n">stem</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">.jpg&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">output_mode</span> <span class="o">==</span> <span class="s2">&quot;directory&quot;</span><span class="p">:</span>
+        <span class="n">path_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">original_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">original_tag</span><span class="si">}</span><span class="s2">/&quot;</span> <span class="ow">in</span> <span class="n">path_str</span><span class="p">:</span>
+            <span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">original_tag</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/</span><span class="si">{</span><span class="n">enhanced_tag</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="si">{</span><span class="n">original_tag</span><span class="si">}</span><span class="se">\\</span><span class="s2">&quot;</span> <span class="ow">in</span> <span class="n">path_str</span><span class="p">:</span>
+            <span class="n">out_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path_str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="si">{</span><span class="n">original_tag</span><span class="si">}</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="si">{</span><span class="n">enhanced_tag</span><span class="si">}</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Could not locate &#39;</span><span class="si">{</span><span class="n">original_tag</span><span class="si">}</span><span class="s2">&#39; in image path: </span><span class="si">{</span><span class="n">original_path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">err</span>
+        <span class="n">out_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Unknown output_mode: &#39;</span><span class="si">{</span><span class="n">output_mode</span><span class="si">}</span><span class="s2">&#39;. Expected one of: overwrite, suffix, directory&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">err</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">out_path</span><span class="p">),</span> <span class="n">enhanced</span><span class="p">):</span>
+            <span class="n">err</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;cv2 failed to write image to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">err</span>
+        <span class="c1"># Copy EXIF metadata from original to enhanced image</span>
+        <span class="n">exiftool_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">exiftool_exe</span>
+        <span class="n">copied</span> <span class="o">=</span> <span class="n">copy_exif_metadata</span><span class="p">(</span><span class="n">original_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">exiftool_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">copied</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to copy EXIF metadata from </span><span class="si">{</span><span class="n">original_path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Failed to write image to </span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">err</span>
+
+    <span class="n">log_row</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">original_path</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="nb">round</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;brightness_before&quot;</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="nb">round</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;contrast_before&quot;</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="n">clip_limit</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">methods</span><span class="p">[</span><span class="s2">&quot;white_balance&quot;</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;yes&quot;</span> <span class="k">if</span> <span class="n">methods</span><span class="p">[</span><span class="s2">&quot;clahe&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;yes&quot;</span> <span class="k">if</span> <span class="n">methods</span><span class="p">[</span><span class="s2">&quot;sharpen&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span>
+        <span class="nb">round</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;brightness_after&quot;</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="nb">round</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;contrast_after&quot;</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;pre_rgb_means&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;pre_rgb_means&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;post_rgb_means&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;post_rgb_means&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="nb">str</span><span class="p">(</span><span class="n">out_path</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">original_path</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">out_path</span><span class="p">),</span> <span class="n">log_row</span><span class="p">,</span> <span class="ow">not</span> <span class="n">copied</span><span class="p">),</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="process_images_in_parallel">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.process_images_in_parallel">[docs]</a>
+<span class="k">def</span> <span class="nf">process_images_in_parallel</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">max_workers</span><span class="p">,</span> <span class="n">progressor</span><span class="p">):</span>
+    <span class="n">log_rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">path_map</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">brightness_deltas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">contrast_deltas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">failed_exif_copies</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+        <span class="n">futures</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">enhance_single_image</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">paths</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">future</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">as_completed</span><span class="p">(</span><span class="n">futures</span><span class="p">),</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">result</span><span class="p">,</span> <span class="n">error</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">error</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">original_path_str</span><span class="p">,</span> <span class="n">out_path_str</span><span class="p">,</span> <span class="n">log_row</span><span class="p">,</span> <span class="n">exif_failed</span> <span class="o">=</span> <span class="n">result</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhanced image saved: </span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="n">out_path_str</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">path_map</span><span class="p">[</span><span class="n">original_path_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">out_path_str</span>
+            <span class="n">log_rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">log_row</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exif_failed</span><span class="p">:</span>
+                <span class="n">failed_exif_copies</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">Path</span><span class="p">(</span><span class="n">original_path_str</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">out_path_str</span><span class="p">)))</span>
+            <span class="n">b_before</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_row</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="n">c_before</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_row</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">b_after</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_row</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>
+            <span class="n">c_after</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">log_row</span><span class="p">[</span><span class="mi">8</span><span class="p">])</span>
+            <span class="n">brightness_deltas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b_after</span> <span class="o">-</span> <span class="n">b_before</span><span class="p">)</span>
+            <span class="n">contrast_deltas</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">c_after</span> <span class="o">-</span> <span class="n">c_before</span><span class="p">)</span>
+            <span class="n">progressor</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">path_map</span><span class="p">,</span> <span class="n">log_rows</span><span class="p">,</span> <span class="n">brightness_deltas</span><span class="p">,</span> <span class="n">contrast_deltas</span><span class="p">,</span> <span class="n">failed_exif_copies</span></div>
+
+
+
+<div class="viewcode-block" id="enhance_images_in_oid">
+<a class="viewcode-back" href="../../api/utils.html#utils.enhance_images.enhance_images_in_oid">[docs]</a>
+<span class="k">def</span> <span class="nf">enhance_images_in_oid</span><span class="p">(</span><span class="n">cfg</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">oid_fc_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Enhances all images referenced in an ArcGIS ObjectID feature class using configurable image processing steps.</span>
+<span class="sd">    This function loads enhancement configuration, checks disk space, retrieves image paths from the specified feature</span>
+<span class="sd">    class, and processes each image in parallel. Enhancements may include white balance, contrast adjustment, saturation</span>
+<span class="sd">    boost, and sharpening. Enhanced images are saved according to the configured output mode, and EXIF metadata is</span>
+<span class="sd">    copied from originals. The function updates the feature class with new image paths if not overwriting originals,</span>
+<span class="sd">    writes a CSV log of enhancement details, and logs summary statistics.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cfg:</span>
+<span class="sd">        oid_fc_path: Path to the ArcGIS ObjectID feature class containing image paths.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A dictionary mapping original image paths to enhanced image paths.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span>
+    <span class="n">cfg</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">tool</span><span class="o">=</span><span class="s2">&quot;enhance_images&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Image enhancement is disabled in config. Skipping...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="n">check_sufficient_disk_space</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="p">,</span> <span class="n">cfg</span><span class="p">)</span>
+    <span class="n">output_mode</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.output.mode&quot;</span><span class="p">,</span> <span class="s2">&quot;directory&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Enhancing images in OID feature class: </span><span class="si">{</span><span class="n">oid_fc_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">da</span><span class="o">.</span><span class="n">SearchCursor</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;ImagePath&quot;</span><span class="p">])</span> <span class="k">as</span> <span class="n">cursor</span><span class="p">:</span>
+        <span class="n">paths</span> <span class="o">=</span> <span class="p">[</span><span class="n">Path</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">cursor</span><span class="p">]</span>
+
+    <span class="n">log_rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">path_map</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">brightness_deltas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">contrast_deltas</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">failed_exif_copies</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">max_workers</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_enhancement.max_workers&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">max_workers</span><span class="p">:</span>
+        <span class="n">cpu_cores</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="ow">or</span> <span class="mi">8</span>
+        <span class="n">max_workers</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">cpu_cores</span> <span class="o">*</span> <span class="mf">0.75</span><span class="p">))</span>
+
+    <span class="k">with</span> <span class="n">cfg</span><span class="o">.</span><span class="n">get_progressor</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Enhancing </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">)</span><span class="si">}</span><span class="s2"> image(s)&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">progressor</span><span class="p">:</span>
+        <span class="n">path_map</span><span class="p">,</span> <span class="n">log_rows</span><span class="p">,</span> <span class="n">brightness_deltas</span><span class="p">,</span> <span class="n">contrast_deltas</span><span class="p">,</span> <span class="n">failed_exif_copies</span> <span class="o">=</span> <span class="n">process_images_in_parallel</span><span class="p">(</span>
+            <span class="n">paths</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">max_workers</span><span class="p">,</span> <span class="n">progressor</span>
+        <span class="p">)</span>
+
+    <span class="n">write_log</span><span class="p">(</span><span class="n">log_rows</span><span class="p">,</span> <span class="n">cfg</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">output_mode</span> <span class="o">!=</span> <span class="s2">&quot;overwrite&quot;</span><span class="p">:</span>
+        <span class="n">update_oid_image_paths</span><span class="p">(</span><span class="n">oid_fc_path</span><span class="p">,</span> <span class="n">path_map</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">failed_exif_copies</span><span class="p">:</span>
+        <span class="n">exiftool_path</span> <span class="o">=</span> <span class="n">cfg</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">exiftool_exe</span>
+        <span class="n">retry_successes</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retrying EXIF metadata copy for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_exif_copies</span><span class="p">)</span><span class="si">}</span><span class="s2"> image(s)...&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;🔄&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">orig</span><span class="p">,</span> <span class="n">enh</span> <span class="ow">in</span> <span class="n">failed_exif_copies</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">copy_exif_metadata</span><span class="p">(</span><span class="n">orig</span><span class="p">,</span> <span class="n">enh</span><span class="p">,</span> <span class="n">exiftool_path</span><span class="p">):</span>
+                <span class="n">retry_successes</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final EXIF copy failed: </span><span class="si">{</span><span class="n">enh</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retried EXIF copy success count: </span><span class="si">{</span><span class="n">retry_successes</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">failed_exif_copies</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;✅&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Summary</span>
+    <span class="k">if</span> <span class="n">brightness_deltas</span><span class="p">:</span>
+        <span class="n">mean_bright_delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">brightness_deltas</span><span class="p">)</span>
+        <span class="n">mean_contrast_delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">contrast_deltas</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">custom</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Avg Brightness Δ: </span><span class="si">{</span><span class="n">mean_bright_delta</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> | Avg Contrast Δ: </span><span class="si">{</span><span class="n">mean_contrast_delta</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">emoji</span><span class="o">=</span><span class="s2">&quot;📊&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">path_map</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

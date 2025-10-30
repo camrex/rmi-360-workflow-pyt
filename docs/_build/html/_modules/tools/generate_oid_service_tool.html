@@ -1,0 +1,230 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>tools.generate_oid_service_tool &mdash; RMI 360 Imaging Workflow v1.1.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=a34f1657"></script>
+      <script src="../../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            RMI 360 Imaging Workflow
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/quick-start.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user-guide/arcgis-setup.html">ArcGIS Pro Setup</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tools Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../tools/overview.html">Tools Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../api/tools.html">Tools API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/utils.html">Utilities API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/managers.html">Managers API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/validators.html">Validators API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">RMI 360 Imaging Workflow</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">tools.generate_oid_service_tool</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for tools.generate_oid_service_tool</h1><div class="highlight"><pre>
+<span></span><span class="c1"># =============================================================================</span>
+<span class="c1"># 🌐 Generate OID Service (tools/generate_oid_service_tool.py)</span>
+<span class="c1"># -----------------------------------------------------------------------------</span>
+<span class="c1"># Tool Name:          GenerateOIDService</span>
+<span class="c1"># Toolbox Context:    rmi_360_workflow.pyt</span>
+<span class="c1"># Version:            1.1.0</span>
+<span class="c1"># Author:             RMI Valuation, LLC</span>
+<span class="c1"># Created:            2025-05-08</span>
+<span class="c1"># Last Updated:       2025-05-15</span>
+<span class="c1">#</span>
+<span class="c1"># Description:</span>
+<span class="c1">#   ArcPy Tool class that publishes an Oriented Imagery Dataset (OID) as a hosted</span>
+<span class="c1">#   feature service on ArcGIS Online. Duplicates the OID with updated S3-based ImagePaths and</span>
+<span class="c1">#   invokes ArcGIS&#39;s GenerateServiceFromOrientedImageryDataset tool. Optionally creates a portal</span>
+<span class="c1">#   folder if it does not exist. Integrates with Core Utils for configuration and publishing logic.</span>
+<span class="c1">#</span>
+<span class="c1"># File Location:      /tools/generate_oid_service_tool.py</span>
+<span class="c1"># Core Utils:</span>
+<span class="c1">#   - utils/generate_oid_service.py</span>
+<span class="c1">#   - utils/manager/config_manager.py</span>
+<span class="c1">#</span>
+<span class="c1"># Documentation:</span>
+<span class="c1">#   See: docs_legacy/TOOL_GUIDES.md and docs_legacy/tools/generate_oid_service.md</span>
+<span class="c1">#   (Ensure these docs are current; update if needed.)</span>
+<span class="c1">#</span>
+<span class="c1"># Parameters:</span>
+<span class="c1">#   - Project Folder {project_folder} (Folder): Root folder for this Mosaic 360 imagery project. All imagery and logs will be organized under this folder.</span>
+<span class="c1">#   - Oriented Imagery Dataset {oid_fc} (Feature Class): Existing OID feature class to be duplicated and published.</span>
+<span class="c1">#   - Config File {config_file} (File): YAML config file containing AWS bucket, portal, and S3 path details.</span>
+<span class="c1">#</span>
+<span class="c1"># Notes:</span>
+<span class="c1">#   - Automatically updates ImagePaths to public S3 URLs.</span>
+<span class="c1">#   - Attempts to create portal folder if it does not exist.</span>
+<span class="c1">#   - Requires authenticated ArcGIS Pro session with sharing privileges.</span>
+<span class="c1">#   - Ensure config file is up-to-date and user has required portal privileges.</span>
+<span class="c1"># =============================================================================</span>
+
+<span class="kn">import</span> <span class="nn">arcpy</span>
+<span class="kn">from</span> <span class="nn">utils.generate_oid_service</span> <span class="kn">import</span> <span class="n">generate_oid_service</span>
+<span class="kn">from</span> <span class="nn">utils.manager.config_manager</span> <span class="kn">import</span> <span class="n">ConfigManager</span>
+
+
+<div class="viewcode-block" id="GenerateOIDService">
+<a class="viewcode-back" href="../../api/tools.html#tools.generate_oid_service_tool.GenerateOIDService">[docs]</a>
+<span class="k">class</span> <span class="nc">GenerateOIDService</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+<div class="viewcode-block" id="GenerateOIDService.__init__">
+<a class="viewcode-back" href="../../api/tools.html#tools.generate_oid_service_tool.GenerateOIDService.__init__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s2">&quot;10 - Generate OID Service&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Duplicates an OID with AWS paths and publishes it as a hosted Oriented Imagery service.&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">canRunInBackground</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;Individual Tools&quot;</span></div>
+
+
+<div class="viewcode-block" id="GenerateOIDService.getParameterInfo">
+<a class="viewcode-back" href="../../api/tools.html#tools.generate_oid_service_tool.GenerateOIDService.getParameterInfo">[docs]</a>
+    <span class="k">def</span> <span class="nf">getParameterInfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Project Folder</span>
+        <span class="n">project_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Project Folder&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;project_folder&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFolder&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">project_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;Root folder for this Mosaic 360 imagery project. All imagery and logs will be &quot;</span>
+                                     <span class="s2">&quot;organized under this folder.&quot;</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">project_param</span><span class="p">)</span>
+
+        <span class="c1"># Oriented Imagery Dataset (OID)</span>
+        <span class="n">oid_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Oriented Imagery Dataset&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;oid_fc&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFeatureClass&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Required&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">oid_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Path to an existing OID feature class.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">oid_param</span><span class="p">)</span>
+
+        <span class="c1"># Config file</span>
+        <span class="n">config_param</span> <span class="o">=</span> <span class="n">arcpy</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">displayName</span><span class="o">=</span><span class="s2">&quot;Config File&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;config_file&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="s2">&quot;DEFile&quot;</span><span class="p">,</span>
+            <span class="n">parameterType</span><span class="o">=</span><span class="s2">&quot;Optional&quot;</span><span class="p">,</span>
+            <span class="n">direction</span><span class="o">=</span><span class="s2">&quot;Input&quot;</span>
+        <span class="p">)</span>
+        <span class="n">config_param</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;Config.yaml file containing project-specific settings.&quot;</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config_param</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="GenerateOIDService.execute">
+<a class="viewcode-back" href="../../api/tools.html#tools.generate_oid_service_tool.GenerateOIDService.execute">[docs]</a>
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">messages</span><span class="p">):</span>
+        <span class="n">project_folder</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="n">oid_fc</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+        <span class="n">config_file</span> <span class="o">=</span> <span class="n">parameters</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">valueAsText</span>
+
+        <span class="n">cfg</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">from_file</span><span class="p">(</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">config_file</span><span class="p">,</span>  <span class="c1"># may be None</span>
+            <span class="n">project_base</span><span class="o">=</span><span class="n">project_folder</span><span class="p">,</span>
+            <span class="n">messages</span><span class="o">=</span><span class="n">messages</span>
+        <span class="p">)</span>
+
+        <span class="n">generate_oid_service</span><span class="p">(</span>
+            <span class="n">cfg</span><span class="o">=</span><span class="n">cfg</span><span class="p">,</span>
+            <span class="n">oid_fc</span><span class="o">=</span><span class="n">oid_fc</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, RMI Valuation.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
