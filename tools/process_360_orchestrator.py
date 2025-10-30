@@ -896,7 +896,10 @@ class Process360Workflow(object):
             logger.warning(f"Failed to count reel folders: {e}", indent=1)
 
         # Folder stats, elapsed, report generation
-        self._compute_and_store_folder_stats(["original", "renamed"], paths, report_data, logger)
+        try:
+            self._compute_and_store_folder_stats(["original", "renamed"], paths, report_data, logger)
+        except Exception as e:
+            logger.warning(f"Failed to compute folder stats: {e}", indent=1)
         elapsed_total = self.time_mod.time() - t_start
         report_data["metrics"]["elapsed"] = f"{elapsed_total:.1f} sec"
         total_images = report_data["metrics"].get("total_images", 0)
