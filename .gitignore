@@ -71,6 +71,9 @@ build/
 # Development Docs
 dev_docs/
 
+# Sensitive AWS Setup Documentation
+docs_legacy/AWS_SETUP.md
+
 # Sphinx Documentation Build
 docs/_build/
 docs/_static/
