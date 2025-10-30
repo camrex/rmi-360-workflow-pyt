@@ -28,6 +28,11 @@ PROJECT_FOLDER = os.getenv("TEST_PROJECT_PATH", str(TEST_DATA_DIR))
 
 @pytest.mark.integration
 def test_path_manager_resolution():
+    """
+    Integration test that verifies PathManager resolves core project paths and tool availability.
+    
+    Loads configuration for the test project, instantiates PathManager, and iterates a set of core attributes asserting each attribute is either None or a str/Path. Also asserts that exiftool and mosaic processor availability checks return a boolean. Prints each resolved attribute and any diagnostic messages collected during configuration loading.
+    """
     messages = []
 
     cfg = ConfigManager.from_file(

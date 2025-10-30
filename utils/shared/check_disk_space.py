@@ -76,26 +76,19 @@ def check_sufficient_disk_space(
     folder_size_func=None
 ) -> bool:
     """
-    Checks if sufficient disk space is available for image operations on an Oriented Imagery Dataset.
-
-    Estimates the required disk space by calculating the size of the relevant 'original' image directory
-    and applying a safety buffer. Raises an error if the available space on the drive is less than the estimated
-    requirement.
-
-    Args:
-        oid_fc: Path to the Oriented Imagery Dataset feature class.
-        cfg (ConfigManager): ConfigManager instance.
-        cursor_factory: Optional; factory for creating a SearchCursor for testing.
-        disk_usage_func: Optional; function to get disk usage for testing.
-        folder_size_func: Optional; function to calculate folder size for testing.
-
-    Raises:
-        ValueError: If no valid image path is found or if the image path does not include expected folder names.
-        FileNotFoundError: If the base image directory does not exist.
-        RuntimeError: If available disk space is insufficient.
-
+    Verify available disk space against the size of the dataset's configured "original" image folder.
+    
+    Determines the total size of the feature-class-linked original image directory, applies the configured safety buffer ratio, and compares the estimated required space to the drive's available free space. Supports dependency injection for the search cursor, disk-usage retrieval, and folder-size calculation to facilitate testing.
+    
+    Parameters:
+        oid_fc (str): Path to the Oriented Imagery Dataset feature class.
+        cfg (ConfigManager): Configuration manager providing settings and logger.
+        cursor_factory (callable, optional): Factory that yields a search cursor over the feature class; used for testing.
+        disk_usage_func (callable, optional): Function to obtain disk usage for a path (e.g., shutil.disk_usage); used for testing.
+        folder_size_func (callable, optional): Function to compute folder size; used for testing.
+    
     Returns:
-        True if sufficient disk space is available.
+        True
     """
     logger = cfg.get_logger()
 

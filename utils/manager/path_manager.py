@@ -136,13 +136,23 @@ class PathManager:
 
     @property
     def original(self):
-        """Path to the original images folder (configurable via image_output.folders.original)."""
+        """
+        Path to the project's original images folder as configured by `image_output.folders.original`.
+        
+        Returns:
+            Path: Resolved path to the original images folder under the `panos` directory.
+        """
         folder = self._get_config_value("image_output.folders.original", default="original")
         return self.panos / folder
 
     @property
     def renamed(self):
-        """Path to the renamed/final images folder (configurable via image_output.folders.renamed)."""
+        """
+        Path to the folder containing renamed (final) images.
+        
+        Returns:
+        	Path: Resolved path to the renamed images folder under the panos base directory, using configuration key `image_output.folders.renamed` or `"final"` if unset.
+        """
         folder = self._get_config_value("image_output.folders.renamed", default="final")
         return self.panos / folder
 
