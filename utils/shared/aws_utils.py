@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Retrieves AWS credentials from keyring or config for use in S3/Lambda clients
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.1
+# Version:             1.2.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-05-22
+# Last Updated:        2025-10-30
 #
 # Description:
 #   Provides a utility function to retrieve AWS credentials required by boto3 clients.

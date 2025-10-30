@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Resolves all script, config, image, log, and report paths for the RMI 360 Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-10
-# Last Updated:        2025-05-20
+# Last Updated:        2025-10-30
 #
 # Description:
 #   Centralizes and simplifies path resolution across the Python Toolbox project.
@@ -136,19 +136,23 @@ class PathManager:
 
     @property
     def original(self):
-        """Path to the original images folder (configurable via image_output.folders.original)."""
+        """
+        Path to the project's original images folder as configured by `image_output.folders.original`.
+        
+        Returns:
+            Path: Resolved path to the original images folder under the `panos` directory.
+        """
         folder = self._get_config_value("image_output.folders.original", default="original")
         return self.panos / folder
 
     @property
-    def enhanced(self):
-        """Path to the enhanced images folder (configurable via image_output.folders.enhanced)."""
-        folder = self._get_config_value("image_output.folders.enhanced", default="enhance")
-        return self.panos / folder
-
-    @property
     def renamed(self):
-        """Path to the renamed/final images folder (configurable via image_output.folders.renamed)."""
+        """
+        Path to the folder containing renamed (final) images.
+        
+        Returns:
+        	Path: Resolved path to the renamed images folder under the panos base directory, using configuration key `image_output.folders.renamed` or `"final"` if unset.
+        """
         folder = self._get_config_value("image_output.folders.renamed", default="final")
         return self.panos / folder
 

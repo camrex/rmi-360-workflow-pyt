@@ -9,7 +9,6 @@ from .copy_to_aws_validator import *
 from .correct_gps_outliers_validator import *
 from .create_oid_validator import *
 from .deploy_lambda_monitor_validator import *
-from .enhance_images_validator import *
 from .generate_oid_service_validator import *
 from .geocode_images_validator import *
 from .mosaic_processor_validator import *
@@ -30,7 +29,6 @@ __all__ = [
     "correct_gps_outliers_validator",
     "create_oid_validator",
     "deploy_lambda_monitor_validator",
-    "enhance_images_validator",
     "generate_oid_service_validator",
     "geocode_images_validator",
     "mosaic_processor_validator",

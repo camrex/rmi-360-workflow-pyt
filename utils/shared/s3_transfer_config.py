@@ -1,14 +1,27 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-s3_transfer_config.py
-=====================
-
-S3 transfer configuration optimized for file size.
-
-Provides adaptive multipart upload settings for maximum reliability
-with large files (4GB+).
-"""
+# =============================================================================
+# ☁️ S3 Transfer Configuration (utils/shared/s3_transfer_config.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Adaptive S3 transfer configuration optimized for file size and performance
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.2.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-10-28
+# Last Updated:        2025-10-30
+#
+# Description:
+#   Provides optimized S3 transfer configurations based on file size for maximum
+#   reliability and performance. Includes adaptive multipart upload settings
+#   specifically tuned for large files (4GB+) common in 360° imagery workflows.
+#
+# File Location:        /utils/shared/s3_transfer_config.py
+# Called By:            utils/copy_to_aws.py, scripts/upload_to_s3.py
+# Int. Dependencies:    None
+# Ext. Dependencies:    boto3.s3.transfer.TransferConfig
+#
+# Configuration Types:
+#   - Small files: Single-part uploads for efficiency
+#   - Large files: Optimized multipart settings for reliability
+# =============================================================================
 
 from __future__ import annotations
 

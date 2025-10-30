@@ -28,6 +28,11 @@ PROJECT_FOLDER = os.getenv("TEST_PROJECT_PATH", str(TEST_DATA_DIR))
 
 @pytest.mark.integration
 def test_path_manager_resolution():
+    """
+    Integration test that verifies PathManager resolves core project paths and tool availability.
+    
+    Loads configuration for the test project, instantiates PathManager, and iterates a set of core attributes asserting each attribute is either None or a str/Path. Also asserts that exiftool and mosaic processor availability checks return a boolean. Prints each resolved attribute and any diagnostic messages collected during configuration loading.
+    """
     messages = []
 
     cfg = ConfigManager.from_file(
@@ -43,7 +48,7 @@ def test_path_manager_resolution():
     "templates", "configs", "lambdas",
     "primary_config_path", "fallback_config_path",
     "backups", "backup_gdb", "logs", "report",
-    "panos", "original", "enhanced", "renamed",
+    "panos", "original", "renamed",
     "oid_schema_gdb", "oid_field_registry", "oid_schema_template_name",
     "geoloc500_config_path", "geocustom_config_path",
     "exiftool_exe", "mosaic_processor_exe", "mosaic_processor_grp"
@@ -59,7 +64,6 @@ def test_path_manager_resolution():
             print(f"{attr:30}: ERROR - {e}")
             raise AssertionError(f"Failed to resolve {attr}: {e}") from e
     # Optional additional checks
-    assert isinstance(pm.get_log_file_path("enhance_log"), Path)
     assert isinstance(pm.check_exiftool_available(), bool)
     assert isinstance(pm.check_mosaic_processor_available(), bool)
 

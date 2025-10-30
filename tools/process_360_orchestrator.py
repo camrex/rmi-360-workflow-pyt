@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          Process360Workflow
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.2.0
+# Version:            1.3.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
 # Last Updated:       2025-10-29
@@ -13,7 +13,7 @@
 #   Supports both Local and AWS-based execution environments. The tool determines which reel
 #   folders to process—either from local project directories or from an S3 bucket—and runs a
 #   configurable series of workflow steps including image rendering, OID creation, enrichment,
-#   geolocation, enhancement, AWS copy, and service publishing. Progress and results are tracked
+#   geolocation, AWS copy, and service publishing. Progress and results are tracked
 #   in a persistent report JSON for dashboarding and audit.
 #
 # File Location:      /tools/process_360_orchestrator.py
@@ -46,7 +46,6 @@
 #   - OID Dataset - Output {oid_fc_output} (Feature Class): Output OID (used only when creating a new dataset).
 #   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
-#   - Enable Enhance Images [EXPERIMENTAL] {enable_enhance_images} (Boolean): Enables AI-based image enhancement.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
 #   - Enable Deploy Lambda Monitor {enable_deploy_lambda_monitor} (Boolean): Deploys AWS monitoring Lambda (if enabled).
@@ -71,7 +70,6 @@ import time
 import os
 
 from utils.manager.config_manager import ConfigManager
-from utils.shared.arcpy_utils import str_to_bool
 from utils.generate_report import generate_report_from_json
 from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
@@ -177,14 +175,13 @@ class Process360Workflow(object):
         "6) Smooth GPS Noise (optional)\n"
         "7) Correct Flagged GPS Points (optional)\n"
         "8) Update Linear and Custom Attributes (linear referencing optional)\n"
-        "9) Enhance Images [EXPERIMENTAL] (optional)\n"
-        "10) Rename Images\n"
-        "11) Update EXIF Metadata\n"
-        "12) Geocode Images (optional)\n"
-        "13) Create OID Footprints\n"
-        "14) Deploy Lambda Monitor (optional)\n"
-        "15) Copy to AWS (optional)\n"
-        "16) Generate OID Service (optional)"
+        "9) Rename Images\n"
+        "10) Update EXIF Metadata\n"
+        "11) Geocode Images (optional)\n"
+        "12) Create OID Footprints\n"
+        "13) Deploy Lambda Monitor (optional)\n"
+        "14) Copy to AWS (optional)\n"
+        "15) Generate OID Service (optional)"
     )
     canRunInBackground = False
 
@@ -198,14 +195,13 @@ class Process360Workflow(object):
         (6, "smooth_gps", "Smooth GPS Noise"),
         (7, "correct_gps", "Correct Flagged GPS Points"),
         (8, "update_linear_custom", "Update Linear and Custom Attributes"),
-        (9, "enhance_images", "Enhance Images [EXPERIMENTAL]"),
-        (10, "rename_images", "Rename Images"),
-        (11, "update_metadata", "Update EXIF Metadata"),
-        (12, "geocode", "Geocode Images"),
-        (13, "build_footprints", "Build OID Footprints"),
-        (14, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
-        (15, "copy_to_aws", "Upload to AWS S3"),
-        (16, "generate_service", "Generate OID Service"),
+        (9, "rename_images", "Rename Images"),
+        (10, "update_metadata", "Update EXIF Metadata"),
+        (11, "geocode", "Geocode Images"),
+        (12, "build_footprints", "Build OID Footprints"),
+        (13, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
+        (14, "copy_to_aws", "Upload to AWS S3"),
+        (15, "generate_service", "Generate OID Service")
     ]
 
     # Sort by numeric index and extract step names in the correct order
@@ -357,18 +353,7 @@ class Process360Workflow(object):
         enable_linear_ref_param.value = True
         params.append(enable_linear_ref_param)
 
-        # 12) Enable Enhance Images [EXPERIMENTAL]
-        enable_enhance_images_param = arcpy.Parameter(
-            displayName="Enable Enhance Images [EXPERIMENTAL]",
-            name="enable_enhance_images",
-            datatype="GPBoolean",
-            parameterType="Optional",
-            direction="Input",
-        )
-        enable_enhance_images_param.value = False
-        params.append(enable_enhance_images_param)
-
-        # 13) Enable Geocode Images
+        # 12) Enable Geocode Images
         enable_geocode_param = arcpy.Parameter(
             displayName="Enable Geocode Images",
             name="enable_geocode",
@@ -379,7 +364,7 @@ class Process360Workflow(object):
         enable_geocode_param.value = True
         params.append(enable_geocode_param)
 
-        # 14) Enable Copy to AWS
+        # 13) Enable Copy to AWS
         enable_copy_to_aws_param = arcpy.Parameter(
             displayName="Enable Copy to AWS",
             name="enable_copy_to_aws",
@@ -390,7 +375,7 @@ class Process360Workflow(object):
         enable_copy_to_aws_param.value = True
         params.append(enable_copy_to_aws_param)
 
-        # 15) Enable Deploy Lambda Monitor
+        # 14) Enable Deploy Lambda Monitor
         enable_deploy_lambda_monitor_param = arcpy.Parameter(
             displayName="Enable Deploy Lambda Monitor",
             name="enable_deploy_lambda_monitor",
@@ -401,7 +386,7 @@ class Process360Workflow(object):
         enable_deploy_lambda_monitor_param.value = True
         params.append(enable_deploy_lambda_monitor_param)
 
-        # 16) Enable Generate OID Service
+        # 15) Enable Generate OID Service
         enable_generate_service_param = arcpy.Parameter(
             displayName="Enable Generate OID Service",
             name="enable_generate_service",
@@ -412,7 +397,7 @@ class Process360Workflow(object):
         enable_generate_service_param.value = True
         params.append(enable_generate_service_param)
 
-        # 17) Centerline (Polyline)
+        # 16) Centerline (Polyline)
         centerline_param = arcpy.Parameter(
             displayName="Centerline (M-enabled, used for GPS smoothing and linear referencing)",
             name="centerline_fc",
@@ -423,7 +408,7 @@ class Process360Workflow(object):
         centerline_param.filter.list = ["Polyline"]
         params.append(centerline_param)
 
-        # 18) Route ID Field
+        # 17) Route ID Field
         route_id_param = arcpy.Parameter(
             displayName="Route ID Field",
             name="route_id_field",
@@ -435,7 +420,7 @@ class Process360Workflow(object):
         route_id_param.filter.list = ["Short", "Long", "Text"]
         params.append(route_id_param)
 
-        # 19) Generate HTML Summary Report
+        # 18) Generate HTML Summary Report
         generate_report_param = arcpy.Parameter(
             displayName="Generate HTML Summary Report",
             name="generate_report",
@@ -726,9 +711,17 @@ class Process360Workflow(object):
 
     def execute(self, parameters: list, messages: Any) -> None:
         """
-        Executes the full Mosaic 360 workflow with Local/AWS reel selection.
-        - Always resolves a LOCAL working folder of reels and stores it in p["input_reels_folder"]
-        - Preserves existing step runner, metrics, and report generation.
+        Orchestrates the end-to-end Mosaic 360 processing workflow, preparing a local reels workspace and executing the configured pipeline steps.
+        
+        This method:
+        - Resolves and stages input reels into a local working folder (assigned to p["input_reels_folder"]) from either a Local project folder or an S3 bucket (AWS mode).
+        - Loads and validates configuration, builds the ordered step functions, and runs the selected steps starting from the requested start step.
+        - Maintains and updates a persistent JSON report (metrics, paths, reels summary), collects OID metrics, computes folder statistics, and records elapsed time.
+        - Optionally generates an HTML report and uploads project artifacts to S3 if configured.
+        
+        Parameters:
+            parameters (list): ArcPy tool parameter objects supplied by the calling tool UI; used to build the runtime parameter dictionary and control workflow behavior (e.g., source mode, project locations, selected reels, start step).
+            messages (Any): ArcPy messages/logging object used for user feedback and logger integration.
         """
 
         # ----------- Helpers (local) -----------
@@ -911,7 +904,10 @@ class Process360Workflow(object):
             logger.warning(f"Failed to count reel folders: {e}", indent=1)
 
         # Folder stats, elapsed, report generation
-        self._compute_and_store_folder_stats(["original", "enhanced", "renamed"], paths, report_data, logger)
+        try:
+            self._compute_and_store_folder_stats(["original", "renamed"], paths, report_data, logger)
+        except Exception as e:
+            logger.warning(f"Failed to compute folder stats: {e}", indent=1)
         elapsed_total = self.time_mod.time() - t_start
         report_data["metrics"]["elapsed"] = f"{elapsed_total:.1f} sec"
         total_images = report_data["metrics"].get("total_images", 0)

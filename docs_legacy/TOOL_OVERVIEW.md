@@ -1,10 +1,10 @@
 
 # 🧰 RMI 360 Imaging Workflow Python Toolbox – Overview
 
-The **RMI 360 Imaging Workflow Python Toolbox** is a modular, ArcGIS-integrated suite of tools designed to automate the 
+The **RMI 360 Imaging Workflow Python Toolbox** is a modular, ArcGIS-integrated suite of tools designed to automate the
 full workflow of processing 360° imagery captured with the Mosaic 51 camera.
 
-It transforms raw 360° images into a fully georeferenced Oriented Imagery Dataset (OID), enhanced with metadata, hosted 
+It transforms raw 360° images into a fully georeferenced Oriented Imagery Dataset (OID), enhanced with metadata, hosted
 on the cloud, and accompanied by a complete report.
 
 ---
@@ -14,7 +14,7 @@ on the cloud, and accompanied by a complete report.
 The toolbox allows you to:
 
 - Run the full 360° imagery workflow with a single orchestrator tool, or one step at a time
-- Enhance, rename, and tag images based on config-defined expressions
+- Rename and tag images based on config-defined expressions
 - Smooth GPS noise, correct outliers, and apply route-based attribution
 - Upload imagery to AWS S3 and generate a hosted OID web service
 - Produce a detailed report including step metrics, acquisition summaries, and reel stats
@@ -37,7 +37,6 @@ These tools represent the core pipeline steps and can be run independently:
 - `AddImagesToOIDTool`: Add images, assign GroupIndex, enrich fields
 - `SmoothGPSNoiseTool`: Detect outliers based on deviation/angle/distance
 - `UpdateLinearAndCustomTool`: Apply MP and custom attributes from config
-- `EnhanceImagesTool`: Improve contrast, clarity, and metadata of 360 images
 - `RenameAndTagImagesTool`: Rename files and apply EXIF/XMP metadata
 - `GeocodeImagesTool`: Add place name metadata based on GPS coordinates
 - `BuildOIDFootprintsTool`: Create footprint geometry for each image

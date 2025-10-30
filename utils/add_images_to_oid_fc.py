@@ -3,13 +3,13 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Adds geotagged 360° images to an ArcGIS Oriented Imagery Dataset (OID)
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-20
+# Last Updated:        2025-10-30
 #
 # Description:
-#   Scans and validates a folder of enhanced/final images, checks for reel_info
+#   Scans and validates a folder of final images, checks for reel_info
 #   collisions, and appends entries to a target Oriented Imagery Dataset using
 #   ArcPy’s Oriented Imagery tools. Includes schema validation and recursive support.
 #

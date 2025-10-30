@@ -1,19 +1,29 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-s3_upload_helpers.py
-====================
-
-Common helper functions for S3 upload scripts.
-
-Provides:
-- Configuration loading and resolution
-- AWS session management
-- File integrity checking (MD5, SHA-256)
-- S3 object existence verification
-- Prefix normalization
-- CSV log parsing
-"""
+# =============================================================================
+# ☁️ S3 Upload Helpers (utils/shared/s3_upload_helpers.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Common helper functions for S3 upload operations and file integrity validation
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.2.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-10-28
+# Last Updated:        2025-10-30
+#
+# Description:
+#   Provides common utilities for S3 upload scripts including configuration loading,
+#   AWS session management, file integrity checking (MD5, SHA-256), S3 object existence
+#   verification, prefix normalization, and CSV log parsing for resume functionality.
+#
+# File Location:        /utils/shared/s3_upload_helpers.py
+# Called By:            scripts/upload_to_s3.py, utils/copy_to_aws.py
+# Int. Dependencies:    utils/shared/aws_utils
+# Ext. Dependencies:    boto3, hashlib, pathlib, csv
+#
+# Key Features:
+#   - Configuration loading and AWS credential resolution
+#   - File integrity validation with multiple hash algorithms
+#   - S3 object existence checks for resume functionality
+#   - CSV log parsing for upload state tracking
+# =============================================================================
 
 from __future__ import annotations
 

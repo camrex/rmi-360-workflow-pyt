@@ -1,13 +1,28 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-Utility to backup project artifacts (config, logs, report, gis_data) to S3 with timestamps.
-
-This module provides functions to upload processed project artifacts to S3 for:
-- Backup and archival
-- Version history tracking
-- Reproducibility (config used, logs generated, etc.)
-"""
+# =============================================================================
+# ☁️ S3 Backup Utility (utils/shared/backup_to_s3.py)
+# -----------------------------------------------------------------------------
+# Purpose:             Backup project artifacts to S3 with timestamps for archival and reproducibility
+# Project:             RMI 360 Imaging Workflow Python Toolbox
+# Version:             1.2.0
+# Author:              RMI Valuation, LLC
+# Created:             2025-10-28
+# Last Updated:        2025-10-30
+#
+# Description:
+#   Utility for backing up processed project artifacts (config, logs, report, gis_data)
+#   to S3 with timestamped organization. Supports backup and archival, version history
+#   tracking, and workflow reproducibility by preserving configuration and logs.
+#
+# File Location:        /utils/shared/backup_to_s3.py
+# Called By:            tools/process_360_orchestrator.py, standalone scripts
+# Int. Dependencies:    utils/shared/s3_upload_helpers, utils/shared/aws_utils
+# Ext. Dependencies:    boto3, pathlib, typing
+#
+# Features:
+#   - Timestamped backup organization
+#   - Selective artifact backup (config, logs, reports, GIS data)
+#   - Version history tracking for reproducibility
+# =============================================================================
 
 from __future__ import annotations
 from pathlib import Path

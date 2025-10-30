@@ -3,10 +3,10 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Initializes, loads, and saves report data structures for the 360° workflow
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.0.0
+# Version:             1.3.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-08
-# Last Updated:        2025-05-15
+# Last Updated:        2025-10-30
 #
 # Description:
 #   Builds a structured JSON-compatible dictionary to track workflow progress, AWS info, camera metadata,
@@ -48,13 +48,29 @@ def resolve_if_expression(val: Any, cfg: ConfigManager) -> Any:
 
 def initialize_report_data(paths_dict: Dict[str, Any], cfg: ConfigManager) -> Dict[str, Any]:
     """
-    Initializes and returns a dictionary containing structured report data for a project.
-
+    Create the initial structured report data dictionary for a project.
+    
+    Builds a report data dictionary containing project metadata, workflow steps and metrics placeholders,
+    filesystem paths, resolved AWS settings, camera configuration (resolving any config expressions),
+    an empty reels list, and an upload progress summary.
+    
     Args:
-        paths_dict: Dictionary containing project folder paths and input locations.
-        cfg: Configuration manager with project configuration and metadata.
+        paths_dict (Dict[str, Any]): Input path values used to populate report paths (must include
+            "oid_fc" and "input_reels_folder").
+        cfg (ConfigManager): Configuration manager providing project metadata, path objects (cfg.paths),
+            and accessors for camera and AWS settings.
+    
     Returns:
-        A dictionary representing the initialized report data structure.
+        Dict[str, Any]: Report data with the following top-level keys:
+            - project: project metadata from configuration
+            - steps: list placeholder for workflow step records
+            - metrics: dictionary placeholder for collected metrics
+            - paths: dictionary with keys "oid_fc", "oid_gdb", "reels_input", "original_images",
+              and "renamed_images"
+            - aws: resolved S3 "bucket" and "folder" values
+            - camera: resolved camera configuration values
+            - reels: empty list to be populated with reel records
+            - upload: dictionary summarizing upload status and progress fields
     """
     paths = cfg.paths
     report_data = {
@@ -66,7 +82,6 @@ def initialize_report_data(paths_dict: Dict[str, Any], cfg: ConfigManager) -> Di
             "oid_gdb": None,
             "reels_input": paths_dict["input_reels_folder"],
             "original_images": str(paths.original),
-            "enhanced_images": str(paths.enhanced),
             "renamed_images": str(paths.renamed)
         },
         "aws": {

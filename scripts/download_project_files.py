@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Download config and/or gis_data files from S3 to local project directory.
 

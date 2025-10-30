@@ -3,13 +3,13 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          CopyToAwsTool
 # Toolbox Context:    rmi_360_workflow.pyt
-# Version:            1.1.0
+# Version:            1.3.0
 # Author:             RMI Valuation, LLC
 # Created:            2025-05-08
-# Last Updated:       2025-05-15
+# Last Updated:       2025-10-30
 #
 # Description:
-#   ArcPy Tool class for uploading enhanced or renamed images to AWS S3 using TransferManager.
+#   ArcPy Tool class for uploading renamed images to AWS S3 using TransferManager.
 #   Optionally deploys a Lambda-based monitor to track upload progress via CloudWatch Events.
 #   Reads from a config YAML and supports skipping existing uploads, robust logging, and progress tracking.
 #   Integrates with the RMI 360 workflow CORE utils for configuration, error handling, and AWS interaction.
