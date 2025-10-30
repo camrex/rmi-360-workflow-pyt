@@ -1,5 +1,170 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+upload_raw_reels.py
+===================
+
+Upload RAW Mosaic reels to S3 with **crash-safe resume**, **reel-level progress**,
+and a **live status (JSON) heartbeat**.
+
+----------------------------------------------------------------------
+OVERVIEW
+----------------------------------------------------------------------
+This tool recursively uploads RAW reel assets (e.g., .mp4, .json, .csv, .gpx)
+from a local folder to an S3 bucket/prefix specified in a small YAML config.
+It is designed to be **resumable** even after crashes or partial runs.
+
+Resume works via:
+  1) **S3 HEAD**: skip files that are already present in S3
+     - For objects < multipart_threshold (default 64 MB): compare local MD5 to S3 ETag
+     - For larger/multipart objects: use **size equality** (fast & reliable in practice)
+  2) **CSV log**: still honored; if a file was logged as "uploaded", it’s skipped
+
+The script also:
+  • Groups files by **reel** (first path segment after your S3 prefix)
+  • Writes a **live status JSON** you can tail or ingest elsewhere
+  • Emits clear **reel start/complete** banners and per-reel tallies
+  • Supports **--force** to re-upload regardless of S3 status
+  • Handles **Ctrl+C/SIGTERM** gracefully, flushing a final status snapshot
+
+----------------------------------------------------------------------
+REQUIREMENTS
+----------------------------------------------------------------------
+- Python 3.9+
+- Third party:
+  - boto3      (pip install boto3)
+  - PyYAML     (pip install pyyaml)
+  - keyring    (optional; only if auth_mode=keyring)
+
+----------------------------------------------------------------------
+CONFIG YAML (MINIMAL)
+----------------------------------------------------------------------
+Example: config.yaml
+
+aws:
+  region: us-east-1
+  s3_bucket_raw: my-raw-bucket
+  # Optional:
+  # auth_mode: config      # default; use standard AWS chain (env vars, profile, etc.)
+  # auth_mode: instance    # use EC2/ECS role
+  # auth_mode: keyring     # pull AK/SK from system keyring service "rmi_s3"
+  # max_workers: "cpu*8"   # default is cpu*8 (or int)
+
+# Optional:
+# project_base: "E:/rmi/projects/25320"  # where logs/ will be created; defaults to folder of this config
+
+----------------------------------------------------------------------
+USAGE EXAMPLES
+----------------------------------------------------------------------
+# Basic upload:
+python upload_raw_reels.py \
+  --config E:/rmi/projects/25320/config.yaml \
+  --folder E:/reels/ \
+  --prefix RMI25320/reels/
+
+# Dry-run (show what would be uploaded and exit):
+python upload_raw_reels.py \
+  --config E:/rmi/projects/25320/config.yaml \
+  --folder E:/reels/ \
+  --prefix RMI25320/reels/ \
+  --dry-run
+
+# Live status heartbeat (JSON) written every ~2s (configurable):
+python upload_raw_reels.py \
+  --config E:/rmi/projects/25320/config.yaml \
+  --folder E:/reels/ \
+  --prefix RMI25320/reels/ \
+  --status-json E:/reels/upload_status.json \
+  --status-interval 1.0
+
+# Force re-upload even if files appear to exist in S3:
+python upload_raw_reels.py \
+  --config E:/rmi/projects/25320/config.yaml \
+  --folder E:/reels/ \
+  --prefix RMI25320/reels/ \
+  --force
+
+# Use keyring (if config aws.auth_mode: keyring):
+#   keyring.set_password('rmi_s3', 'AWS_ACCESS_KEY_ID', '<AKIA...>')
+#   keyring.set_password('rmi_s3', 'AWS_SECRET_ACCESS_KEY', '<SECRET>')
+python upload_raw_reels.py \
+  --config E:/rmi/projects/25320/config.yaml \
+  --folder E:/reels/ \
+  --prefix RMI25320/reels/
+
+----------------------------------------------------------------------
+REEL DETECTION
+----------------------------------------------------------------------
+The "reel" name is derived from the **first path segment after your S3 prefix**.
+Example:
+  prefix = "RMI25320/reels/"
+  key    = "RMI25320/reels/UTICA202.765_20250414T133800Z/FR000016.mp4"
+  reel   = "UTICA202.765_20250414T133800Z"
+
+----------------------------------------------------------------------
+STATUS JSON (HEARTBEAT) — SCHEMA (example; truncated)
+----------------------------------------------------------------------
+{
+  "started_at": 1730182741.12,
+  "phase": "uploading" | "reel_start" | "reel_complete" | "init",
+  "current_reel": "UTICA202.765_20250414T133800Z",
+  "current_file": "E:/reels/.../FR000016.mp4",
+  "current_file_bytes": 83886080,
+  "current_file_size": 262144000,
+  "totals": { "files": 420, "uploaded": 119, "skipped": 301, "failed": 0, "bytes_uploaded": 127842091008 },
+  "reels": {
+    "UTICA202.765_20250414T133800Z": {
+      "planned_files": 42,
+      "uploaded": 41,
+      "skipped": 1,
+      "failed": 0,
+      "bytes_uploaded": 127842091008,
+      "started_at": 1730182741.12,
+      "completed_at": 1730183922.77
+    }
+  },
+  "last_update": 1730183799.45
+}
+
+----------------------------------------------------------------------
+LOGGING / OUTPUT ARTIFACTS
+----------------------------------------------------------------------
+- CSV log:    <project_base>/logs/upload_raw_log.csv
+- Status JSON (--status-json): path you specify (atomic writes)
+- Console:    Reel banners, totals, upload speed
+
+----------------------------------------------------------------------
+BEHAVIOR NOTES
+----------------------------------------------------------------------
+- Resuming:
+  * On each file: S3 HEAD is authoritative (existence & equality). Then the CSV log is consulted.
+  * For **small objects (<64 MB)**, local MD5 must equal S3 ETag to skip.
+  * For **large/multipart objects**, ETag ≠ MD5; we skip on **size match**.
+- Integrity options:
+  * If you need **cryptographic verification** for large files, extend this script to:
+      - write/upload SHA-256 sidecar files; or
+      - use S3 checksum APIs with multipart (more involved).
+- Encryption:
+  * Server-Side Encryption is set to "AES256" by default for all uploads.
+- Interrupts:
+  * Ctrl+C or SIGTERM triggers a final status flush and exits with code 130.
+
+----------------------------------------------------------------------
+EXIT CODES
+----------------------------------------------------------------------
+0  = success
+2  = configuration or input path error
+130= interrupted (SIGINT/SIGTERM)
+
+----------------------------------------------------------------------
+TROUBLESHOOTING
+----------------------------------------------------------------------
+- "botocore.exceptions.NoCredentialsError": ensure your AWS creds are available
+  (env vars, ~/.aws/credentials, instance role, or keyring with auth_mode=keyring).
+- AccessDenied on HEAD: verify bucket, prefix, and IAM permissions.
+- MD5 mismatch on small files: file changed locally—re-run, or use --force to overwrite.
+
+"""
 
 from __future__ import annotations
 
@@ -205,6 +370,15 @@ def now_ts() -> float:
 class StatusTracker:
     """
     Thread-safe, throttled JSON status writer with per-reel and global stats.
+
+    Methods:
+      - set_totals(n)
+      - start_reel(name, planned_files)
+      - complete_reel(name)
+      - start_file(reel, fpath, size)
+      - file_progress_cb(reel) -> callback(bytes_amount)
+      - file_done(reel, outcome, size)
+      - note_skip(reel)
     """
 
     def __init__(self, status_path: Optional[Path], interval_sec: float = 2.0):
@@ -304,7 +478,7 @@ class StatusTracker:
             })
             r["skipped"] += 1
             self.data["totals"]["skipped"] += 1
-            self._flush_if_due()
+            self._flush_if_due())
 
     def _flush_if_due(self):
         if not self.status_path:
@@ -342,15 +516,18 @@ def reel_from_key(s3_key: str, prefix: str) -> str:
 # -----------------------------
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Upload RAW Mosaic reels to s3://<aws.s3_bucket_raw>/<prefix>")
-    p.add_argument("--config", required=True, help="Path to light config.yaml (only 'aws' block is required).")
-    p.add_argument("--folder", required=True, help="Local folder containing reels or a single reel folder.")
+    p = argparse.ArgumentParser(
+        description="Upload RAW Mosaic reels to S3 with resume, reel-level status, and live heartbeat."
+    )
+    p.add_argument("--config", required=True, help="Path to config.yaml (must contain aws block).")
+    p.add_argument("--folder", required=True, help="Local folder containing reel subfolders and files.")
     p.add_argument("--prefix", required=True, help="S3 prefix under aws.s3_bucket_raw (e.g., RMI25320/reels/).")
-    p.add_argument("--project-base", dest="project_base", help="Base folder for logs; defaults to config folder.")
+    p.add_argument("--project-base", dest="project_base",
+                   help="Base folder for logs; defaults to the folder containing the config file.")
     p.add_argument("--dry-run", action="store_true", help="List would-be uploads and exit.")
     p.add_argument("--force", action="store_true", help="Force re-upload even if S3 already has the object.")
     p.add_argument("--status-json", help="Path to write live status JSON (heartbeat).")
-    p.add_argument("--status-interval", type=float, default=2.0, help="Seconds between status writes.")
+    p.add_argument("--status-interval", type=float, default=2.0, help="Seconds between status writes (default 2.0).")
     args = p.parse_args()
 
     cfg_path = Path(args.config).resolve()
@@ -396,7 +573,7 @@ def main() -> int:
         rname = reel_from_key(key, prefix_trim)
         reels.setdefault(rname, []).append((fpath, key))
 
-    # Dry run before doing any IO setup
+    # Dry run before doing any AWS calls
     if args.dry_run:
         shown = 0
         for rname in sorted(reels.keys()):
@@ -432,7 +609,7 @@ def main() -> int:
     tracker = StatusTracker(status_path, args.status_interval)
     tracker.set_totals(len(tasks))
 
-    # Ctrl+C / SIGTERM
+    # Ctrl+C / SIGTERM graceful exit
     def _graceful_exit(signum, frame):
         try:
             tracker._flush(force=True)
@@ -443,7 +620,7 @@ def main() -> int:
     signal.signal(signal.SIGINT, _graceful_exit)
     signal.signal(signal.SIGTERM, _graceful_exit)
 
-    # Resume via prior log (still helpful, but S3 HEAD is authoritative)
+    # Resume via prior log (secondary to S3 HEAD)
     already = parse_uploaded_keys_from_log(log_csv)
     new_file = not log_csv.exists()
     fcsv = open(log_csv, "a", newline="", encoding="utf-8")
