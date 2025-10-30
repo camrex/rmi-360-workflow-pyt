@@ -1,7 +1,7 @@
 
 # 🧰 RMI 360 Imaging Workflow Python Toolbox
 
-![Version](https://img.shields.io/badge/version-v1.1.1-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green)
+![Version](https://img.shields.io/badge/version-v1.1.1-blue) ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![ArcGIS Pro](https://img.shields.io/badge/ArcGIS_Pro-3.4|3.5-green) [![Documentation](https://img.shields.io/badge/docs-sphinx-blue)](https://camrex.github.io/rmi-360-workflow-pyt/)
 
 A modular workflow built with ArcGIS Python Toolbox for processing and deploying 360° corridor imagery.
 
