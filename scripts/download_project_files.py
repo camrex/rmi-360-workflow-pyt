@@ -1,35 +1,3 @@
-# =============================================================================
-# ☁️ S3 Project Download Script (scripts/download_project_files.py)
-# -----------------------------------------------------------------------------
-# Purpose:             Download configuration and GIS data files from S3 to local project directory
-# Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.2.0
-# Author:              RMI Valuation, LLC
-# Created:             2025-10-28
-# Last Updated:        2025-10-30
-#
-# Description:
-#   Standalone script for downloading project files (config, gis_data) from S3 to set up
-#   new projects on EC2 instances or sync reference data. Excludes reels by default as
-#   the orchestrator handles selective reel downloads based on processing requirements.
-#
-# File Location:        /scripts/download_project_files.py
-# Called By:            Command line, EC2 setup scripts
-# Int. Dependencies:    utils/s3_utils, utils/shared/aws_utils
-# Ext. Dependencies:    boto3, argparse, pathlib
-#
-# Use Cases:
-#   - Setting up new projects on EC2 from S3 storage
-#   - Updating config files from S3 backup
-#   - Syncing GIS reference data for processing
-#   - Standalone testing with --include-reels flag
-#
-# Note:
-#   Consider renaming to `s3_download_project_files.py` for consistency with other S3 utilities
-# =============================================================================
-
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Download config and/or gis_data files from S3 to local project directory.
 
