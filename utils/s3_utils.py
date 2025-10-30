@@ -2,7 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 import concurrent.futures as cf
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Dict
 import boto3
 import os
 
@@ -12,6 +12,7 @@ __all__ = [
     "list_reels",
     "stage_reels",          # NEW (preferred)
     "stage_reels_prefix",   # legacy shim -> calls stage_reels
+    "stage_project_files",  # NEW: stage config/gis_data files
 ]
 
 def normalize_prefix(prefix: str) -> str:
@@ -155,3 +156,98 @@ def stage_reels_prefix(bucket: str, prefix: str, local_parent: Path, max_workers
         )
     # Fallback: stage all under prefix (if non-standard); put under local_parent
     return stage_reels(bucket=bucket, project_key=parts[0], reels=None, local_project_dir=Path(local_parent), max_workers=max_workers)
+
+# -----------------------
+# NEW: stage_project_files
+# -----------------------
+def stage_project_files(
+    bucket: str,
+    project_key: str,
+    folder_types: Optional[List[str]],
+    local_project_dir: Path,
+    max_workers: int = 16,
+    skip_if_exists: bool = True,
+) -> Dict[str, Path]:
+    """
+    Stage config and/or gis_data files from S3 to local project directory.
+
+    Downloads files from s3://{bucket}/{project_key}/{folder_type}/ to:
+        {local_project_dir}/{folder_type}/(files)
+
+    Args:
+        bucket: S3 bucket name
+        project_key: Project identifier (e.g., 'RMI25320')
+        folder_types: List of folder types to stage (e.g., ['config', 'gis_data']).
+                     If None or empty, stages both config and gis_data.
+        local_project_dir: Local base directory for the project
+        max_workers: Number of concurrent download threads
+        skip_if_exists: Skip files that already exist locally with matching size
+
+    Returns:
+        Dict mapping folder_type to local Path where files were staged
+
+    Example:
+        paths = stage_project_files(
+            bucket='rmi-360-raw',
+            project_key='RMI25320',
+            folder_types=['config', 'gis_data'],
+            local_project_dir=Path('D:/Process360_Data/projects/RMI25320')
+        )
+        # Returns: {'config': Path('D:/Process360_Data/projects/RMI25320/config'),
+        #           'gis_data': Path('D:/Process360_Data/projects/RMI25320/gis_data')}
+    """
+    s3 = _client()
+    local_project_dir = Path(local_project_dir)
+
+    # Default to both config and gis_data if not specified
+    if not folder_types:
+        folder_types = ['config', 'gis_data']
+
+    result_paths: Dict[str, Path] = {}
+
+    for folder_type in folder_types:
+        local_folder = local_project_dir / folder_type
+        local_folder.mkdir(parents=True, exist_ok=True)
+
+        # Build S3 prefix for this folder type
+        prefix = normalize_prefix(f"{project_key}/{folder_type}")
+
+        # Collect files to download
+        to_get: List[Tuple[str, Path, int, str]] = []  # (key, dst, size, etag)
+        paginator = s3.get_paginator("list_objects_v2")
+
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []) or []:
+                key = obj["Key"]
+                if key.endswith("/"):
+                    continue
+
+                # Get relative path after project_key
+                rel_after_project = key[len(normalize_prefix(project_key)):]  # e.g., 'config/file.yaml'
+                dst = local_project_dir / rel_after_project
+                to_get.append((key, dst, int(obj.get("Size", 0)), (obj.get("ETag") or "").strip('"')))
+
+        # Filter based on skip_if_exists
+        filtered: List[Tuple[str, Path, int, str]] = []
+        for key, dst, size, etag in to_get:
+            if not skip_if_exists or not dst.exists():
+                filtered.append((key, dst, size, etag))
+            else:
+                try:
+                    if dst.stat().st_size != size:
+                        filtered.append((key, dst, size, etag))
+                except Exception:
+                    filtered.append((key, dst, size, etag))
+
+        # Download files
+        def _dl(k: str, p: Path):
+            p.parent.mkdir(parents=True, exist_ok=True)
+            s3.download_file(bucket, k, str(p))
+
+        if filtered:
+            with cf.ThreadPoolExecutor(max_workers=max_workers) as ex:
+                list(ex.map(lambda tup: _dl(tup[0], tup[1]), filtered))
+
+        result_paths[folder_type] = local_folder
+
+    return result_paths

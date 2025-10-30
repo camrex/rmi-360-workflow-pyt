@@ -762,7 +762,7 @@ class Process360Workflow(object):
         logger = cfg.get_logger(messages)
         paths = cfg.paths
 
-        # --- Runtime roots & scratch ---
+        # --- Runtime roots & project directory ---
         local_root = cfg.get("runtime.local_root")
         if not local_root:
             raise ValueError(
@@ -770,14 +770,16 @@ class Process360Workflow(object):
                 "Specify it in config.yaml or set the RMI_LOCAL_ROOT environment variable."
             )
 
-        scratch_dir = Path(local_root) / "scratch" / cfg.get("project.slug", "project")
-        scratch_dir.mkdir(parents=True, exist_ok=True)
+        # New structure: D:/Process360_Data/projects/{project_key}/
+        project_key_value = cfg.get("project.slug", "project")
+        project_dir = Path(local_root) / "projects" / project_key_value
+        project_dir.mkdir(parents=True, exist_ok=True)
 
-        # Resolve staging location and reels root under scratch
+        # Resolve staging location and reels root under project directory
         staging_override = (
             Path(pmap["staging_folder"].valueAsText) if pmap.get("staging_folder") and pmap["staging_folder"].valueAsText else None
         )
-        work_project_dir = staging_override if staging_override else scratch_dir  # .../scratch/<slug>
+        work_project_dir = staging_override if staging_override else project_dir  # .../projects/<slug>
         reels_root = work_project_dir / "reels"
         reels_root.mkdir(parents=True, exist_ok=True)
 
@@ -829,7 +831,7 @@ class Process360Workflow(object):
                 bucket=raw_s3_bucket,
                 project_key=project_key.strip().strip("/"),
                 reels=selected_reels or None,  # None => all reels
-                local_project_dir=work_project_dir,  # ensures scratch/<slug>/reels/<reel>/...
+                local_project_dir=work_project_dir,  # ensures projects/<slug>/reels/<reel>/...
                 max_workers=16,
                 skip_if_exists=True,  # don't re-download existing files
             )
@@ -932,6 +934,20 @@ class Process360Workflow(object):
                 logger.warning(f"Report generation failed: {e}", indent=1)
         else:
             logger.custom("Skipping report generation (disabled by user)", indent=1, emoji="⏭️")
+
+        # --- Upload artifacts to S3 (optional) ---
+        upload_artifacts = cfg.get("orchestrator.upload_artifacts_to_s3", False)
+        if upload_artifacts:
+            try:
+                from utils.shared.backup_to_s3 import upload_project_artifacts
+                artifact_types = cfg.get("orchestrator.artifact_types", ['config', 'logs', 'report'])
+                timestamp = self.time_mod.strftime("%Y%m%d_%H%M")
+                logger.custom("Uploading project artifacts to S3 for backup...", indent=1, emoji="📤")
+                results = upload_project_artifacts(cfg, artifact_types=artifact_types, timestamp=timestamp, logger=logger)
+                if results:
+                    logger.custom(f"Artifacts uploaded: {', '.join(results.keys())}", indent=1, emoji="✅")
+            except Exception as e:
+                logger.warning(f"Failed to upload artifacts to S3: {e}", indent=1)
 
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🎉")
         logger.custom("| --- Mosaic 360 Workflow Complete --- |", indent=0, emoji="🎉")

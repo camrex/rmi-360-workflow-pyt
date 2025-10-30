@@ -9,8 +9,28 @@ schema_version: 1.2.0
 debug_messages: false
 
 # NEW RUNTIME CONFIG
+#
+# local_root defines the base directory for project data on the EC2 instance.
+# All project files are stored in: {local_root}/projects/{project_key}/
+#
+# Expected structure on EC2:
+#   D:/Process360_Data/projects/{project_key}/
+#     ├── reels/          # Raw 360 video reels
+#     ├── config/         # Project-specific config files
+#     ├── gis_data/       # GIS reference data
+#     ├── backups/        # OID backup snapshots
+#     ├── logs/           # Processing logs
+#     ├── panos/          # Extracted panoramic images
+#     └── report/         # HTML reports and metrics
+#
+# Corresponding S3 structure in rmi-360-raw:
+#   s3://rmi-360-raw/{project_key}/
+#     ├── reels/          # Raw video uploads
+#     ├── config/         # Configuration files
+#     └── gis_data/       # GIS reference data
+#
 runtime:
-  local_root: "<PATH TO AWS EC2 STORAGE>"   # scratch/out on EC2 (ignored on desktop)
+  local_root: "D:/Process360_Data"   # Base path on EC2 (ignored on desktop)
 
 # ------------------------------------------------------------------------------
 # 🪵 LOGGING & FILE PATHS
@@ -827,6 +847,32 @@ orchestrator:
   # Backups are named like: OID_before_{step}_{timestamp}
   backup_folder: "backups"
   oid_backup_fgdb: "oid_snapshots.gdb"
+
+  # ----------------------------------------------------------------
+  # ARTIFACT BACKUP TO S3 (NEW)
+  # ----------------------------------------------------------------
+  # After workflow completion, optionally upload project artifacts to S3 for:
+  # - Backup and version control
+  # - Reproducibility (config used, logs generated, etc.)
+  # - Archival and compliance
+  #
+  # Artifacts are uploaded with timestamps to:
+  #   s3://{aws.s3_bucket_raw}/{project.slug}/{artifact_type}/{YYYYMMDD_HHMM}/
+  #
+  # Example: s3://rmi-360-raw/RMI25320/logs/20251030_1430/process_log.txt
+  # ----------------------------------------------------------------
+  upload_artifacts_to_s3: false  # Set to true to enable automatic upload after processing
+
+  # Artifact types to upload (choose from: config, logs, report, gis_data)
+  # - config: The config.yaml file used for this run
+  # - logs: All log files (process_log.txt, exiftool logs, etc.)
+  # - report: HTML report, JSON data, and associated assets
+  # - gis_data: Any GIS reference data in the project gis_data/ folder
+  artifact_types:
+    - config
+    - logs
+    - report
+    # - gis_data  # Uncomment if you want to backup GIS data as well
 
 # ----------------------------------------------------------------
 # DISK SPACE CONFIG
