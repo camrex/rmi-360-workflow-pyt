@@ -812,6 +812,23 @@ class Process360Workflow(object):
         reels_root = work_project_dir / "reels"
         reels_root.mkdir(parents=True, exist_ok=True)
 
+        # Clear staging folder to ensure only selected reels are processed
+        # This prevents old reels from previous runs from being processed when user selects different reels
+        logger.info("Clearing staging folder to ensure fresh reel selection...", indent=1)
+        import shutil
+        for item in reels_root.iterdir():
+            try:
+                if item.is_dir():
+                    logger.info(f"Removing old reel folder: {item.name}", indent=2)
+                    shutil.rmtree(item)
+                elif item.is_file():
+                    logger.info(f"Removing file: {item.name}", indent=2)
+                    item.unlink()
+            except Exception as e:
+                logger.error(f"Failed to clear staging folder - cannot remove {item.name}: {e}", indent=2)
+                logger.error("Aborting workflow to prevent processing unintended reels.", indent=1)
+                return
+
         # ----------- Resolve reels locally based on Source Mode -----------
         source_mode = (pmap.get("source_mode").valueAsText if pmap.get("source_mode") else "Local") or "Local"
         selected_reels = _parse_multi(pmap.get("reels_to_process"))
