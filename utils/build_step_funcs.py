@@ -93,7 +93,7 @@ def build_step_funcs(p, cfg):
     """
     step_specs = [
         StepSpec("run_mosaic_processor", "Run Mosaic Processor",
-            lambda params, config: lambda **kwargs: run_mosaic_processor(input_dir=p["input_reels_folder"], selected_reels=p.get("selected_reels"), cfg=cfg), None),
+            lambda params, config: lambda **kwargs: run_mosaic_processor(input_dir=p["input_reels_folder"], cfg=cfg), None),
         StepSpec("create_oid", "Create Oriented Imagery Dataset",
             lambda params, config: lambda **kwargs: create_oriented_imagery_dataset(output_fc_path=p["oid_fc"], cfg=cfg), None),
         StepSpec("add_images", "Add Images to OID",

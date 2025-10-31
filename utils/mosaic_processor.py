@@ -304,7 +304,6 @@ def run_mosaic_processor(
     input_dir: str,
     start_frame: Optional[int] = None,
     end_frame: Optional[int] = None,
-    selected_reels: Optional[list] = None,
 ) -> None:
     """
     Runs the Mosaic Processor workflow for a project in three sequential stages.
@@ -319,7 +318,6 @@ def run_mosaic_processor(
         input_dir: Directory containing input image frames.
         start_frame: Optional starting frame number for processing.
         end_frame: Optional ending frame number for processing.
-        selected_reels: Optional list of reel folder names to process. If None, all reels are processed.
     """
     logger = cfg.get_logger()
     cfg.validate(tool="mosaic_processor")
@@ -355,18 +353,9 @@ def run_mosaic_processor(
 
             # === Step 1: Render + Reel Fix ===
             logger.info("=== Render + Reel Fix Started ===", indent=1)
-            all_reel_folders = [d for d in os.listdir(input_dir) if (Path(input_dir) / d).is_dir()]
-            
-            # Filter to selected reels if specified
-            if selected_reels:
-                reel_folders = [d for d in all_reel_folders if d in selected_reels]
-                logger.info(f"Found {len(all_reel_folders)} reel(s) in {input_dir}, processing {len(reel_folders)} selected reel(s)", indent=2)
-                if len(reel_folders) < len(selected_reels):
-                    missing_reels = set(selected_reels) - set(reel_folders)
-                    logger.warning(f"Selected reels not found in folder: {', '.join(missing_reels)}", indent=3)
-            else:
-                reel_folders = all_reel_folders
-                logger.info(f"Found {len(reel_folders)} reel(s) in {input_dir}, processing all", indent=2)
+            reel_folders = [d for d in os.listdir(input_dir) if (Path(input_dir) / d).is_dir()]
+            number_of_reels = len(reel_folders)
+            logger.info(f"Found {number_of_reels} reel(s) in {input_dir}", indent=2)
 
             for folder in reel_folders:
                 logger.info(f"🎞️ {folder}", indent=3)
