@@ -262,12 +262,10 @@ class MosaicProcessorMonitor:
                 current_progress = status["totals"]["progress_percent"]
                 last_progress = self._last_status.get("totals", {}).get("progress_percent", -1)
 
-                # Report progress at meaningful intervals
-                progress_thresholds = [5, 10, 25, 50, 75, 90, 95, 100]  # More frequent reporting
+                # Report progress at 5% intervals and completion
                 should_report = (
-                    abs(current_progress - last_progress) >= 5.0 or  # Every 5%
-                    current_progress == 100.0 or
-                    any(last_progress < threshold <= current_progress for threshold in progress_thresholds)
+                    abs(current_progress - last_progress) >= 5.0 or
+                    current_progress == 100.0
                 )
 
                 if should_report:
