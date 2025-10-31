@@ -68,12 +68,22 @@ def launch_progress_monitor_window(status_file_path, logger):
             logger.warning(f"Monitor script not found: {monitor_script}", indent=4)
             return None
 
-        # Get Python executable (try to use same environment as current process)
+        # Get Python executable - avoid sys.executable which may point to ArcGIS Pro
         python_exe = "python"  # Default fallback
         try:
-            python_exe = sys.executable
-        except AttributeError:
-            logger.debug("sys.executable unavailable, using 'python'", indent=4)
+            import sys
+            # For conda environments, find the actual python.exe
+            if sys.prefix and Path(sys.prefix).exists():
+                conda_python = Path(sys.prefix) / "python.exe"
+                if conda_python.exists():
+                    python_exe = str(conda_python)
+                    logger.debug(f"Using conda Python: {python_exe}", indent=4)
+                else:
+                    logger.debug(f"Conda python.exe not found at {conda_python}, using fallback", indent=4)
+            else:
+                logger.debug("sys.prefix unavailable, using fallback", indent=4)
+        except Exception as e:
+            logger.debug(f"Could not determine Python executable, using fallback: {e}", indent=4)
 
         # Build command to run monitoring script in new window (Windows only)
         if platform.system() != "Windows":
