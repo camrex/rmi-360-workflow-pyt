@@ -37,7 +37,6 @@ from utils.calculate_oid_attributes import enrich_oid_attributes
 from utils.smooth_gps_noise import smooth_gps_noise
 from utils.correct_gps_outliers import correct_gps_outliers
 from utils.filter_distance_spacing import filter_distance_spacing
-from utils.filter_distance_spacing import filter_distance_spacing
 from utils.update_linear_and_custom import update_linear_and_custom
 from utils.rename_images import rename_images
 from utils.apply_exif_metadata import update_metadata_from_config
@@ -55,10 +54,10 @@ def skip_if_copy_to_aws_disabled(params):
     # New logic: skip if 'enable_copy_to_aws' is not True
     """
     Determine whether the "copy to AWS" pipeline step should be skipped based on user settings.
-    
+
     Parameters:
         params (dict): Mapping of runtime parameters; expects an 'enable_copy_to_aws' boolean flag.
-    
+
     Returns:
         str or None: A skip reason string when 'enable_copy_to_aws' is not True, `None` when the step should run.
     """
@@ -82,13 +81,13 @@ def skip_if_generate_service_disabled(params):
 def build_step_funcs(p, cfg):
     """
     Builds a dictionary of callable step descriptors for an oriented imagery processing workflow.
-    
+
     Each step descriptor contains a human-readable label, a callable function with parameters bound from the input arguments, and optionally a skip function for conditional execution.
-    
+
     Parameters:
         p (dict): Parameters dictionary containing OID configuration values
         cfg: Configuration object for the pipeline
-    
+
     Returns:
         dict: A dictionary mapping step keys to descriptors; each descriptor contains 'label' (str), 'func' (callable), and optionally 'skip' (callable)
     """
@@ -138,10 +137,10 @@ def build_step_funcs(p, cfg):
 def get_step_order(step_funcs: dict) -> list:
     """
     Return the step keys in the order they appear in the provided mapping.
-    
+
     Parameters:
         step_funcs (dict): Mapping from step key to step descriptor; insertion order determines execution order.
-    
+
     Returns:
         list: A list of step keys preserving the mapping's insertion order.
     """
