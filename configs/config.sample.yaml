@@ -5,7 +5,7 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.3.0
+schema_version: 1.3.1
 debug_messages: false
 
 # NEW RUNTIME CONFIG
