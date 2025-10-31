@@ -4,10 +4,10 @@
 # Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360
 #                      Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.3.0
+# Version:             1.3.1
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
-# Last Updated:        2025-10-30
+# Last Updated:        2025-10-31
 #
 # Description:
 #   Centralized configuration manager for the toolbox. Wraps access to key config
@@ -54,6 +54,7 @@ from utils.validators import (
     calculate_oid_attributes_validator,
     smooth_gps_noise_validator,
     correct_gps_outliers_validator,
+    filter_distance_spacing_validator,
     update_linear_and_custom_validator,
     rename_images_validator,
     apply_exif_metadata_validator,
@@ -64,7 +65,7 @@ from utils.validators import (
     generate_oid_service_validator
 )
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.3.0"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.3.1"}
 
 
 class ConfigManager:
@@ -119,15 +120,15 @@ class ConfigManager:
                   messages: Optional[list] = None) -> "ConfigManager":
         """
                   Load a YAML configuration file, validate its schema version, and initialize a ConfigManager.
-                  
+
                   Parameters:
                       path (str, optional): Path to a configuration YAML file. If omitted, the default config path is resolved.
                       project_base (str | Path, optional): Project root used for resolving relative paths and initializing PathManager.
                       messages (list, optional): Optional message sink compatible with ArcPy-style messaging.
-                  
+
                   Returns:
                       ConfigManager: An instance initialized from the loaded configuration and resolved project paths.
-                  
+
                   Raises:
                       FileNotFoundError: If the configuration file does not exist.
                       ValueError: If the file contains invalid YAML or does not parse to a mapping (dict).
@@ -182,15 +183,15 @@ class ConfigManager:
     def _get_default_config_path(messages: Optional[list] = None) -> str:
         """
         Return the absolute path to the project's configuration file, preferring the primary config and falling back to the sample.
-        
+
         Searches the standard configuration locations and returns the first existing file path.
-        
+
         Parameters:
             messages (list, optional): Optional message sink used to initialize a temporary logger; not retained.
-        
+
         Raises:
             FileNotFoundError: If no configuration file is found in the expected locations.
-        
+
         Returns:
             str: Absolute path to the selected configuration file.
         """
@@ -329,10 +330,10 @@ class ConfigManager:
     def paths(self) -> "PathManager":
         """
         Provide the initialized PathManager used to resolve project and script paths.
-        
+
         Returns:
             PathManager: The PathManager instance configured for the current project.
-        
+
         Raises:
             RuntimeError: If the PathManager has not been initialized (project_base is missing).
         """
@@ -343,15 +344,15 @@ class ConfigManager:
     def get_logger(self, messages: Optional[list] = None) -> "LogManager":
         """
         Retrieve the configured LogManager, optionally replacing its message sink.
-        
+
         If `messages` is provided and a LogManager is already initialized, replace its message sink with `messages`. If no LogManager exists, a RuntimeError is raised.
-        
+
         Parameters:
             messages (list, optional): ArcPy-style message list to assign as the logger's message sink.
-        
+
         Returns:
             LogManager: The active LogManager instance.
-        
+
         Raises:
             RuntimeError: If the LogManager has not been initialized (project_base is missing).
         """
@@ -364,12 +365,12 @@ class ConfigManager:
     def get_progressor(self, total: int, label: str = "Processing...", step: int = 1) -> "ProgressorManager":
         """
         Create a ProgressorManager bound to this ConfigManager's LogManager.
-        
+
         Parameters:
             total (int): Total number of steps the progressor will report.
             label (str): Text label shown with the progress (default "Processing...").
             step (int): Step increment for each advancement (default 1).
-        
+
         Returns:
             ProgressorManager: Progress tracker configured with the given total, label, and step and using the active LogManager.
         """
@@ -385,6 +386,7 @@ class ConfigManager:
         "calculate_oid_attributes": calculate_oid_attributes_validator.validate,
         "smooth_gps_noise": smooth_gps_noise_validator.validate,
         "correct_gps_outliers": correct_gps_outliers_validator.validate,
+        "filter_distance_spacing": filter_distance_spacing_validator,
         "update_linear_and_custom": update_linear_and_custom_validator.validate,
         "rename_images": rename_images_validator.validate,
         "apply_exif_metadata": apply_exif_metadata_validator.validate,
