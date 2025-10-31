@@ -45,9 +45,17 @@ def load_status(status_file: Path):
 
 def format_progress_bar(percent: float, width: int = 40) -> str:
     """Create a text progress bar."""
-    filled = int(width * percent / 100)
+    try:
+        pct = float(percent)
+    except (TypeError, ValueError):
+        pct = 0.0
+    # Clamp percent to [0.0, 100.0] to avoid negative or oversize bars
+    pct = max(0.0, min(100.0, pct))
+    filled = int(round(width * pct / 100.0))
+    # Ensure filled is within valid range
+    filled = max(0, min(width, filled))
     bar = "█" * filled + "░" * (width - filled)
-    return f"[{bar}] {percent:5.1f}%"
+    return f"[{bar}] {pct:5.1f}%"
 
 
 def display_status(status):
