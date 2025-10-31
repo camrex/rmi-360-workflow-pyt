@@ -349,22 +349,25 @@ def run_mosaic_processor(
             logger.info("📊 Starting progress monitoring...", indent=2)
             monitor_started = progress_monitor.start_monitoring()
             if monitor_started:
-                status_file_path = cfg.paths.get_log_file_path("mosaic_processor_progress", cfg).with_suffix('.json')
-                logger.info(f"📈 Progress status: {status_file_path}", indent=3)
-
-                # Display initial expected frame counts
-                initial_status = progress_monitor.get_current_status()
-                if initial_status and initial_status.get('totals', {}).get('expected_frames', 0) > 0:
-                    total_expected = initial_status['totals']['expected_frames']
-                    reel_count = initial_status['totals']['reels_total']
-                    logger.info(f"📊 Expecting {total_expected:,} frames across {reel_count} reel(s)", indent=3)
-
-                # Launch separate CLI monitoring window
-                monitor_process = launch_progress_monitor_window(status_file_path, logger)
-                if monitor_process:
-                    logger.info("🖥️ Progress monitor window opened", indent=3)
+                if not progress_monitor.is_monitoring():
+                    logger.warning("Progress monitoring disabled (no frame_times.csv found); skipping monitor window", indent=3)
                 else:
-                    logger.warning("Failed to open progress monitor window", indent=3)
+                    status_file_path = cfg.paths.get_log_file_path("mosaic_processor_progress", cfg).with_suffix('.json')
+                    logger.info(f"📈 Progress status: {status_file_path}", indent=3)
+
+                    # Display initial expected frame counts
+                    initial_status = progress_monitor.get_current_status()
+                    if initial_status and initial_status.get('totals', {}).get('expected_frames', 0) > 0:
+                        total_expected = initial_status['totals']['expected_frames']
+                        reel_count = initial_status['totals']['reels_total']
+                        logger.info(f"📊 Expecting {total_expected:,} frames across {reel_count} reel(s)", indent=3)
+
+                    # Launch separate CLI monitoring window
+                    monitor_process = launch_progress_monitor_window(status_file_path, logger)
+                    if monitor_process:
+                        logger.info("🖥️ Progress monitor window opened", indent=3)
+                    else:
+                        logger.warning("Failed to open progress monitor window", indent=3)
             else:
                 logger.warning("Failed to start progress monitoring", indent=3)
             if not run_processor_stage(
