@@ -76,15 +76,35 @@ def display_status(status):
     reels_complete = totals.get("reels_completed", 0)
     reels_total = totals.get("reels_total", 0)
 
-    print(f"\n📈 OVERALL PROGRESS")
+    print(f"\n📊 OVERALL PROGRESS")
     print(f"   {format_progress_bar(overall_percent)}")
     print(f"   Frames: {generated:,} / {expected:,}")
     print(f"   Reels:  {reels_complete} / {reels_total} complete")
+    
+    # Add ETA information if available
+    eta_info = totals.get("eta_info", {})
+    if eta_info.get("eta_formatted"):
+        elapsed = eta_info.get("elapsed_formatted", "Unknown")
+        eta_formatted = eta_info.get("eta_formatted", "Unknown")
+        rate = eta_info.get("frames_per_second", 0)
+        completion_time = eta_info.get("completion_time", "")
+        
+        print(f"   ⏱ Elapsed: {elapsed}")
+        print(f"   ⚡ Rate: {rate:.1f} frames/sec")
+        print(f"   ⏳ ETA: {eta_formatted}")
+        if completion_time:
+            print(f"   ⏰ Complete by: {completion_time}")
+    elif generated > 0:
+        elapsed = eta_info.get("elapsed_formatted", "Unknown")
+        if elapsed != "Unknown":
+            print(f"   ⏱ Elapsed: {elapsed} (calculating rate...)")
+        else:
+            print(f"   ▶ Processing started...")
 
     # Per-reel breakdown
     reels = status.get("reels", {})
     if reels:
-        print(f"\n🎞️  REEL PROGRESS")
+        print(f"\n🎞 REEL PROGRESS")
         print(f"{'Reel':<15} {'Progress':<45} {'Frames':<15} {'Status'}")
         print("-" * 85)
 
@@ -96,7 +116,7 @@ def display_status(status):
             completed = reel_data.get("completed", False)
 
             progress_bar = format_progress_bar(percent, width=35)
-            status_icon = "✅" if completed else "🔄" if gen_frames > 0 else "⏳"
+            status_icon = "✓" if completed else "▶" if gen_frames > 0 else "○"
 
             print(f"{reel_name:<15} {progress_bar:<45} {gen_frames:>6}/{exp_frames:<6} {status_icon}")
 
@@ -106,14 +126,12 @@ def display_status(status):
 
     print("\n" + "=" * 60)
     print(f"⏰ Last Update: {timestamp}")
-    print(f"🔄 Status: {'Monitoring Active' if monitoring else 'Complete'}")
-
+    print(f"📊 Status: {'Monitoring Active' if monitoring else 'Complete'}")
+    
     if monitoring:
         print("💡 This window will close automatically when processing completes")
     else:
-        print("🎉 Processing completed! Window will close in 5 seconds...")
-
-
+        print("✓ Processing completed! Window will close in 5 seconds...")
 def main():
     """Main entry point for automatic progress monitoring."""
     parser = argparse.ArgumentParser(
@@ -129,8 +147,8 @@ def main():
     if os.name == 'nt':
         os.system('title Mosaic Processor Progress')
 
-    print("🔍 Starting Mosaic Processor Progress Monitor...")
-    print(f"📂 Monitoring: {status_file}")
+    print("🎬 Starting Mosaic Processor Progress Monitor...")
+    print(f"📁 Monitoring: {status_file}")
     print("⏳ Waiting for processing to begin...\n")
 
     if not args.watch:
@@ -139,7 +157,7 @@ def main():
         if status:
             display_status(status)
         else:
-            print(f"❌ Could not read status from {status_file}")
+            print(f"✗ Could not read status from {status_file}")
         return
 
     # Continuous monitoring
@@ -178,16 +196,16 @@ def main():
                     print("=" * 60)
                     print(f"\n⏳ Waiting for processing to start...")
                     print(f"   Elapsed: {elapsed:.0f}s / {max_wait_time}s")
-                    print(f"\n📂 Looking for: {status_file}")
+                    print(f"\n📁 Looking for: {status_file}")
                     print("\n💡 This window will show progress automatically once")
                     print("   MistikaVR begins rendering frames.")
 
             time.sleep(check_interval)
 
     except KeyboardInterrupt:
-        print("\n\n👋 Monitor stopped by user")
+        print("\n\n▶ Monitor stopped by user")
     except Exception as e:
-        print(f"\n❌ Monitor error: {e}")
+        print(f"\n✗ Monitor error: {e}")
 
 
 if __name__ == "__main__":

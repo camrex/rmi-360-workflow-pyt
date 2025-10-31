@@ -827,6 +827,7 @@ class Process360Workflow(object):
                 local_project_dir=work_project_dir,  # ensures projects/<slug>/reels/<reel>/...
                 max_workers=16,
                 skip_if_exists=True,  # don't re-download existing files
+                logger=logger,  # Pass logger for progress tracking
             )
 
             # stage_reels returns <local_project_dir>/reels
