@@ -869,6 +869,14 @@ class Process360Workflow(object):
             # stage_reels returns <local_project_dir>/reels
             p["input_reels_folder"] = str(staged_root)
 
+        # Pass selected reels to workflow steps for filtering
+        if selected_reels:
+            p["selected_reels"] = selected_reels
+            logger.info(f"Processing only selected reels: {', '.join(selected_reels)}", indent=1)
+        else:
+            p["selected_reels"] = None
+            logger.info("Processing all reels in folder", indent=1)
+
         # ----------- Orchestrator flow -----------
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")
         logger.custom("| ---   Starting RMI 360 Workflow  --- |", indent=0, emoji="🚀")
