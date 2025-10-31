@@ -88,10 +88,14 @@ from pathlib import Path
 
 status_file = Path("D:/project/logs/mosaic_processor_progress.json")
 if status_file.exists():
-    with open(status_file) as f:
-        status = json.load(f)
+    try:
+        with status_file.open("r", encoding="utf-8") as f:
+            status = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        status = None
 
-    progress = status["totals"]["progress_percent"]
+    if status:
+        progress = status.get("totals", {}).get("progress_percent")
     print(f"Current progress: {progress}%")
 ```
 
