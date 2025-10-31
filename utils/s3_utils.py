@@ -96,6 +96,7 @@ def stage_reels(
     local_project_dir: Path,
     max_workers: int = 16,
     skip_if_exists: bool = True,
+    logger = None,
 ) -> Path:
     """
     Stage one or more reels under s3://{bucket}/{project_key}/reels/ to:
@@ -103,6 +104,18 @@ def stage_reels(
 
     If reels is None or empty, stages *all* reels under project_key/reels/.
     Skips files that already exist locally with matching size (and ETag if single-part).
+    
+    Args:
+        bucket: S3 bucket name
+        project_key: Project identifier 
+        reels: List of reel names to stage, or None for all reels
+        local_project_dir: Local directory for staging files
+        max_workers: Number of concurrent download threads
+        skip_if_exists: Skip files that already exist locally
+        logger: Optional logger for progress messages
+        
+    Returns:
+        Path to local reels root directory
     """
     s3 = _client()
     local_project_dir = Path(local_project_dir)
@@ -151,8 +164,40 @@ def stage_reels(
         s3.download_file(bucket, k, str(p))
 
     if filtered:
+        # Group files by reel for progress tracking
+        files_by_reel = {}
+        for key, dst, size, etag in filtered:
+            # Extract reel name from path: reels/{reel_name}/...
+            rel_path = str(dst.relative_to(local_project_dir))
+            if rel_path.startswith("reels/"):
+                reel_name = rel_path.split("/")[1] if len(rel_path.split("/")) > 1 else "unknown"
+                if reel_name not in files_by_reel:
+                    files_by_reel[reel_name] = []
+                files_by_reel[reel_name].append((key, dst, size, etag))
+        
+        # Log staging start if logger provided
+        if logger:
+            total_reels = len(files_by_reel)
+            total_files = len(filtered)
+            logger.info(f"📦 Staging {total_files} files across {total_reels} reel(s)...", indent=2)
+        
+        # Download files by reel and track progress
+        completed_reels = 0
+        total_reel_count = len(files_by_reel)
+        
         with cf.ThreadPoolExecutor(max_workers=max_workers) as ex:
-            list(ex.map(lambda tup: _dl(tup[0], tup[1]), filtered))
+            for reel_name, reel_files in sorted(files_by_reel.items()):
+                # Download all files for this reel
+                list(ex.map(lambda tup: _dl(tup[0], tup[1]), reel_files))
+                completed_reels += 1
+                
+                # Log reel completion
+                if logger:
+                    logger.info(f"📁 Staged reel {reel_name} ({completed_reels}/{total_reel_count}) - {len(reel_files)} files", indent=3)
+        
+        # Log completion
+        if logger and files_by_reel:
+            logger.success(f"📦 Staging complete - {len(filtered)} files staged across {len(files_by_reel)} reel(s)", indent=2)
 
     return local_reels_root
 
