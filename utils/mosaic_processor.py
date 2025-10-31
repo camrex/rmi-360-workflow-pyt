@@ -393,6 +393,20 @@ def run_mosaic_processor(
                     skip_gpx=True
             ):
                 return
+            
+            # Stop progress monitoring after Render + Reel Fix completes
+            if monitor_started and progress_monitor.is_monitoring():
+                logger.info("📊 Stopping progress monitoring...", indent=2)
+                progress_monitor.stop_monitoring(timeout=10.0)
+                
+                # Log final status summary
+                final_status = progress_monitor.get_current_status()
+                if final_status:
+                    totals = final_status.get("totals", {})
+                    generated = totals.get('generated_frames', 0)
+                    expected = totals.get('expected_frames', 0)
+                    logger.info(f"📊 Final: {generated:,}/{expected:,} frames generated", indent=2)
+            
             progressor.update(1)
 
             # === Step 2: Pad frame numbers ===
@@ -415,33 +429,13 @@ def run_mosaic_processor(
     except Exception as e:
         logger.error(f"Error during Mosaic Processor workflow: {e}", error_type=RuntimeError, indent=1)
     finally:
-        # Stop progress monitoring
-        if monitor_started and progress_monitor.is_monitoring():
-            logger.info("📊 Stopping progress monitoring...", indent=1)
-            progress_monitor.stop_monitoring(timeout=15.0)
-
-            # Log final status with visual summary
-            final_status = progress_monitor.get_current_status()
-            if final_status:
-                totals = final_status.get("totals", {})
-                final_percent = totals.get('progress_percent', 0)
-                generated = totals.get('generated_frames', 0)
-                expected = totals.get('expected_frames', 0)
-                completed_reels = totals.get('reels_completed', 0)
-                total_reels = totals.get('reels_total', 0)
-
-                if final_percent >= 100.0:
-                    logger.success("🎉 All frames rendered successfully!", indent=2)
-                    logger.info(f"   📊 Total: {generated:,} frames across {total_reels} reels", indent=2)
-                else:
-                    logger.info(
-                        f"📈 Final Status: {generated:,}/{expected:,} frames "
-                        f"({final_percent:.1f}%), {completed_reels}/{total_reels} reels complete",
-                        indent=2
-                    )
+        # Safety net: Stop progress monitoring if still running (should already be stopped after Render + Reel Fix)
+        if 'monitor_started' in locals() and monitor_started and 'progress_monitor' in locals() and progress_monitor.is_monitoring():
+            logger.debug("📊 Stopping remaining progress monitoring (safety net)...", indent=1)
+            progress_monitor.stop_monitoring(timeout=5.0)
 
         # Close progress monitor window
-        if monitor_process:
+        if 'monitor_process' in locals() and monitor_process:
             try:
                 # Give the monitor window a moment to show final status
                 time.sleep(3)
