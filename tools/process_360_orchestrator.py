@@ -712,13 +712,13 @@ class Process360Workflow(object):
     def execute(self, parameters: list, messages: Any) -> None:
         """
         Orchestrates the end-to-end Mosaic 360 processing workflow, preparing a local reels workspace and executing the configured pipeline steps.
-        
+
         This method:
         - Resolves and stages input reels into a local working folder (assigned to p["input_reels_folder"]) from either a Local project folder or an S3 bucket (AWS mode).
         - Loads and validates configuration, builds the ordered step functions, and runs the selected steps starting from the requested start step.
         - Maintains and updates a persistent JSON report (metrics, paths, reels summary), collects OID metrics, computes folder statistics, and records elapsed time.
         - Optionally generates an HTML report and uploads project artifacts to S3 if configured.
-        
+
         Parameters:
             parameters (list): ArcPy tool parameter objects supplied by the calling tool UI; used to build the runtime parameter dictionary and control workflow behavior (e.g., source mode, project locations, selected reels, start step).
             messages (Any): ArcPy messages/logging object used for user feedback and logger integration.
@@ -834,7 +834,7 @@ class Process360Workflow(object):
 
         # ----------- Orchestrator flow -----------
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")
-        logger.custom("| --- Starting Mosaic 360 Workflow --- |", indent=0, emoji="🚀")
+        logger.custom("| ---   Starting RMI 360 Workflow  --- |", indent=0, emoji="🚀")
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")
         logger.info(f"Using config: {cfg.source_path}", indent=1)
         logger.info(f"Project root: {cfg.get('__project_root__')}", indent=1)
@@ -946,5 +946,5 @@ class Process360Workflow(object):
                 logger.warning(f"Failed to upload artifacts to S3: {e}", indent=1)
 
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🎉")
-        logger.custom("| --- Mosaic 360 Workflow Complete --- |", indent=0, emoji="🎉")
+        logger.custom("| ---   RMI 360 Workflow Complete  --- |", indent=0, emoji="🎉")
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🎉")
