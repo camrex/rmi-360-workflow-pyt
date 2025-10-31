@@ -44,8 +44,10 @@
 #   - Start From Step {start_step} (String): Step label to begin from; earlier steps are skipped.
 #   - OID Dataset - Input {oid_fc_input} (Feature Class): Existing Oriented Imagery Dataset (OID) to update.
 #   - OID Dataset - Output {oid_fc_output} (Feature Class): Output OID (used only when creating a new dataset).
-#   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
-#   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
+   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
+   - Enable Distance Filter {enable_distance_filter} (Boolean): Enables distance-based spacing filter to remove time-captured images.
+   - Distance Filter Action {distance_filter_action} (String): Action for distance filter - "flag" or "remove".
+   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
 #   - Enable Deploy Lambda Monitor {enable_deploy_lambda_monitor} (Boolean): Deploys AWS monitoring Lambda (if enabled).
@@ -174,14 +176,15 @@ class Process360Workflow(object):
         "5) Calculate OID Attributes\n"
         "6) Smooth GPS Noise (optional)\n"
         "7) Correct Flagged GPS Points (optional)\n"
-        "8) Update Linear and Custom Attributes (linear referencing optional)\n"
-        "9) Rename Images\n"
-        "10) Update EXIF Metadata\n"
-        "11) Geocode Images (optional)\n"
-        "12) Create OID Footprints\n"
-        "13) Deploy Lambda Monitor (optional)\n"
-        "14) Copy to AWS (optional)\n"
-        "15) Generate OID Service (optional)"
+        "8) Filter Distance Spacing (optional)\n"
+        "9) Update Linear and Custom Attributes (linear referencing optional)\n"
+        "10) Rename Images\n"
+        "11) Update EXIF Metadata\n"
+        "12) Geocode Images (optional)\n"
+        "13) Create OID Footprints\n"
+        "14) Deploy Lambda Monitor (optional)\n"
+        "15) Copy to AWS (optional)\n"
+        "16) Generate OID Service (optional)"
     )
     canRunInBackground = False
 
@@ -194,14 +197,15 @@ class Process360Workflow(object):
         (5, "enrich_oid", "Calculate OID Attributes"),
         (6, "smooth_gps", "Smooth GPS Noise"),
         (7, "correct_gps", "Correct Flagged GPS Points"),
-        (8, "update_linear_custom", "Update Linear and Custom Attributes"),
-        (9, "rename_images", "Rename Images"),
-        (10, "update_metadata", "Update EXIF Metadata"),
-        (11, "geocode", "Geocode Images"),
-        (12, "build_footprints", "Build OID Footprints"),
-        (13, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
-        (14, "copy_to_aws", "Upload to AWS S3"),
-        (15, "generate_service", "Generate OID Service")
+        (8, "filter_distance", "Filter Distance Spacing"),
+        (9, "update_linear_custom", "Update Linear and Custom Attributes"),
+        (10, "rename_images", "Rename Images"),
+        (11, "update_metadata", "Update EXIF Metadata"),
+        (12, "geocode", "Geocode Images"),
+        (13, "build_footprints", "Build OID Footprints"),
+        (14, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
+        (15, "copy_to_aws", "Upload to AWS S3"),
+        (16, "generate_service", "Generate OID Service")
     ]
 
     # Sort by numeric index and extract step names in the correct order
@@ -342,7 +346,30 @@ class Process360Workflow(object):
         enable_smooth_gps_param.value = True
         params.append(enable_smooth_gps_param)
 
-        # 11) Enable Linear Referencing
+        # 11) Enable Distance Filter
+        enable_distance_filter_param = arcpy.Parameter(
+            displayName="Enable Distance-Based Filtering",
+            name="enable_distance_filter",
+            datatype="GPBoolean",
+            parameterType="Optional",
+            direction="Input",
+        )
+        enable_distance_filter_param.value = False
+        params.append(enable_distance_filter_param)
+
+        # 12) Distance Filter Action
+        distance_filter_action_param = arcpy.Parameter(
+            displayName="Distance Filter Action",
+            name="distance_filter_action",
+            datatype="GPString",
+            parameterType="Optional",
+            direction="Input",
+        )
+        distance_filter_action_param.filter.list = ["flag", "remove"]
+        distance_filter_action_param.value = "flag"
+        params.append(distance_filter_action_param)
+
+        # 13) Enable Linear Referencing
         enable_linear_ref_param = arcpy.Parameter(
             displayName="Enable Linear Referencing",
             name="enable_linear_ref",
@@ -353,7 +380,7 @@ class Process360Workflow(object):
         enable_linear_ref_param.value = True
         params.append(enable_linear_ref_param)
 
-        # 12) Enable Geocode Images
+        # 14) Enable Geocode Images
         enable_geocode_param = arcpy.Parameter(
             displayName="Enable Geocode Images",
             name="enable_geocode",
@@ -364,7 +391,7 @@ class Process360Workflow(object):
         enable_geocode_param.value = True
         params.append(enable_geocode_param)
 
-        # 13) Enable Copy to AWS
+        # 15) Enable Copy to AWS
         enable_copy_to_aws_param = arcpy.Parameter(
             displayName="Enable Copy to AWS",
             name="enable_copy_to_aws",
@@ -375,7 +402,7 @@ class Process360Workflow(object):
         enable_copy_to_aws_param.value = True
         params.append(enable_copy_to_aws_param)
 
-        # 14) Enable Deploy Lambda Monitor
+        # 16) Enable Deploy Lambda Monitor
         enable_deploy_lambda_monitor_param = arcpy.Parameter(
             displayName="Enable Deploy Lambda Monitor",
             name="enable_deploy_lambda_monitor",
@@ -386,7 +413,7 @@ class Process360Workflow(object):
         enable_deploy_lambda_monitor_param.value = True
         params.append(enable_deploy_lambda_monitor_param)
 
-        # 15) Enable Generate OID Service
+        # 17) Enable Generate OID Service
         enable_generate_service_param = arcpy.Parameter(
             displayName="Enable Generate OID Service",
             name="enable_generate_service",
@@ -460,6 +487,8 @@ class Process360Workflow(object):
         oid_in = pmap.get("oid_fc_input")
         oid_out = pmap.get("oid_fc_output")
         enable_smooth_gps = pmap.get("enable_smooth_gps")
+        enable_distance_filter = pmap.get("enable_distance_filter")
+        distance_filter_action = pmap.get("distance_filter_action")
         enable_linear_ref = pmap.get("enable_linear_ref")
 
         centerline_param = pmap.get("centerline_fc")
@@ -560,6 +589,7 @@ class Process360Workflow(object):
         # 5) Linear Ref vs Smooth GPS → Centerline/Route gating
         linear_ref_enabled = bool(getattr(enable_linear_ref, "value", False))
         smooth_gps_enabled = bool(getattr(enable_smooth_gps, "value", False))
+        distance_filter_enabled = bool(getattr(enable_distance_filter, "value", False))
 
         if linear_ref_enabled:
             if centerline_param:
@@ -585,6 +615,12 @@ class Process360Workflow(object):
                 route_id_param.enabled = False
                 route_id_param.parameterType = "Optional"
                 route_id_param.value = None
+
+        # 6) Distance Filter Action → Show/Hide based on Distance Filter enabled
+        if distance_filter_action:
+            distance_filter_action.enabled = distance_filter_enabled
+            if not distance_filter_enabled:
+                distance_filter_action.value = "flag"
 
         # 6) Copy to AWS → (Deploy Lambda / Generate Service) gating
         if enable_copy_to_aws and not bool(enable_copy_to_aws.value):

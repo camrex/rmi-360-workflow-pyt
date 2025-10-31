@@ -36,6 +36,8 @@ from utils.assign_group_index import assign_group_index
 from utils.calculate_oid_attributes import enrich_oid_attributes
 from utils.smooth_gps_noise import smooth_gps_noise
 from utils.correct_gps_outliers import correct_gps_outliers
+from utils.filter_distance_spacing import filter_distance_spacing
+from utils.filter_distance_spacing import filter_distance_spacing
 from utils.update_linear_and_custom import update_linear_and_custom
 from utils.rename_images import rename_images
 from utils.apply_exif_metadata import update_metadata_from_config
@@ -64,6 +66,9 @@ def skip_if_copy_to_aws_disabled(params):
 
 def skip_if_smooth_gps_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_smooth_gps", False) else None
+
+def skip_if_distance_filter_disabled(params):
+    return "Skipped (disabled by user)" if not params.get("enable_distance_filter", False) else None
 
 def skip_if_geocode_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_geocode", False) else None
@@ -102,6 +107,8 @@ def build_step_funcs(p, cfg):
             lambda params, config: lambda **kwargs: smooth_gps_noise(oid_fc=p["oid_fc"], centerline_fc=p["centerline_fc"], cfg=cfg), skip_if_smooth_gps_disabled),
         StepSpec("correct_gps", "Correct Flagged GPS Points",
             lambda params, config: lambda **kwargs: correct_gps_outliers(oid_fc=p["oid_fc"], cfg=cfg), skip_if_smooth_gps_disabled),
+        StepSpec("filter_distance", "Filter Distance Spacing",
+            lambda params, config: lambda **kwargs: filter_distance_spacing(oid_fc=p["oid_fc"], action=p.get("distance_filter_action", "flag"), cfg=cfg), skip_if_distance_filter_disabled),
         StepSpec("update_linear_custom", "Update Linear and Custom Attributes",
             lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg), None),
         StepSpec("rename_images", "Rename Images",

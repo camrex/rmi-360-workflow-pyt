@@ -414,6 +414,38 @@ gps_smoothing:
   smoothing_window: 2
   outlier_reason_threshold: 2
 
+# --------------------------------------------------------------------
+# 📏 DISTANCE-BASED SPACING FILTER
+# --------------------------------------------------------------------
+#
+# This section controls detection and filtering of time-based capture reels.
+# Time-based captures (0.1s intervals) create very dense point clusters that
+# are easily distinguished from proper distance-based captures (~5m spacing).
+#
+# 🔍 Detection Logic:
+#   Analyzes each reel's spacing pattern to identify time-based captures:
+#   - Calculates ratio of points <1m apart (should be <40% for distance-based)
+#   - Checks average spacing (should be >2m for distance-based)
+#   - Only processes reels that clearly show time-based pattern
+#
+# 📐 Parameters:
+#   - min_spacing_meters: Target spacing for filtered results (typically 5m)
+#   - tolerance_meters: Acceptable variation in spacing (±1m)
+#
+# 🎯 Use Cases:
+#   - Detect reels accidentally captured in time mode (0.1s intervals)
+#   - Filter dense time captures to proper 5m spacing
+#   - Preserve legitimate distance-based reels (5m or 10m spacing)
+#
+# ✅ Safe Operation:
+#   - Only affects reels with obvious time-based capture patterns
+#   - Preserves reels with proper distance-based spacing (5m/10m)
+#   - Maintains chronological order within each reel
+#
+distance_spacing:
+  min_spacing_meters: 5.0    # Minimum distance between images
+  tolerance_meters: 1.0      # Tolerance for spacing variation
+
 # ------------------------------------------------------------------------------
 # 🖼️ IMAGE OUTPUT
 # ------------------------------------------------------------------------------
