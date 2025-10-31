@@ -84,8 +84,10 @@ def launch_progress_monitor_window(status_file_path, logger):
 
         # Launch the process
         process = subprocess.Popen(
+        creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+        process = subprocess.Popen(
             cmd,
-            creationflags=subprocess.CREATE_NEW_CONSOLE,  # Create new window
+            creationflags=creation_flags,  # Create new window on Windows; 0 on other platforms
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
