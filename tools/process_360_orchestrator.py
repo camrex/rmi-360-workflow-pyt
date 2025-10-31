@@ -44,10 +44,10 @@
 #   - Start From Step {start_step} (String): Step label to begin from; earlier steps are skipped.
 #   - OID Dataset - Input {oid_fc_input} (Feature Class): Existing Oriented Imagery Dataset (OID) to update.
 #   - OID Dataset - Output {oid_fc_output} (Feature Class): Output OID (used only when creating a new dataset).
-   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
-   - Enable Distance Filter {enable_distance_filter} (Boolean): Enables distance-based spacing filter to remove time-captured images.
-   - Distance Filter Action {distance_filter_action} (String): Action for distance filter - "flag" or "remove".
-   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
+#   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
+#   - Enable Distance Filter {enable_distance_filter} (Boolean): Enables distance-based spacing filter to remove time-captured images.
+#   - Distance Filter Action {distance_filter_action} (String): Action for distance filter - "flag" or "remove".
+#   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
 #   - Enable Deploy Lambda Monitor {enable_deploy_lambda_monitor} (Boolean): Deploys AWS monitoring Lambda (if enabled).
