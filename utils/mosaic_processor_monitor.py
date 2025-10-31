@@ -94,7 +94,8 @@ class MosaicProcessorMonitor:
             Number of frames expected, or 0 if file can't be read
         """
         try:
-            with open(csv_path, 'r', encoding='utf-8') as f:
+            # csv module recommends opening files with newline='' to handle newlines consistently
+            with open(csv_path, 'r', encoding='utf-8', newline='') as f:
                 reader = csv.DictReader(f)
                 frame_count = sum(1 for _ in reader)
                 return frame_count
