@@ -163,23 +163,37 @@ def stage_reels(
         p.parent.mkdir(parents=True, exist_ok=True)
         s3.download_file(bucket, k, str(p))
 
+    # Group ALL files by reel for progress tracking (before filtering)
+    all_files_by_reel = {}
+    for key, dst, size, etag in to_get:
+        # Extract reel name from path: reels/{reel_name}/...
+        rel_path = str(dst.relative_to(local_project_dir)).replace("\\", "/")  # Normalize Windows paths
+        if rel_path.startswith("reels/"):
+            path_parts = rel_path.split("/")
+            reel_name = path_parts[1] if len(path_parts) > 1 else "unknown"
+            if reel_name not in all_files_by_reel:
+                all_files_by_reel[reel_name] = []
+            all_files_by_reel[reel_name].append((key, dst, size, etag))
+
+    # Log staging start if logger provided (show total reel count)
+    if logger and to_get:
+        total_reels = len(all_files_by_reel)
+        total_files = len(to_get)
+        files_to_download = len(filtered)
+        logger.info(f"📦 Staging {files_to_download} files across {total_reels} reel(s)...", indent=2)
+
     if filtered:
-        # Group files by reel for progress tracking
+        # Group filtered files by reel for download progress tracking
         files_by_reel = {}
         for key, dst, size, etag in filtered:
             # Extract reel name from path: reels/{reel_name}/...
-            rel_path = str(dst.relative_to(local_project_dir))
+            rel_path = str(dst.relative_to(local_project_dir)).replace("\\", "/")  # Normalize Windows paths
             if rel_path.startswith("reels/"):
-                reel_name = rel_path.split("/")[1] if len(rel_path.split("/")) > 1 else "unknown"
+                path_parts = rel_path.split("/")
+                reel_name = path_parts[1] if len(path_parts) > 1 else "unknown"
                 if reel_name not in files_by_reel:
                     files_by_reel[reel_name] = []
                 files_by_reel[reel_name].append((key, dst, size, etag))
-        
-        # Log staging start if logger provided
-        if logger:
-            total_reels = len(files_by_reel)
-            total_files = len(filtered)
-            logger.info(f"📦 Staging {total_files} files across {total_reels} reel(s)...", indent=2)
         
         # Download files by reel and track progress
         completed_reels = 0
@@ -198,6 +212,11 @@ def stage_reels(
         # Log completion
         if logger and files_by_reel:
             logger.success(f"📦 Staging complete - {len(filtered)} files staged across {len(files_by_reel)} reel(s)", indent=2)
+    else:
+        # No files to download (all already exist)
+        if logger and to_get:
+            total_reels = len(all_files_by_reel)
+            logger.success(f"📦 All files already staged - {len(to_get)} files across {total_reels} reel(s) up to date", indent=2)
 
     return local_reels_root
 
