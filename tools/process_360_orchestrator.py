@@ -817,12 +817,17 @@ class Process360Workflow(object):
         logger.info("Clearing staging folder to ensure fresh reel selection...", indent=1)
         import shutil
         for item in reels_root.iterdir():
-            if item.is_dir():
-                logger.info(f"Removing old reel folder: {item.name}", indent=2)
-                shutil.rmtree(item)
-            elif item.is_file():
-                logger.debug(f"Removing file: {item.name}", indent=2)
-                item.unlink()
+            try:
+                if item.is_dir():
+                    logger.info(f"Removing old reel folder: {item.name}", indent=2)
+                    shutil.rmtree(item)
+                elif item.is_file():
+                    logger.info(f"Removing file: {item.name}", indent=2)
+                    item.unlink()
+            except Exception as e:
+                logger.error(f"Failed to clear staging folder - cannot remove {item.name}: {e}", indent=2)
+                logger.error("Aborting workflow to prevent processing unintended reels.", indent=1)
+                return
 
         # ----------- Resolve reels locally based on Source Mode -----------
         source_mode = (pmap.get("source_mode").valueAsText if pmap.get("source_mode") else "Local") or "Local"
@@ -880,14 +885,6 @@ class Process360Workflow(object):
 
             # stage_reels returns <local_project_dir>/reels
             p["input_reels_folder"] = str(staged_root)
-
-        # Pass selected reels to workflow steps for filtering
-        if selected_reels:
-            p["selected_reels"] = selected_reels
-            logger.info(f"Processing only selected reels: {', '.join(selected_reels)}", indent=1)
-        else:
-            p["selected_reels"] = None
-            logger.info("Processing all reels in folder", indent=1)
 
         # ----------- Orchestrator flow -----------
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")
