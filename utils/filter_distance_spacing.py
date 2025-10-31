@@ -142,7 +142,8 @@ def analyze_spacing_by_reel(
         "assumed_capture": assumed_capture,
         "capture_mode": capture_mode,
         "is_time_based": is_time_based,
-        "close_points_ratio": close_points_ratio
+        "close_points_ratio": close_points_ratio,
+        "spacing_issues_detected": False
     }
     
     if not is_time_based:
@@ -331,8 +332,9 @@ def filter_distance_spacing(
 
     elif action.lower() == "remove":
         # Remove problematic images
+        oid_field = arcpy.Describe(oid_fc).OIDFieldName
         oids_str = ",".join(map(str, all_oids_to_process))
-        where_clause = f"OBJECTID IN ({oids_str})"
+        where_clause = f"{oid_field} IN ({oids_str})"
         
         deleted_count = 0
         with cfg.get_progressor(total=len(all_oids_to_process), label="Removing spacing issues") as progressor:

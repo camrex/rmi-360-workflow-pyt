@@ -45,12 +45,17 @@ def filter_distance_spacing_validator(config_dict: dict) -> list:
     """
     errors = []
 
-    # Check if distance_spacing section exists
-    distance_spacing = config_dict.get("distance_spacing", {})
+    # Ensure the incoming configuration is a mapping to avoid AttributeError
+    if not isinstance(config_dict, dict):
+        errors.append("config: Expected a mapping/dict for configuration.")
+        return errors
+        
+    # Check if distance_spacing section exists and is a dict
+    distance_spacing = config_dict.get("distance_spacing", None)
     
-    if not distance_spacing:
+    if not isinstance(distance_spacing, dict) or not distance_spacing:
         errors.append(
-            "distance_spacing: Section is missing. "
+            "distance_spacing: Section is missing or invalid. "
             "This section should contain min_spacing_meters and tolerance_meters."
         )
         return errors
