@@ -60,7 +60,7 @@ class MosaicProcessorMonitor:
             output_base_dir: Base output directory (project_folder/panos/original)
             status_file: Optional path to write JSON status updates
             check_interval: Seconds between progress checks
-            logger: Optional logger instance
+            logger: Optional LogManager instance from ConfigManager.get_logger()
             progress_callback: Optional callback function to receive progress updates
         """
         self.input_reels_dir = Path(input_reels_dir)
@@ -76,11 +76,22 @@ class MosaicProcessorMonitor:
         self._last_status = {}
         self._last_callback_percent = -1
 
-    def _log(self, message: str, level: str = "info"):
-        """Log a message if logger is available."""
+    def _log(self, message: str, level: str = "info") -> None:
+        """Log a message using the LogManager if available."""
         if self.logger:
-            getattr(self.logger, level, self.logger.info)(message, indent=2)
+            # Use LogManager methods with proper indentation
+            if level == "warning":
+                self.logger.warning(message, indent=2)
+            elif level == "error":
+                self.logger.error(message, indent=2)
+            elif level == "debug":
+                self.logger.debug(message, indent=2)
+            elif level == "success":
+                self.logger.success(message, indent=2)
+            else:  # Default to info
+                self.logger.info(message, indent=2)
         else:
+            # Fallback for when no logger is available
             print(f"[{level.upper()}] {message}")
 
     def _read_frame_times_csv(self, csv_path: Path) -> int:
@@ -286,7 +297,7 @@ class MosaicProcessorMonitor:
 
                 # Check if all reels are complete
                 if status["totals"]["reels_completed"] == status["totals"]["reels_total"] and status["totals"]["reels_total"] > 0:
-                    self._log("🎉 All reels completed!")
+                    self._log("🎉 All reels completed!", "success")
                     break
 
             except Exception as e:
@@ -302,7 +313,7 @@ class MosaicProcessorMonitor:
             final_status["monitoring"] = False
             final_status["completed_at"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self._write_status_file(final_status)
-            self._log("📊 Monitoring completed")
+            self._log("📊 Monitoring completed", "success")
         except Exception as e:
             self._log(f"Error writing final status: {e}", "error")
 
