@@ -67,7 +67,7 @@ class MosaicProcessorMonitor:
         self.output_base_dir = Path(output_base_dir)
         self.status_file = Path(status_file) if status_file else None
         self.check_interval = check_interval
-        self.logger = logger
+        self.logger = logger or self._create_null_logger()
         self.progress_callback = progress_callback
 
         self._stop_event = threading.Event()
@@ -76,7 +76,15 @@ class MosaicProcessorMonitor:
         self._last_status = {}
         self._last_callback_percent = -1
 
-
+    def _create_null_logger(self):
+        """Create a null logger that discards all log messages for testing."""
+        class NullLogger:
+            def info(self, msg, indent=0): pass
+            def warning(self, msg, indent=0): pass
+            def error(self, msg, indent=0): pass
+            def success(self, msg, indent=0): pass
+            def debug(self, msg, indent=0): pass
+        return NullLogger()
 
     def _read_frame_times_csv(self, csv_path: Path) -> int:
         """
@@ -95,10 +103,7 @@ class MosaicProcessorMonitor:
                 frame_count = sum(1 for _ in reader)
                 return frame_count
         except Exception as e:
-            if self.logger:
-                self.logger.warning(f"Failed to read {csv_path}: {e}", indent=2)
-            else:
-                print(f"[WARNING] Failed to read {csv_path}: {e}")
+            self.logger.warning(f"Failed to read {csv_path}: {e}", indent=2)
             return 0
 
     def _scan_expected_frames(self) -> Dict[str, int]:
@@ -111,10 +116,7 @@ class MosaicProcessorMonitor:
         expected = {}
 
         if not self.input_reels_dir.exists():
-            if self.logger:
-                self.logger.warning(f"Input reels directory not found: {self.input_reels_dir}", indent=2)
-            else:
-                print(f"[WARNING] Input reels directory not found: {self.input_reels_dir}")
+            self.logger.warning(f"Input reels directory not found: {self.input_reels_dir}", indent=2)
             return expected
 
         for reel_dir in self.input_reels_dir.iterdir():
@@ -128,20 +130,11 @@ class MosaicProcessorMonitor:
                 count = self._read_frame_times_csv(frame_times_csv)
                 if count > 0:
                     expected[reel_name] = count
-                    if self.logger:
-                        self.logger.info(f"Reel {reel_name}: expecting {count} frames", indent=2)
-                    else:
-                        print(f"[INFO] Reel {reel_name}: expecting {count} frames")
+                    self.logger.info(f"Reel {reel_name}: expecting {count} frames", indent=2)
                 else:
-                    if self.logger:
-                        self.logger.warning(f"Reel {reel_name}: frame_times.csv found but no frames counted", indent=2)
-                    else:
-                        print(f"[WARNING] Reel {reel_name}: frame_times.csv found but no frames counted")
+                    self.logger.warning(f"Reel {reel_name}: frame_times.csv found but no frames counted", indent=2)
             else:
-                if self.logger:
-                    self.logger.warning(f"Reel {reel_name}: no frame_times.csv found", indent=2)
-                else:
-                    print(f"[WARNING] Reel {reel_name}: no frame_times.csv found")
+                self.logger.warning(f"Reel {reel_name}: no frame_times.csv found", indent=2)
 
         return expected
 
@@ -236,33 +229,21 @@ class MosaicProcessorMonitor:
             with open(self.status_file, 'w', encoding='utf-8') as f:
                 json.dump(status, f, indent=2)
         except Exception as e:
-            if self.logger:
-                self.logger.warning(f"Failed to write status file {self.status_file}: {e}", indent=2)
-            else:
-                print(f"[WARNING] Failed to write status file {self.status_file}: {e}")
+            self.logger.warning(f"Failed to write status file {self.status_file}: {e}", indent=2)
 
     def _monitor_loop(self):
         """Main monitoring loop that runs in a separate thread."""
-        if self.logger:
-            self.logger.info("📊 Starting Mosaic Processor monitoring...", indent=2)
-        else:
-            print("[INFO] 📊 Starting Mosaic Processor monitoring...")
+        self.logger.info("📊 Starting Mosaic Processor monitoring...", indent=2)
 
         # Initial scan of expected frames
         self._expected_frames = self._scan_expected_frames()
 
         if not self._expected_frames:
-            if self.logger:
-                self.logger.warning("No reels with frame_times.csv found - monitoring disabled", indent=2)
-            else:
-                print("[WARNING] No reels with frame_times.csv found - monitoring disabled")
+            self.logger.warning("No reels with frame_times.csv found - monitoring disabled", indent=2)
             return
 
         total_expected = sum(self._expected_frames.values())
-        if self.logger:
-            self.logger.info(f"Monitoring {len(self._expected_frames)} reels, {total_expected} total expected frames", indent=2)
-        else:
-            print(f"[INFO] Monitoring {len(self._expected_frames)} reels, {total_expected} total expected frames")
+        self.logger.info(f"Monitoring {len(self._expected_frames)} reels, {total_expected} total expected frames", indent=2)
 
         while not self._stop_event.is_set():
             try:
@@ -294,10 +275,7 @@ class MosaicProcessorMonitor:
                         f"Progress: {current_progress:.1f}% "
                         f"({generated:,}/{expected:,} frames, {completed_reels}/{total_reels} reels complete)"
                     )
-                    if self.logger:
-                        self.logger.info(progress_msg, indent=2)
-                    else:
-                        print(f"[INFO] {progress_msg}")
+                    self.logger.info(progress_msg, indent=2)
 
                     # Call progress callback if provided
                     if self.progress_callback and abs(current_progress - self._last_callback_percent) >= 5.0:
@@ -305,26 +283,17 @@ class MosaicProcessorMonitor:
                             self.progress_callback(status)
                             self._last_callback_percent = current_progress
                         except Exception as e:
-                            if self.logger:
-                                self.logger.warning(f"Progress callback error: {e}", indent=2)
-                            else:
-                                print(f"[WARNING] Progress callback error: {e}")
+                            self.logger.warning(f"Progress callback error: {e}", indent=2)
 
                 self._last_status = status
 
                 # Check if all reels are complete
                 if status["totals"]["reels_completed"] == status["totals"]["reels_total"] and status["totals"]["reels_total"] > 0:
-                    if self.logger:
-                        self.logger.success("🎉 All reels completed!", indent=2)
-                    else:
-                        print("[SUCCESS] 🎉 All reels completed!")
+                    self.logger.success("🎉 All reels completed!", indent=2)
                     break
 
             except Exception as e:
-                if self.logger:
-                    self.logger.error(f"Error in monitoring loop: {e}", indent=2)
-                else:
-                    print(f"[ERROR] Error in monitoring loop: {e}")
+                self.logger.error(f"Error in monitoring loop: {e}", indent=2)
 
             # Wait for next check or stop signal
             if self._stop_event.wait(self.check_interval):
@@ -336,15 +305,9 @@ class MosaicProcessorMonitor:
             final_status["monitoring"] = False
             final_status["completed_at"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self._write_status_file(final_status)
-            if self.logger:
-                self.logger.success("📊 Monitoring completed", indent=2)
-            else:
-                print("[SUCCESS] 📊 Monitoring completed")
+            self.logger.success("📊 Monitoring completed", indent=2)
         except Exception as e:
-            if self.logger:
-                self.logger.error(f"Error writing final status: {e}", indent=2)
-            else:
-                print(f"[ERROR] Error writing final status: {e}")
+            self.logger.error(f"Error writing final status: {e}", indent=2)
 
     def start_monitoring(self) -> bool:
         """
@@ -354,10 +317,7 @@ class MosaicProcessorMonitor:
             True if monitoring started successfully, False otherwise
         """
         if self._monitor_thread and self._monitor_thread.is_alive():
-            if self.logger:
-                self.logger.warning("Monitoring is already running", indent=2)
-            else:
-                print("[WARNING] Monitoring is already running")
+            self.logger.warning("Monitoring is already running", indent=2)
             return False
 
         try:
@@ -366,10 +326,7 @@ class MosaicProcessorMonitor:
             self._monitor_thread.start()
             return True
         except Exception as e:
-            if self.logger:
-                self.logger.error(f"Failed to start monitoring: {e}", indent=2)
-            else:
-                print(f"[ERROR] Failed to start monitoring: {e}")
+            self.logger.error(f"Failed to start monitoring: {e}", indent=2)
             return False
 
     def stop_monitoring(self, timeout: float = 10.0):
@@ -382,24 +339,15 @@ class MosaicProcessorMonitor:
         if not self._monitor_thread or not self._monitor_thread.is_alive():
             return
 
-        if self.logger:
-            self.logger.info("Stopping monitoring...", indent=2)
-        else:
-            print("[INFO] Stopping monitoring...")
+        self.logger.info("Stopping monitoring...", indent=2)
         self._stop_event.set()
 
         try:
             self._monitor_thread.join(timeout)
             if self._monitor_thread.is_alive():
-                if self.logger:
-                    self.logger.warning("Monitoring thread did not stop within timeout", indent=2)
-                else:
-                    print("[WARNING] Monitoring thread did not stop within timeout")
+                self.logger.warning("Monitoring thread did not stop within timeout", indent=2)
         except Exception as e:
-            if self.logger:
-                self.logger.error(f"Error stopping monitoring: {e}", indent=2)
-            else:
-                print(f"[ERROR] Error stopping monitoring: {e}")
+            self.logger.error(f"Error stopping monitoring: {e}", indent=2)
 
     def get_current_status(self) -> Optional[Dict]:
         """
