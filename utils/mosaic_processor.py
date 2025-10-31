@@ -33,6 +33,7 @@
 #
 # =============================================================================
 import os
+import sys
 import subprocess
 import json
 import re
@@ -40,8 +41,61 @@ from pathlib import Path
 from typing import Optional
 
 from utils.manager.config_manager import ConfigManager
+from utils.mosaic_processor_monitor import create_monitor_from_config
 
 __all__ = ["run_mosaic_processor"]
+
+
+def launch_progress_monitor_window(status_file_path, logger):
+    """
+    Launch a separate CLI window showing progress monitoring.
+
+    Args:
+        status_file_path: Path to the progress JSON status file
+        logger: Logger instance
+
+    Returns:
+        Subprocess Popen object or None if failed
+    """
+    try:
+        # Get the path to the monitoring display script
+        utils_dir = Path(__file__).parent
+        monitor_script = utils_dir / "mosaic_progress_display.py"
+
+        if not monitor_script.exists():
+            logger.warning(f"Monitor script not found: {monitor_script}", indent=4)
+            return None
+
+        # Get Python executable (try to use same environment as current process)
+        python_exe = "python"  # Default fallback
+        try:
+            python_exe = sys.executable
+        except:
+            pass
+
+        # Build command to run monitoring script in new window
+        cmd = [
+            "cmd", "/c", "start",
+            "Mosaic Processor Progress",  # Window title
+            python_exe, str(monitor_script),
+            "--status-file", str(status_file_path),
+            "--watch"
+        ]
+
+        # Launch the process
+        process = subprocess.Popen(
+            cmd,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,  # Create new window
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        return process
+
+    except Exception as e:
+        logger.warning(f"Failed to launch progress monitor window: {e}", indent=4)
+        return None
+
 
 
 def build_mosaic_command(
@@ -58,7 +112,7 @@ def build_mosaic_command(
 ):
     """
     Constructs a command to run the Mosaic Processor executable with specified options.
-    
+
     Args:
         exe_path: Path to the Mosaic Processor executable.
         input_dir: Directory containing input image frames.
@@ -71,7 +125,7 @@ def build_mosaic_command(
         skip_reel_fix: If True, disables reel fixing.
         wrap_in_shell: If True, returns the command as a shell-wrapped string suitable for Windows; otherwise returns a
         list of command arguments.
-    
+
     Returns:
         A shell-wrapped command string or a list of command arguments for subprocess execution, depending on
         wrap_in_shell.
@@ -160,6 +214,7 @@ def run_processor_stage(
     logger.custom(f"Running command: {cmd}", indent=2, emoji="🧑🏻‍💻")
     log_f.write(f"COMMAND: {cmd}\n\n")
 
+    # Run subprocess normally (progress monitoring happens in separate window)
     result = subprocess.run(cmd, cwd=exe_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
 
     log_f.write(f"=== {stage_name} ===\n")
@@ -236,12 +291,12 @@ def run_mosaic_processor(
 ) -> None:
     """
     Runs the Mosaic Processor workflow for a project in three sequential stages.
-    
+
     This function orchestrates the execution of the Mosaic Processor executable, first performing rendering and reel
     fixing, then running GPX integration. It handles configuration resolution, validates required paths, manages output
     directories, detects reel numbers, and logs all steps and subprocess outputs to a dedicated log file. If any
     critical step fails, the function logs an error and exits early.
-    
+
     Args:
         cfg (ConfigManager): Active configuration manager with logging and paths.
         input_dir: Directory containing input image frames.
@@ -271,6 +326,11 @@ def run_mosaic_processor(
 
     log_path = cfg.paths.get_log_file_path("mosaic_processor_log", cfg)
 
+    # Initialize progress monitor without callback (will use separate CLI window)
+    progress_monitor = create_monitor_from_config(cfg, input_dir)
+    monitor_started = False
+    monitor_process = None
+
     try:
         with open(log_path, "w", encoding="utf-8") as log_f, \
                 cfg.get_progressor(total=3, label="Mosaic Processor Workflow") as progressor:
@@ -283,6 +343,29 @@ def run_mosaic_processor(
 
             for folder in reel_folders:
                 logger.info(f"🎞️ {folder}", indent=3)
+
+            # Start progress monitoring before rendering begins
+            logger.info("📊 Starting progress monitoring...", indent=2)
+            monitor_started = progress_monitor.start_monitoring()
+            if monitor_started:
+                status_file_path = cfg.paths.get_log_file_path("mosaic_processor_progress", cfg).with_suffix('.json')
+                logger.info(f"📈 Progress status: {status_file_path}", indent=3)
+
+                # Display initial expected frame counts
+                initial_status = progress_monitor.get_current_status()
+                if initial_status and initial_status.get('totals', {}).get('expected_frames', 0) > 0:
+                    total_expected = initial_status['totals']['expected_frames']
+                    reel_count = initial_status['totals']['reels_total']
+                    logger.info(f"📊 Expecting {total_expected:,} frames across {reel_count} reel(s)", indent=3)
+
+                # Launch separate CLI monitoring window
+                monitor_process = launch_progress_monitor_window(status_file_path, logger)
+                if monitor_process:
+                    logger.info("🖥️ Progress monitor window opened", indent=3)
+                else:
+                    logger.warning("Failed to open progress monitor window", indent=3)
+            else:
+                logger.warning("Failed to start progress monitoring", indent=3)
             if not run_processor_stage(
                     cfg, input_dir, output_dir, start_frame, end_frame,
                     log_f, log_path,
@@ -311,5 +394,41 @@ def run_mosaic_processor(
 
     except Exception as e:
         logger.error(f"Error during Mosaic Processor workflow: {e}", error_type=RuntimeError, indent=1)
+    finally:
+        # Stop progress monitoring
+        if monitor_started and progress_monitor.is_monitoring():
+            logger.info("📊 Stopping progress monitoring...", indent=1)
+            progress_monitor.stop_monitoring(timeout=15.0)
+
+            # Log final status with visual summary
+            final_status = progress_monitor.get_current_status()
+            if final_status:
+                totals = final_status.get("totals", {})
+                final_percent = totals.get('progress_percent', 0)
+                generated = totals.get('generated_frames', 0)
+                expected = totals.get('expected_frames', 0)
+                completed_reels = totals.get('reels_completed', 0)
+                total_reels = totals.get('reels_total', 0)
+
+                if final_percent >= 100.0:
+                    logger.success(f"🎉 All frames rendered successfully!", indent=2)
+                    logger.info(f"   📊 Total: {generated:,} frames across {total_reels} reels", indent=2)
+                else:
+                    logger.info(
+                        f"📈 Final Status: {generated:,}/{expected:,} frames "
+                        f"({final_percent:.1f}%), {completed_reels}/{total_reels} reels complete",
+                        indent=2
+                    )
+
+        # Close progress monitor window
+        if monitor_process:
+            try:
+                # Give the monitor window a moment to show final status
+                import time
+                time.sleep(3)
+                monitor_process.terminate()
+                logger.info("🖥️ Progress monitor window closed", indent=2)
+            except Exception as e:
+                logger.debug(f"Error closing monitor window: {e}", indent=3)
 
     logger.custom(f"Mosaic Processor log saved to: {log_path}", indent=1, emoji="📄")
