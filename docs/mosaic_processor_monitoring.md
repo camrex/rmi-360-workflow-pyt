@@ -157,7 +157,7 @@ The monitoring system is automatically configured through the existing ConfigMan
 
 - `frame_times.csv` files must be present in each reel folder
 - Output directory structure: `<output_base>/reel*/panos/`
-- JPEG files with `.jpg` extension (case insensitive)
+- JPEG files with `.jpg` or `.jpeg` extensions (case insensitive)
 
 ## Logging
 
