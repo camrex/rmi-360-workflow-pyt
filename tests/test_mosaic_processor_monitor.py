@@ -159,14 +159,14 @@ class TestMosaicProcessorMonitor:
         # Mock ConfigManager
         mock_cfg = MagicMock()
         mock_cfg.paths.original = Path("/test/output")
-        mock_cfg.paths.get_log_file_path.return_value = Path("/test/logs/progress_log")
+        mock_cfg.paths.logs = Path("/test/logs")
         mock_cfg.get_logger.return_value = MagicMock()
 
         monitor = create_monitor_from_config(mock_cfg, "/test/input")
 
         assert monitor.input_reels_dir == Path("/test/input")
         assert monitor.output_base_dir == Path("/test/output")
-        assert monitor.status_file == Path("/test/logs/progress_log.json")
+        assert monitor.status_file == Path("/test/logs/mosaic_processor_progress.json")
 
     def test_start_stop_monitoring(self):
         """Test starting and stopping the monitoring thread."""

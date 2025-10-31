@@ -382,7 +382,7 @@ def create_monitor_from_config(cfg, input_reels_dir: str, progress_callback=None
         Configured MosaicProcessorMonitor instance
     """
     output_base_dir = cfg.paths.original  # project_folder/panos/original
-    status_file = cfg.paths.get_log_file_path("mosaic_processor_progress", cfg).with_suffix('.json')
+    status_file = cfg.paths.logs / "mosaic_processor_progress.json"
 
     return MosaicProcessorMonitor(
         input_reels_dir=input_reels_dir,

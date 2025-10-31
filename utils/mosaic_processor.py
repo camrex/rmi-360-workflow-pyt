@@ -358,7 +358,7 @@ def run_mosaic_processor(
                 if not progress_monitor.is_monitoring():
                     logger.warning("Progress monitoring disabled (no frame_times.csv found); skipping monitor window", indent=3)
                 else:
-                    status_file_path = cfg.paths.get_log_file_path("mosaic_processor_progress", cfg).with_suffix('.json')
+                    status_file_path = cfg.paths.logs / "mosaic_processor_progress.json"
                     logger.info(f"📈 Progress status: {status_file_path}", indent=3)
 
                     # Display initial expected frame counts
