@@ -26,9 +26,9 @@ def example_basic_monitoring():
     print("=== Basic Monitoring Example ===")
 
     # Set up paths (adjust these for your environment)
-    input_reels_dir = "D:/project/reels"  # Contains reel folders with frame_times.csv
-    output_base_dir = "D:/project/panos/original"  # Where JPEG files are generated
-    status_file = "D:/project/logs/mosaic_progress.json"
+    input_reels_dir = Path("D:/project/reels")  # Contains reel folders with frame_times.csv
+    output_base_dir = Path("D:/project/panos/original")  # Where JPEG files are generated
+    status_file = Path("D:/project/logs/mosaic_progress.json")
 
     # Create monitor instance
     monitor = MosaicProcessorMonitor(
