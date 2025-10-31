@@ -240,6 +240,11 @@ class MosaicProcessorMonitor:
 
         if not self._expected_frames:
             self.logger.warning("No reels with frame_times.csv found - monitoring disabled", indent=2)
+            status = self._generate_status()
+            status["monitoring"] = False
+            status["message"] = "No frame_times.csv found; monitoring disabled"
+            self._write_status_file(status)
+            self._last_status = status
             return
 
         total_expected = sum(self._expected_frames.values())

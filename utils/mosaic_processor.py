@@ -353,6 +353,7 @@ def run_mosaic_processor(
             # Start progress monitoring before rendering begins
             logger.info("📊 Starting progress monitoring...", indent=2)
             monitor_started = progress_monitor.start_monitoring()
+            time.sleep(0.1)  # Give monitor a moment to initialize
             if monitor_started:
                 if not progress_monitor.is_monitoring():
                     logger.warning("Progress monitoring disabled (no frame_times.csv found); skipping monitor window", indent=3)
