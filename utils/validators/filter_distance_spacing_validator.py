@@ -49,10 +49,10 @@ def filter_distance_spacing_validator(config_dict: dict) -> list:
     if not isinstance(config_dict, dict):
         errors.append("config: Expected a mapping/dict for configuration.")
         return errors
-        
+
     # Check if distance_spacing section exists and is a dict
     distance_spacing = config_dict.get("distance_spacing", None)
-    
+
     if not isinstance(distance_spacing, dict) or not distance_spacing:
         errors.append(
             "distance_spacing: Section is missing or invalid. "
@@ -87,15 +87,15 @@ def filter_distance_spacing_validator(config_dict: dict) -> list:
         )
 
     # Validate relationship between min_spacing and tolerance
-    if (isinstance(min_spacing, (int, float)) and isinstance(tolerance, (int, float)) and 
+    if (isinstance(min_spacing, (int, float)) and isinstance(tolerance, (int, float)) and
         min_spacing > 0 and tolerance >= 0):
-        
+
         if tolerance >= min_spacing:
             errors.append(
                 f"distance_spacing.tolerance_meters: Tolerance ({tolerance}m) should be less than "
                 f"min_spacing_meters ({min_spacing}m) to be meaningful."
             )
-        
+
         # Warn about very large tolerance relative to spacing
         if tolerance > (min_spacing * 0.5):
             errors.append(
