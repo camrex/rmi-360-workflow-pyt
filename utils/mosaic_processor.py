@@ -37,6 +37,8 @@ import sys
 import subprocess
 import json
 import re
+import time
+import platform
 from pathlib import Path
 from typing import Optional
 
@@ -70,10 +72,14 @@ def launch_progress_monitor_window(status_file_path, logger):
         python_exe = "python"  # Default fallback
         try:
             python_exe = sys.executable
-        except:
-            pass
+        except AttributeError:
+            logger.debug("sys.executable unavailable, using 'python'", indent=4)
 
-        # Build command to run monitoring script in new window
+        # Build command to run monitoring script in new window (Windows only)
+        if platform.system() != "Windows":
+            logger.info("Progress monitor window is only supported on Windows.", indent=4)
+            return None
+
         cmd = [
             "cmd", "/c", "start",
             "Mosaic Processor Progress",  # Window title
@@ -93,10 +99,9 @@ def launch_progress_monitor_window(status_file_path, logger):
 
         return process
 
-    except Exception as e:
+    except (FileNotFoundError, OSError, subprocess.SubprocessError) as e:
         logger.warning(f"Failed to launch progress monitor window: {e}", indent=4)
         return None
-
 
 
 def build_mosaic_command(
@@ -415,7 +420,7 @@ def run_mosaic_processor(
                 total_reels = totals.get('reels_total', 0)
 
                 if final_percent >= 100.0:
-                    logger.success(f"🎉 All frames rendered successfully!", indent=2)
+                    logger.success("🎉 All frames rendered successfully!", indent=2)
                     logger.info(f"   📊 Total: {generated:,} frames across {total_reels} reels", indent=2)
                 else:
                     logger.info(
@@ -428,11 +433,10 @@ def run_mosaic_processor(
         if monitor_process:
             try:
                 # Give the monitor window a moment to show final status
-                import time
                 time.sleep(3)
                 monitor_process.terminate()
                 logger.info("🖥️ Progress monitor window closed", indent=2)
-            except Exception as e:
+            except (ProcessLookupError, OSError) as e:
                 logger.debug(f"Error closing monitor window: {e}", indent=3)
 
     logger.custom(f"Mosaic Processor log saved to: {log_path}", indent=1, emoji="📄")
