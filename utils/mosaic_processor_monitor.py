@@ -137,7 +137,7 @@ class MosaicProcessorMonitor:
 
     def _count_generated_frames(self, reel_name: str) -> int:
         """
-        Count generated JPEG files for a specific reel.
+        Count generated image files for a specific reel.
 
         Args:
             reel_name: Name of the reel to check
@@ -151,13 +151,14 @@ class MosaicProcessorMonitor:
         if not reel_output_dir.exists():
             return 0
 
-        # Count .jpg files (case insensitive)
-        jpg_count = sum(
+        # Count common JPEG extensions (case insensitive)
+        valid_suffixes = {'.jpg', '.jpeg'}
+        image_count = sum(
             1 for f in reel_output_dir.iterdir()
-            if f.is_file() and f.suffix.lower() == '.jpg'
+            if f.is_file() and f.suffix.lower() in valid_suffixes
         )
 
-        return jpg_count
+        return image_count
 
     def _generate_status(self) -> Dict:
         """
