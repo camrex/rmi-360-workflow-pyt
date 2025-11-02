@@ -705,20 +705,36 @@ portal:
   summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
 
 # ------------------------------------------------------------------------------
-# 🌍 REVERSE GEOCODING
+# 🌍 GEOCODING & GEOGRAPHIC ENRICHMENT
 # ------------------------------------------------------------------------------
-# Controls how location names (City, State, Country) are applied to images
+# Controls how location names and geographic context are applied to images
 # based on their GPS coordinates. This step is handled by the geocode_images.py
 # script and is typically run after all GPS corrections are complete.
 #
 # Supported methods:
-#   - "exiftool": Uses ExifTool's internal Geolocation module.
+#   - "exiftool": Uses ExifTool's internal Geolocation module for basic reverse geocoding
+#   - "geo_areas": Uses corridor geo-areas enrichment with Living Atlas data sources
+#   - "both": Applies geo-areas enrichment first, then ExifTool reverse geocoding
 #
-# Location tags written may include:
-#   - City / State / Country (EXIF)
-#   - LocationShownCity / ProvinceState / CountryName (XMP/IPTC-Ext)
+# Method details:
+#   🔍 "exiftool": Basic reverse geocoding using ExifTool's Geolocation module
+#      - Location tags: City / State / Country (EXIF)
+#      - LocationShownCity / ProvinceState / CountryName (XMP/IPTC-Ext)
+#      - Simple point-based lookup from built-in or custom databases
 #
-# Supported ExifTool Configs:
+#   🗺️ "geo_areas": Advanced corridor-aware geographic enrichment 
+#      - Uses Living Atlas Places and Counties polygon data
+#      - Milepost-aware context (prev/next/nearest places along route)
+#      - Gap bridging and range building for continuous coverage
+#      - Multi-tier verification with source tracking
+#      - Detailed geographic context beyond simple reverse geocoding
+#
+#   🔄 "both": Combined approach (recommended for comprehensive tagging)
+#      - Applies geo-areas enrichment first to populate corridor context
+#      - Follows with ExifTool reverse geocoding for additional location data
+#      - Provides both detailed corridor intelligence and standard location tags
+#
+# Supported ExifTool Configs (when method includes "exiftool"):
 #   - "default" (no config file used; built-in DB of cities with population > 2000)
 #   - "geolocation500" (uses config file that points to Geolocation500 DB)
 #   - "geocustom" (uses config file that points to a custom geolocation DB built by user
@@ -740,7 +756,7 @@ portal:
 #        $Image::ExifTool::Geolocation::geoDir = '/ABSOLUTE/PATH/TO/[NameOfYourCustomGeoDB]"';
 #   ➤ Note: Relative paths in .config are not supported.
 geocoding:
-  method: "exiftool"
+  method: "geo_areas"  # Options: "exiftool", "geo_areas", "both"
   exiftool_geodb: "default"  # Options: default, geolocation500, geocustom
   geoloc500_config_path: "templates/exiftool/geolocation500.config"
   geocustom_config_path: "templates/exiftool/geocustom.config"

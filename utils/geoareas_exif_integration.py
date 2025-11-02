@@ -18,9 +18,27 @@
 # Ext. Dependencies:    typing
 # =============================================================================
 
-__all__ = ["get_geoareas_exif_mapping", "build_geoareas_tag_expressions", "get_geoareas_xpcomment_suffix"]
+__all__ = ["get_geoareas_exif_mapping", "build_geoareas_tag_expressions", "get_geoareas_xpcomment_suffix", "should_use_geoareas"]
 
 from typing import Dict, Any, Optional
+
+
+def should_use_geoareas(config: Dict[str, Any]) -> bool:
+    """
+    Check if geo-areas enrichment should be used based on geocoding.method configuration.
+    
+    Args:
+        config: Configuration dictionary containing geocoding settings
+        
+    Returns:
+        True if geo-areas enrichment should be applied, False otherwise
+        
+    Note:
+        Returns True for methods: "geo_areas", "both"
+        Returns False for methods: "exiftool" (or any other value)
+    """
+    method = config.get('geocoding', {}).get('method', 'exiftool').lower()
+    return method in ['geo_areas', 'both']
 
 
 def get_geoareas_exif_mapping() -> Dict[str, str]:
@@ -29,6 +47,10 @@ def get_geoareas_exif_mapping() -> Dict[str, str]:
     
     Returns:
         Dictionary mapping EXIF tag names to geo-areas field expressions
+        
+    Note:
+        This mapping is used when geocoding.method is "geo_areas" or "both"
+        to integrate geo-areas data with ExifTool metadata workflow.
     """
     return {
         # Standard EXIF location tags

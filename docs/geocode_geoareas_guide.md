@@ -189,6 +189,35 @@ Generated CSV report includes:
 - Only fills null/empty values unless explicitly overridden
 - Preserves existing user-assigned values
 
+## Configuration Integration
+
+### Geocoding Method Selection
+
+The geo-areas enrichment integrates with the existing geocoding system through the `geocoding.method` setting:
+
+```yaml
+geocoding:
+  method: "geo_areas"  # Options: "exiftool", "geo_areas", "both"
+```
+
+**Method Options:**
+- **`"exiftool"`**: Uses only ExifTool's internal reverse geocoding (original behavior)
+- **`"geo_areas"`**: Uses only corridor geo-areas enrichment with Living Atlas data
+- **`"both"`**: Applies geo-areas enrichment first, then ExifTool reverse geocoding (recommended for comprehensive tagging)
+
+### ExifTool Integration
+
+When using `"geo_areas"` or `"both"` methods, the enriched geographic data is automatically integrated into the ExifTool metadata workflow through field mappings:
+
+```python
+# Geo-areas fields are mapped to standard EXIF tags:
+"City": "field.geo_place"                    # Primary place name
+"State": "field.geo_state"                   # State name  
+"LocationShownCity": "field.geo_place"       # XMP location
+"ProvinceState": "field.geo_state"           # XMP state
+"County": "field.geo_county"                 # County name
+```
+
 ## Advanced Configuration
 
 ### Gap Bridging Tuning
