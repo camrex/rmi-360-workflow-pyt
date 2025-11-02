@@ -207,16 +207,44 @@ geocoding:
 
 ### ExifTool Integration
 
-When using `"geo_areas"` or `"both"` methods, the enriched geographic data is automatically integrated into the ExifTool metadata workflow through field mappings:
+When using `"geo_areas"` or `"both"` methods, the enriched geographic data is automatically integrated into the ExifTool metadata workflow. The system adds comprehensive location tags to your images:
 
-```python
-# Geo-areas fields are mapped to standard EXIF tags:
-"City": "field.geo_place"                    # Primary place name
-"State": "field.geo_state"                   # State name  
-"LocationShownCity": "field.geo_place"       # XMP location
-"ProvinceState": "field.geo_state"           # XMP state
-"County": "field.geo_county"                 # County name
+**EXIF Tags Added:**
+- `City` - Place name with configurable fallback
+- `State` - State name from county data
+- `Country` - Always "United States"
+- `CountryCode` - Always "US"
+
+**XMP IPTC Core Tags:**
+- `CountryCode` - Always "US"
+
+**XMP IPTC Extension Tags:**
+- `LocationShownCity` - Place name with descriptive fallbacks
+- `LocationShownCountryCode` - Always "US"
+- `LocationShownCountryName` - Always "United States"
+- `LocationShownProvinceState` - State name
+- `LocationShownGPSLatitude` - GPS latitude
+- `LocationShownGPSLongitude` - GPS longitude
+
+**XMP Photoshop Tags:**
+- `City` - Place name with fallback
+- `Country` - Always "United States"  
+- `State` - State name
+
+### Fallback Strategy Configuration
+
+For points outside place boundaries, the system provides configurable fallback behavior:
+
+```yaml
+geo_areas:
+  city_fallback_strategy: "nearest_then_county"  # Options below
+  include_nearest_indicator: true                 # Add "(nearest)" suffix
 ```
+
+**Strategy Options:**
+- `"county_only"`: Use county name (e.g., "Adams County")
+- `"nearest_only"`: Use nearest place (e.g., "Springfield (nearest)")
+- `"nearest_then_county"`: Try nearest place, then county (recommended)
 
 ## Advanced Configuration
 

@@ -23,6 +23,30 @@ __all__ = ["get_geoareas_exif_mapping", "build_geoareas_tag_expressions", "get_g
 from typing import Dict, Any, Optional
 
 
+def _get_city_fallback_expression(config: Dict[str, Any]) -> str:
+    """
+    Generate city fallback expression based on configuration settings.
+    
+    Args:
+        config: Configuration dictionary containing geo_areas settings
+        
+    Returns:
+        Expression string for city field fallback logic
+    """
+    geo_config = config.get('geo_areas', {})
+    strategy = geo_config.get('city_fallback_strategy', 'nearest_then_county')
+    include_indicator = geo_config.get('include_nearest_indicator', True)
+    
+    if strategy == "county_only":
+        return "(field.geo_place if field.geo_place else field.geo_county)"
+    elif strategy == "nearest_only":
+        indicator = " + ' (nearest)'" if include_indicator else ""
+        return f"(field.geo_place if field.geo_place else field.nearest_place{indicator})"
+    else:  # "nearest_then_county" (default)
+        indicator = " + ' (nearest)'" if include_indicator else ""
+        return f"(field.geo_place if field.geo_place else (field.nearest_place{indicator} if field.nearest_place else field.geo_county))"
+
+
 def should_use_geoareas(config: Dict[str, Any]) -> bool:
     """
     Check if geo-areas enrichment should be used based on geocoding.method configuration.
@@ -41,33 +65,66 @@ def should_use_geoareas(config: Dict[str, Any]) -> bool:
     return method in ['geo_areas', 'both']
 
 
-def get_geoareas_exif_mapping() -> Dict[str, str]:
+def get_geoareas_exif_mapping(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    Get field mapping from geo-areas fields to standard EXIF tags.
+    Get field mapping from geo-areas fields to structured EXIF tags.
+    
+    Args:
+        config: Optional configuration dictionary for fallback customization
     
     Returns:
-        Dictionary mapping EXIF tag names to geo-areas field expressions
+        Dictionary with structured EXIF tag definitions for geo-areas fields
         
     Note:
         This mapping is used when geocoding.method is "geo_areas" or "both"
         to integrate geo-areas data with ExifTool metadata workflow.
+        
+        Fallback behavior for points outside places is configurable via
+        geo_areas.city_fallback_strategy setting.
     """
+    # Default fallback if no config provided
+    if config is None:
+        city_fallback = "(field.geo_place if field.geo_place else (field.nearest_place if field.nearest_place else field.geo_county))"
+        locationshown_fallback = "(field.geo_place if field.geo_place else (field.nearest_place + ' (nearest)' if field.nearest_place else field.geo_county + ' County'))"
+    else:
+        city_fallback = _get_city_fallback_expression(config)
+        # For LocationShownCity, always add descriptive suffixes
+        geo_config = config.get('geo_areas', {})
+        if geo_config.get('city_fallback_strategy') == "county_only":
+            locationshown_fallback = "(field.geo_place if field.geo_place else field.geo_county + ' County')"
+        elif geo_config.get('city_fallback_strategy') == "nearest_only":
+            locationshown_fallback = "(field.geo_place if field.geo_place else field.nearest_place + ' (nearest)')"
+        else:  # nearest_then_county
+            locationshown_fallback = "(field.geo_place if field.geo_place else (field.nearest_place + ' (nearest)' if field.nearest_place else field.geo_county + ' County'))"
+    
     return {
         # Standard EXIF location tags
-        "City": "field.geo_place",
+        "City": city_fallback,
         "State": "field.geo_state", 
         "Country": "'United States'",
+        "CountryCode": "'US'",
         
-        # XMP/IPTC-Ext location tags  
-        "LocationShownCity": "field.geo_place",
-        "ProvinceState": "field.geo_state",
-        "CountryName": "'United States'",
+        # XMP IPTC Core tags
+        "XMP-iptcCore": {
+            "CountryCode": "'US'"
+        },
         
-        # Additional context tags (if supported by EXIF config)
-        "County": "field.geo_county",
-        "LocationCreatedCity": "field.geo_place",
-        "LocationCreatedProvinceState": "field.geo_state", 
-        "LocationCreatedCountryName": "'United States'"
+        # XMP IPTC Extension tags  
+        "XMP-iptcExt": {
+            "LocationShownCity": locationshown_fallback,
+            "LocationShownCountryCode": "'US'",
+            "LocationShownCountryName": "'United States'",
+            "LocationShownProvinceState": "field.geo_state",
+            "LocationShownGPSLatitude": "field.Y",
+            "LocationShownGPSLongitude": "field.X"
+        },
+        
+        # XMP Photoshop tags
+        "XMP-photoshop": {
+            "City": city_fallback,
+            "Country": "'United States'",
+            "State": "field.geo_state"
+        }
     }
 
 

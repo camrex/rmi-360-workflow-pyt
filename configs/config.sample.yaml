@@ -813,6 +813,14 @@ geo_areas:
   write_report_csv: true       # Generate QA report CSV with enrichment statistics  
   report_csv_filename: "geocode_geoareas_report.csv"  # Filename for QA report
   
+  # EXIF metadata fallback strategy for points outside places
+  # Controls what gets written to City/LocationShownCity tags when no place containment found
+  city_fallback_strategy: "nearest_then_county"  # Options: "county_only", "nearest_only", "nearest_then_county"
+  #   - "county_only": Use county name as fallback (e.g., "Adams County")
+  #   - "nearest_only": Use nearest place name with optional indicator (e.g., "Springfield (nearest)")  
+  #   - "nearest_then_county": Try nearest place first, then county (recommended)
+  include_nearest_indicator: true                 # Add "(nearest)" suffix for nearest place fallbacks in City tags
+  
   # Performance tuning (advanced)
   nearest_radius_m: 8000       # Radius for nearest calculations (currently unused - using milepost logic)
 
