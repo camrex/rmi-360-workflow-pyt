@@ -2,7 +2,22 @@
 
 ## Overview
 
-The Corridor Geo-Areas Enrichment utility provides advanced geographic context for corridor photo points by combining polygon containment analysis with milepost-based intelligence. This enrichment runs **before** ExifTool tagging to ensure all geographic area data is available for EXIF metadata application in a single batch operation.
+The Corridor Geo-Areas Enrichment Utility provides advanced geographic context for railway corridor imagery beyond simple reverse geocoding. It enriches photo points with:
+
+- **Place containment** using Living Atlas places data
+- **County and state information** from administrative boundaries  
+- **Efficient range-based enrichment** for comprehensive corridor coverage
+- **Intelligent gap bridging** between discontinuous place segments
+- **Multi-tier verification** with comprehensive source tracking
+
+### Processing Modes
+
+The system offers multiple processing modes optimized for different use cases:
+
+- **`CONTAINMENT+RANGES_BUILD_APPLY`** (Recommended): Most efficient approach that performs polygon containment then builds comprehensive mile ranges for complete coverage
+- **`FULL`**: Legacy comprehensive mode that includes redundant individual milepost enrichment before range building
+- **`CONTAINMENT_ONLY`**: Basic polygon joins only
+- **Other modes**: Available for specialized workflows or debugging
 
 ## Features
 
@@ -202,8 +217,8 @@ geocoding:
 
 **Method Options:**
 - **`"exiftool"`**: Uses only ExifTool's internal reverse geocoding (original behavior)
-- **`"geo_areas"`**: Uses only corridor geo-areas enrichment with Living Atlas data
-- **`"both"`**: Applies geo-areas enrichment first, then ExifTool reverse geocoding (recommended for comprehensive tagging)
+- **`"geo_areas"`**: Uses only corridor geo-areas enrichment with Living Atlas data (recommended)
+- **`"both"`**: Applies geo-areas enrichment first, then ExifTool reverse geocoding (comprehensive but slower)
 
 ### ExifTool Integration
 
@@ -245,6 +260,31 @@ geo_areas:
 - `"county_only"`: Use county name (e.g., "Adams County")
 - `"nearest_only"`: Use nearest place (e.g., "Springfield (nearest)")
 - `"nearest_then_county"`: Try nearest place, then county (recommended)
+
+### XPKeywords Enrichment
+
+The system automatically enhances XPKeywords with additional geographic context:
+
+```yaml
+geo_areas:
+  include_county_keyword: true                    # Add county names to XPKeywords
+  include_directional_context: true              # Add directional descriptions for points outside places
+  milepost_directions:
+    increasing_direction: "west"                  # Direction for increasing mileposts
+    decreasing_direction: "east"                  # Direction for decreasing mileposts
+```
+
+**Enhanced XPKeywords Examples:**
+- County context: `"Adams County"`, `"Cook County"`
+- Directional context: `"2.4 miles west of Sedalia"`, `"1.7 miles east of Springfield"`
+
+**Milepost-Based Directions:**
+Railroad corridors use operational directions based on milepost progression rather than cardinal directions. Configure the `milepost_directions` to match your railroad's milepost system:
+- If mileposts increase westbound, set `increasing_direction: "west"`
+- The system calculates direction by comparing distances to prev/next places
+- If closer to prev_place (lower milepost), uses `decreasing_direction`
+- If closer to next_place (higher milepost), uses `increasing_direction`
+- Example: Point 2.1 miles from prev place vs. 3.4 miles from next place = "2.1 miles east of [prev_place]"
 
 ## Advanced Configuration
 

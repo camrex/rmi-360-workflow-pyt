@@ -18,9 +18,42 @@
 # Ext. Dependencies:    typing
 # =============================================================================
 
-__all__ = ["get_geoareas_exif_mapping", "build_geoareas_tag_expressions", "get_geoareas_xpcomment_suffix", "should_use_geoareas"]
+__all__ = ["get_geoareas_exif_mapping", "build_geoareas_tag_expressions", "get_geoareas_xpcomment_suffix", "should_use_geoareas", "get_geoareas_xpkeywords_additions"]
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+
+
+def _calculate_directional_context(point_milepost: float, place_milepost: float, place_name: str, config: Dict[str, Any]) -> str:
+    """
+    Calculate directional context based on milepost positions and railroad operational directions.
+    
+    Args:
+        point_milepost: Milepost of the current point
+        place_milepost: Milepost of the nearest place
+        place_name: Name of the nearest place
+        config: Configuration dictionary containing milepost directions
+        
+    Returns:
+        Directional context string (e.g., "2.4 miles east of Sedalia")
+    """
+    geo_config = config.get('geo_areas', {})
+    directions = geo_config.get('milepost_directions', {})
+    
+    increasing_dir = directions.get('increasing_direction', 'west').lower()
+    decreasing_dir = directions.get('decreasing_direction', 'east').lower()
+    
+    # Calculate distance and direction
+    distance_miles = abs(point_milepost - place_milepost)
+    
+    if point_milepost > place_milepost:
+        # Point has higher milepost = increasing direction
+        direction = increasing_dir
+    else:
+        # Point has lower milepost = decreasing direction  
+        direction = decreasing_dir
+    
+    return f"{distance_miles:.1f} miles {direction} of {place_name}"
+
 
 
 def _get_city_fallback_expression(config: Dict[str, Any]) -> str:
@@ -63,6 +96,46 @@ def should_use_geoareas(config: Dict[str, Any]) -> bool:
     """
     method = config.get('geocoding', {}).get('method', 'exiftool').lower()
     return method in ['geo_areas', 'both']
+
+
+def get_geoareas_xpkeywords_additions(config: Dict[str, Any]) -> List[str]:
+    """
+    Get additional XPKeywords to add when geo-areas enrichment is enabled.
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        List of XPKeywords expressions to add to the base XPKeywords list
+    """
+    keywords = []
+    geo_config = config.get('geo_areas', {})
+    
+    # Add county keyword if enabled
+    if geo_config.get('include_county_keyword', True):
+        keywords.append("field.geo_county + ' County'")
+    
+    # Add directional context for points outside places if enabled  
+    if geo_config.get('include_directional_context', True):
+        # Create expression that generates directional context when appropriate
+        # This will only generate a value when point is outside a place but has nearest place data
+        directions = geo_config.get('milepost_directions', {})
+        inc_dir = directions.get('increasing_direction', 'west')
+        dec_dir = directions.get('decreasing_direction', 'east')
+        
+        # Use prev/next distance comparison to determine direction
+        # If prev is closer, point is closer to lower milepost = decreasing direction
+        # If next is closer, point is closer to higher milepost = increasing direction
+        directional_expr = (
+            f"(str(min(field.geo_prev_miles or 999, field.geo_next_miles or 999)) + ' miles ' + "
+            f"('{dec_dir}' if (field.geo_prev_miles or 999) < (field.geo_next_miles or 999) else '{inc_dir}') + ' of ' + "
+            f"(field.geo_prev_place if (field.geo_prev_miles or 999) < (field.geo_next_miles or 999) else field.geo_next_place) "
+            f"if not field.geo_place and ((field.geo_prev_place and field.geo_prev_miles is not None) or (field.geo_next_place and field.geo_next_miles is not None)) "
+            f"else None)"
+        )
+        keywords.append(directional_expr)
+    
+    return keywords
 
 
 def get_geoareas_exif_mapping(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -126,6 +199,9 @@ def get_geoareas_exif_mapping(config: Optional[Dict[str, Any]] = None) -> Dict[s
             "State": "field.geo_state"
         }
     }
+    
+    # Note: State FIPS can be derived from county FIPS if needed:
+    # state_fips = field.geo_county_fips[:2] if field.geo_county_fips else None
 
 
 def build_geoareas_tag_expressions(

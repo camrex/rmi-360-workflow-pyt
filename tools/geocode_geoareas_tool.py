@@ -135,9 +135,9 @@ class GeocodeGeoAreasTool:
             "CONTAINMENT+RANGES_BUILD_APPLY",
             "FULL"
         ]
-        mode_param.value = "FULL"
-        mode_param.description = ("Processing level: FULL includes all enrichment steps, "
-                                 "other options perform subset of operations.")
+        mode_param.value = "CONTAINMENT+RANGES_BUILD_APPLY"
+        mode_param.description = ("Processing level: CONTAINMENT+RANGES_BUILD_APPLY is recommended (most efficient), "
+                                 "FULL includes all steps but with redundant milepost enrichment.")
         params.append(mode_param)
 
         # Max Gap Miles

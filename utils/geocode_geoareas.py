@@ -62,9 +62,8 @@ GEO_AREA_FIELDS = [
     ("geo_place", "TEXT", 100),
     ("geo_place_fips", "TEXT", 20), 
     ("geo_county", "TEXT", 50),
-    ("geo_county_fips", "TEXT", 10),
+    ("geo_county_fips", "TEXT", 10),  # 5-digit FIPS (first 2 = state, last 3 = county)
     ("geo_state", "TEXT", 30),
-    ("geo_state_fips", "TEXT", 2),
     
     # Provenance and flags
     ("geo_place_source", "TEXT", 20),  # CONTAINED|INFERRED_BRIDGE|NEAREST_ALONG|RANGE_LOOKUP|COUNTY_ONLY
@@ -363,7 +362,7 @@ def enrich_points_places_counties(
             join_fields.append(state_name_field)
         
         # Update photos with county/state data
-        update_fields = ["geo_county", "geo_county_fips", "geo_state", "geo_state_fips"]
+        update_fields = ["geo_county", "geo_county_fips", "geo_state"]
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields) as update_cursor:
             # Create lookup from join results
@@ -427,10 +426,6 @@ def enrich_points_places_counties(
                         state_updates += 1
                         if len(results["state_examples"]) < 10:
                             results["state_examples"].append(oid)
-                    
-                    # Update state FIPS if currently null
-                    if not row[3] and state_fips:
-                        row[3] = state_fips
                     
                     update_cursor.updateRow(row)
         
@@ -587,6 +582,8 @@ def enrich_places_by_milepost(
                     
                     if nearest_anchor:
                         row[6] = nearest_anchor[2]  # geo_nearest_place
+                        row[7] = nearest_distance   # geo_nearest_miles
+                        row[8] = nearest_direction  # geo_nearest_dir
                         row[7] = nearest_distance   # geo_nearest_miles
                         row[8] = nearest_direction  # geo_nearest_dir
                         results["mile_filled_nearest"] += 1

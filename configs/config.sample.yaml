@@ -773,10 +773,10 @@ geocoding:
 #
 # Processing modes:
 #   - CONTAINMENT_ONLY: Only polygon containment joins
-#   - CONTAINMENT+MILEPOST_CONTEXT: Add prev/next/nearest milepost context
-#   - CONTAINMENT+MILEPOST+GAP_BRIDGE: Add gap bridging between same places  
-#   - CONTAINMENT+RANGES_BUILD_APPLY: Add range-based lookup from anchors
-#   - FULL: Complete enrichment workflow (recommended)
+#   - CONTAINMENT+MILEPOST_CONTEXT: Add prev/next/nearest milepost context (legacy)
+#   - CONTAINMENT+MILEPOST+GAP_BRIDGE: Add gap bridging between same places (legacy)  
+#   - CONTAINMENT+RANGES_BUILD_APPLY: Add range-based lookup from anchors (recommended - most efficient)
+#   - FULL: Complete enrichment workflow (comprehensive but includes redundant milepost step)
 #
 # Data sources (recommend Esri Living Atlas cached locally):
 #   - places_fc: Polygon FC with place boundaries (cities, towns, CDPs)
@@ -787,7 +787,7 @@ geo_areas:
   enabled: true
   
   # Processing mode - controls which enrichment steps to perform
-  mode: "FULL"  # Options: CONTAINMENT_ONLY, CONTAINMENT+MILEPOST_CONTEXT, CONTAINMENT+MILEPOST+GAP_BRIDGE, CONTAINMENT+RANGES_BUILD_APPLY, FULL
+  mode: "CONTAINMENT+RANGES_BUILD_APPLY"  # Options: CONTAINMENT_ONLY, CONTAINMENT+MILEPOST_CONTEXT, CONTAINMENT+MILEPOST+GAP_BRIDGE, CONTAINMENT+RANGES_BUILD_APPLY, FULL
   
   # Field names in the photos feature class
   mile_field: "milepost"        # Field containing milepost values
@@ -820,6 +820,19 @@ geo_areas:
   #   - "nearest_only": Use nearest place name with optional indicator (e.g., "Springfield (nearest)")  
   #   - "nearest_then_county": Try nearest place first, then county (recommended)
   include_nearest_indicator: true                 # Add "(nearest)" suffix for nearest place fallbacks in City tags
+  
+  # XPKeywords enrichment for enhanced searchability
+  include_county_keyword: true                    # Add county name to XPKeywords (e.g., "Adams County")
+  include_directional_context: true              # Add directional context for points outside places (e.g., "2.4 miles east of Sedalia")
+  
+  # Milepost-based direction mapping (railroad operational directions)
+  # Define directions based on increasing/decreasing milepost values along the route
+  # This follows railroad operational direction rather than cardinal directions
+  milepost_directions:
+    increasing_direction: "west"   # Direction for increasing milepost values (e.g., "west", "north", "east", "south")
+    decreasing_direction: "east"   # Direction for decreasing milepost values (opposite of increasing)
+  #   Example: If closest place is at MP 125.2 and point is at MP 127.8,
+  #   point is 2.6 miles in the "increasing_direction" (west) of the place
   
   # Performance tuning (advanced)
   nearest_radius_m: 8000       # Radius for nearest calculations (currently unused - using milepost logic)

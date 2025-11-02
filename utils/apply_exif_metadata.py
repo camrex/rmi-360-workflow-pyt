@@ -41,7 +41,7 @@ from typing import Dict, Any, Union, List
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
 from utils.shared.arcpy_utils import validate_fields_exist
-from utils.geoareas_exif_integration import should_use_geoareas, get_geoareas_exif_mapping
+from utils.geoareas_exif_integration import should_use_geoareas, get_geoareas_exif_mapping, get_geoareas_xpkeywords_additions
 
 
 def _merge_geoareas_tags(cfg: Any, base_tags: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,6 +83,19 @@ def _merge_geoareas_tags(cfg: Any, base_tags: Dict[str, Any]) -> Dict[str, Any]:
             # Handle scalar tags (City, State, Country, etc.)
             merged_tags[tag_name] = tag_value
     
+    # Augment XPKeywords with geo-areas specific keywords
+    geoareas_keywords = get_geoareas_xpkeywords_additions(cfg.config)
+    if geoareas_keywords:
+        if 'XPKeywords' not in merged_tags:
+            merged_tags['XPKeywords'] = []
+        elif not isinstance(merged_tags['XPKeywords'], list):
+            # Convert single value to list
+            merged_tags['XPKeywords'] = [merged_tags['XPKeywords']]
+        
+        # Add geo-areas keywords to the list
+        merged_tags['XPKeywords'].extend(geoareas_keywords)
+        logger.debug(f"Added {len(geoareas_keywords)} geo-areas keywords to XPKeywords")
+    
     logger.debug(f"Added geo-areas tags: {list(geoareas_tags.keys())}")
     return merged_tags
 
@@ -109,8 +122,8 @@ def _extract_required_fields(tags, oid_fc=None):
             required_fields.add("QCFlag")
         
         # For geo-areas fields, only require them if they exist
-        geo_fields = ["geo_place", "geo_county", "geo_state", "place_source", 
-                     "prev_place", "next_place", "nearest_place"]
+        geo_fields = ["geo_place", "geo_county", "geo_county_fips", "geo_state", "geo_place_source", 
+                     "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles", "geo_nearest_place"]
         for field in geo_fields:
             if field in required_fields and field in oid_fields:
                 # Field is referenced and exists - keep it
