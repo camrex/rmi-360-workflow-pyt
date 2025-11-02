@@ -86,9 +86,8 @@ The enrichment process adds the following fields to your photos feature class:
 - `geo_place` (TEXT): Place name from containment or inference
 - `geo_place_fips` (TEXT): FIPS code for the place
 - `geo_county` (TEXT): County name 
-- `geo_county_fips` (TEXT): County FIPS code
+- `geo_county_fips` (TEXT): 5-digit county FIPS code (first 2 digits = state FIPS)
 - `geo_state` (TEXT): State name or abbreviation
-- `geo_state_fips` (TEXT): State FIPS code
 
 ### Provenance & Quality
 - `geo_place_source` (TEXT): Source of place assignment
@@ -101,13 +100,12 @@ The enrichment process adds the following fields to your photos feature class:
 - `geo_place_gap_miles` (DOUBLE): Gap distance when bridged
 
 ### Milepost Context  
-- `geo_prev_place` (TEXT): Previous place along route
+- `geo_prev_place` (TEXT): Previous place along route (lower milepost)
 - `geo_prev_miles` (DOUBLE): Distance to previous place
-- `geo_next_place` (TEXT): Next place along route  
+- `geo_next_place` (TEXT): Next place along route (higher milepost)
 - `geo_next_miles` (DOUBLE): Distance to next place
-- `geo_nearest_place` (TEXT): Nearest place (up or down route)
-- `geo_nearest_miles` (DOUBLE): Distance to nearest place
-- `geo_nearest_dir` (TEXT): Direction to nearest (UP/DN)
+
+**Note**: Nearest place and directional context (e.g., "east of Springfield") are calculated dynamically at runtime by comparing `geo_prev_miles` vs `geo_next_miles` using the configured milepost directions.
 
 ## Integration with ExifTool
 
@@ -119,12 +117,12 @@ The enriched geo-area data integrates seamlessly with ExifTool metadata tagging:
 - `Country` → "United States"
 
 ### Enhanced Context in Comments
-When `geo_place` is null, XPComment automatically includes context:
+When `geo_place` is null, XPComment automatically includes context with dynamically calculated nearest place and direction:
 ```
-" near {geo_nearest_place} ({geo_nearest_dir} {geo_nearest_miles:.1f} mi)"
+" near {nearest_place} ({direction} {nearest_miles:.1f} mi)"
 ```
 
-Example: `"MP 45.2 near Springfield (UP 2.3 mi)"`
+Example: `"MP 45.2 near Springfield (UP 2.3 mi)"` where nearest place and direction are computed at runtime from prev/next place distances
 
 ## Processing Modes
 
@@ -212,17 +210,19 @@ The geo-areas enrichment integrates with the existing geocoding system through t
 
 ```yaml
 geocoding:
-  method: "geo_areas"  # Options: "exiftool", "geo_areas", "both"
+  method: "geo_areas"  # Options: "exiftool", "geo_areas" (mutually exclusive)
 ```
 
 **Method Options:**
 - **`"exiftool"`**: Uses only ExifTool's internal reverse geocoding (original behavior)
 - **`"geo_areas"`**: Uses only corridor geo-areas enrichment with Living Atlas data (recommended)
-- **`"both"`**: Applies geo-areas enrichment first, then ExifTool reverse geocoding (comprehensive but slower)
+
 
 ### ExifTool Integration
 
-When using `"geo_areas"` or `"both"` methods, the enriched geographic data is automatically integrated into the ExifTool metadata workflow. The system adds comprehensive location tags to your images:
+When using the `"geo_areas"` method, the enriched geographic data is automatically integrated into the ExifTool metadata workflow. The system adds comprehensive location tags to your images:
+
+**Note**: Methods are mutually exclusive - ExifTool geocoding would overwrite geo-areas EXIF data, so only one method can be active per workflow run.
 
 **EXIF Tags Added:**
 - `City` - Place name with configurable fallback
@@ -328,6 +328,18 @@ The tool provides specific warnings for:
 - Empty feature classes
 - Spatial reference issues
 - Parameter range violations
+
+## Schema Evolution
+
+### Removed Fields
+The following fields were removed in recent optimizations for efficiency and reduced redundancy:
+
+- **`geo_state_fips`**: Removed as redundant - state FIPS code is available as the first 2 digits of `geo_county_fips`
+- **`geo_nearest_dir`**: Removed in favor of dynamic calculation - directional context is now computed by comparing `geo_prev_miles` vs `geo_next_miles` using configured milepost directions
+- **`geo_nearest_place`**: Removed in favor of dynamic calculation - nearest place is determined at runtime by comparing distances in `geo_prev_miles` vs `geo_next_miles`
+- **`geo_nearest_miles`**: Removed in favor of dynamic calculation - nearest distance is determined at runtime from the closer of `geo_prev_miles` or `geo_next_miles`
+
+These optimizations streamline the schema while maintaining all necessary geographic context through more efficient field relationships and runtime calculations.
 
 ## Best Practices
 

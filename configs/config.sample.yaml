@@ -711,10 +711,12 @@ portal:
 # based on their GPS coordinates. This step is handled by the geocode_images.py
 # script and is typically run after all GPS corrections are complete.
 #
-# Supported methods:
+# Supported methods (mutually exclusive):
 #   - "exiftool": Uses ExifTool's internal Geolocation module for basic reverse geocoding
 #   - "geo_areas": Uses corridor geo-areas enrichment with Living Atlas data sources
-#   - "both": Applies geo-areas enrichment first, then ExifTool reverse geocoding
+#
+# Note: Methods are mutually exclusive - ExifTool geocoding would overwrite geo-areas 
+# EXIF data, so only one method can be active per workflow run.
 #
 # Method details:
 #   🔍 "exiftool": Basic reverse geocoding using ExifTool's Geolocation module
@@ -756,7 +758,7 @@ portal:
 #        $Image::ExifTool::Geolocation::geoDir = '/ABSOLUTE/PATH/TO/[NameOfYourCustomGeoDB]"';
 #   ➤ Note: Relative paths in .config are not supported.
 geocoding:
-  method: "geo_areas"  # Options: "exiftool", "geo_areas", "both"
+  method: "geo_areas"  # Options: "exiftool", "geo_areas" (mutually exclusive)
   exiftool_geodb: "default"  # Options: default, geolocation500, geocustom
   geoloc500_config_path: "templates/exiftool/geolocation500.config"
   geocustom_config_path: "templates/exiftool/geocustom.config"

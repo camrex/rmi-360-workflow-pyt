@@ -70,14 +70,23 @@ def _get_city_fallback_expression(config: Dict[str, Any]) -> str:
     strategy = geo_config.get('city_fallback_strategy', 'nearest_then_county')
     include_indicator = geo_config.get('include_nearest_indicator', True)
     
+    # Dynamic nearest place calculation from prev/next fields
+    if include_indicator:
+        nearest_expr = ("((field.geo_prev_miles and field.geo_next_miles) ? "
+                       "(field.geo_prev_miles <= field.geo_next_miles ? field.geo_prev_place + ' (nearest)' : field.geo_next_place + ' (nearest)') : "
+                       "(field.geo_prev_place ? field.geo_prev_place + ' (nearest)' : "
+                       "(field.geo_next_place ? field.geo_next_place + ' (nearest)' : '')))")
+    else:
+        nearest_expr = ("((field.geo_prev_miles and field.geo_next_miles) ? "
+                       "(field.geo_prev_miles <= field.geo_next_miles ? field.geo_prev_place : field.geo_next_place) : "
+                       "(field.geo_prev_place ? field.geo_prev_place : field.geo_next_place))")
+    
     if strategy == "county_only":
         return "(field.geo_place if field.geo_place else field.geo_county)"
     elif strategy == "nearest_only":
-        indicator = " + ' (nearest)'" if include_indicator else ""
-        return f"(field.geo_place if field.geo_place else field.nearest_place{indicator})"
+        return f"(field.geo_place if field.geo_place else {nearest_expr})"
     else:  # "nearest_then_county" (default)
-        indicator = " + ' (nearest)'" if include_indicator else ""
-        return f"(field.geo_place if field.geo_place else (field.nearest_place{indicator} if field.nearest_place else field.geo_county))"
+        return f"(field.geo_place if field.geo_place else ({nearest_expr} if ({nearest_expr}) else field.geo_county))"
 
 
 def should_use_geoareas(config: Dict[str, Any]) -> bool:
@@ -91,11 +100,13 @@ def should_use_geoareas(config: Dict[str, Any]) -> bool:
         True if geo-areas enrichment should be applied, False otherwise
         
     Note:
-        Returns True for methods: "geo_areas", "both"
-        Returns False for methods: "exiftool" (or any other value)
+        Returns True for method: "geo_areas"
+        Returns False for method: "exiftool" (or any other value)
+        
+        Methods are mutually exclusive - ExifTool would overwrite geo-areas EXIF data.
     """
     method = config.get('geocoding', {}).get('method', 'exiftool').lower()
-    return method in ['geo_areas', 'both']
+    return method == 'geo_areas'
 
 
 def get_geoareas_xpkeywords_additions(config: Dict[str, Any]) -> List[str]:
@@ -149,16 +160,23 @@ def get_geoareas_exif_mapping(config: Optional[Dict[str, Any]] = None) -> Dict[s
         Dictionary with structured EXIF tag definitions for geo-areas fields
         
     Note:
-        This mapping is used when geocoding.method is "geo_areas" or "both"
+        This mapping is used when geocoding.method is "geo_areas"
         to integrate geo-areas data with ExifTool metadata workflow.
         
         Fallback behavior for points outside places is configurable via
         geo_areas.city_fallback_strategy setting.
     """
-    # Default fallback if no config provided
+    # Default fallback if no config provided - use dynamic nearest calculation
     if config is None:
-        city_fallback = "(field.geo_place if field.geo_place else (field.nearest_place if field.nearest_place else field.geo_county))"
-        locationshown_fallback = "(field.geo_place if field.geo_place else (field.nearest_place + ' (nearest)' if field.nearest_place else field.geo_county + ' County'))"
+        nearest_expr = ("((field.geo_prev_miles and field.geo_next_miles) ? "
+                       "(field.geo_prev_miles <= field.geo_next_miles ? field.geo_prev_place : field.geo_next_place) : "
+                       "(field.geo_prev_place ? field.geo_prev_place : field.geo_next_place))")
+        nearest_expr_with_indicator = ("((field.geo_prev_miles and field.geo_next_miles) ? "
+                                      "(field.geo_prev_miles <= field.geo_next_miles ? field.geo_prev_place + ' (nearest)' : field.geo_next_place + ' (nearest)') : "
+                                      "(field.geo_prev_place ? field.geo_prev_place + ' (nearest)' : "
+                                      "(field.geo_next_place ? field.geo_next_place + ' (nearest)' : '')))")
+        city_fallback = f"(field.geo_place if field.geo_place else ({nearest_expr} if ({nearest_expr}) else field.geo_county))"
+        locationshown_fallback = f"(field.geo_place if field.geo_place else ({nearest_expr_with_indicator} if ({nearest_expr_with_indicator}) else field.geo_county + ' County'))"
     else:
         city_fallback = _get_city_fallback_expression(config)
         # For LocationShownCity, always add descriptive suffixes
@@ -166,9 +184,17 @@ def get_geoareas_exif_mapping(config: Optional[Dict[str, Any]] = None) -> Dict[s
         if geo_config.get('city_fallback_strategy') == "county_only":
             locationshown_fallback = "(field.geo_place if field.geo_place else field.geo_county + ' County')"
         elif geo_config.get('city_fallback_strategy') == "nearest_only":
-            locationshown_fallback = "(field.geo_place if field.geo_place else field.nearest_place + ' (nearest)')"
+            nearest_expr_with_indicator = ("((field.geo_prev_miles and field.geo_next_miles) ? "
+                                          "(field.geo_prev_miles <= field.geo_next_miles ? field.geo_prev_place + ' (nearest)' : field.geo_next_place + ' (nearest)') : "
+                                          "(field.geo_prev_place ? field.geo_prev_place + ' (nearest)' : "
+                                          "(field.geo_next_place ? field.geo_next_place + ' (nearest)' : '')))")
+            locationshown_fallback = f"(field.geo_place if field.geo_place else {nearest_expr_with_indicator})"
         else:  # nearest_then_county
-            locationshown_fallback = "(field.geo_place if field.geo_place else (field.nearest_place + ' (nearest)' if field.nearest_place else field.geo_county + ' County'))"
+            nearest_expr_with_indicator = ("((field.geo_prev_miles and field.geo_next_miles) ? "
+                                          "(field.geo_prev_miles <= field.geo_next_miles ? field.geo_prev_place + ' (nearest)' : field.geo_next_place + ' (nearest)') : "
+                                          "(field.geo_prev_place ? field.geo_prev_place + ' (nearest)' : "
+                                          "(field.geo_next_place ? field.geo_next_place + ' (nearest)' : '')))")
+            locationshown_fallback = f"(field.geo_place if field.geo_place else ({nearest_expr_with_indicator} if ({nearest_expr_with_indicator}) else field.geo_county + ' County'))"
     
     return {
         # Standard EXIF location tags
@@ -263,25 +289,45 @@ def get_geoareas_xpcomment_suffix(row: Any) -> str:
         # Extract geo-areas fields (assuming standard field order)
         # This would need to match the actual field order from the cursor
         geo_place = getattr(row, 'geo_place', None)
-        geo_nearest_place = getattr(row, 'geo_nearest_place', None)
-        geo_nearest_dir = getattr(row, 'geo_nearest_dir', None) 
-        geo_nearest_miles = getattr(row, 'geo_nearest_miles', None)
+        geo_prev_place = getattr(row, 'geo_prev_place', None)
+        geo_prev_miles = getattr(row, 'geo_prev_miles', None)
+        geo_next_place = getattr(row, 'geo_next_place', None)
+        geo_next_miles = getattr(row, 'geo_next_miles', None)
         
         # Build context suffix
         if geo_place:
             # Has a place, no additional context needed
             return ""
-        elif geo_nearest_place and geo_nearest_miles is not None:
-            # No direct place, but has nearest context
-            direction = geo_nearest_dir or "near"
-            if direction in ["UP", "DN"]:
-                dir_text = f"{direction} {geo_nearest_miles:.1f} mi"
-            else:
-                dir_text = f"{geo_nearest_miles:.1f} mi"
-            return f" near {geo_nearest_place} ({dir_text})"
         else:
-            # No place context available
-            return ""
+            # No direct place, calculate nearest from prev/next dynamically
+            nearest_place = None
+            nearest_miles = None
+            direction = "near"
+            
+            if geo_prev_place and geo_next_place:
+                # Both available, pick closer one
+                if geo_prev_miles <= geo_next_miles:
+                    nearest_place, nearest_miles = geo_prev_place, geo_prev_miles
+                    direction = "DN"  # Down (lower milepost)
+                else:
+                    nearest_place, nearest_miles = geo_next_place, geo_next_miles
+                    direction = "UP"  # Up (higher milepost)
+            elif geo_prev_place:
+                nearest_place, nearest_miles = geo_prev_place, geo_prev_miles
+                direction = "DN"
+            elif geo_next_place:
+                nearest_place, nearest_miles = geo_next_place, geo_next_miles
+                direction = "UP"
+            
+            if nearest_place and nearest_miles is not None:
+                if direction in ["UP", "DN"]:
+                    dir_text = f"{direction} {nearest_miles:.1f} mi"
+                else:
+                    dir_text = f"{nearest_miles:.1f} mi"
+                return f" near {nearest_place} ({dir_text})"
+            else:
+                # No place context available
+                return ""
             
     except Exception:
         # Fallback for any field access issues
@@ -304,12 +350,10 @@ def validate_geoareas_fields_available(photos_fc: str) -> Dict[str, bool]:
         # Get field names (case insensitive)
         field_names = {f.name.lower(): f.name for f in arcpy.ListFields(photos_fc)}
         
-        # Check geo-areas fields
+        # Check geo-areas fields (only those used for ExifTool integration)
         geoareas_fields = [
-            "geo_place", "geo_place_fips", "geo_county", "geo_county_fips",
-            "geo_state", "geo_state_fips", "geo_place_source", "geo_place_inferred",
-            "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles",
-            "geo_nearest_place", "geo_nearest_miles", "geo_nearest_dir"
+            "geo_place", "geo_county", "geo_state",  # Core EXIF tags
+            "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles"  # Context calculation
         ]
         
         availability = {}
@@ -355,9 +399,9 @@ def get_integration_recommendations(photos_fc: str) -> Dict[str, Any]:
         if not available:
             recommendations["missing_fields"].append(field)
     
-    # Context availability
-    context_fields = ["geo_nearest_place", "geo_nearest_miles", "geo_nearest_dir"]
-    has_context = all(availability.get(field, False) for field in context_fields)
+    # Context availability (using prev/next fields, nearest calculated dynamically)
+    context_fields = ["geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles"]
+    has_context = any(availability.get(field, False) for field in context_fields)
     recommendations["has_context_data"] = has_context
     
     return recommendations

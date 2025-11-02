@@ -75,9 +75,6 @@ GEO_AREA_FIELDS = [
     ("geo_prev_miles", "DOUBLE", None),
     ("geo_next_place", "TEXT", 100), 
     ("geo_next_miles", "DOUBLE", None),
-    ("geo_nearest_place", "TEXT", 100),
-    ("geo_nearest_miles", "DOUBLE", None),
-    ("geo_nearest_dir", "TEXT", 2),  # UP|DN
 ]
 
 # Source type constants
@@ -478,11 +475,9 @@ def enrich_places_by_milepost(
     
     results = {
         "mile_filled_prev": 0,
-        "mile_filled_next": 0, 
-        "mile_filled_nearest": 0,
+        "mile_filled_next": 0,
         "prev_examples": [],
-        "next_examples": [],
-        "nearest_examples": []
+        "next_examples": []
     }
     
     # Validate required fields
@@ -517,8 +512,7 @@ def enrich_places_by_milepost(
         update_fields = [
             "OID@", mile_field, 
             "geo_prev_place", "geo_prev_miles",
-            "geo_next_place", "geo_next_miles", 
-            "geo_nearest_place", "geo_nearest_miles", "geo_nearest_dir"
+            "geo_next_place", "geo_next_miles"
         ]
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields, where_clause=where_clause) as cursor:
@@ -558,44 +552,14 @@ def enrich_places_by_milepost(
                     if len(results["next_examples"]) < 10:
                         results["next_examples"].append(oid)
                 
-                # Update nearest context
-                if not row[6]:  # geo_nearest_place is null
-                    nearest_anchor = None
-                    nearest_distance = float('inf')
-                    nearest_direction = None
-                    
-                    # Check prev anchor
-                    if prev_anchor:
-                        dist = abs(current_mile - prev_anchor[1])
-                        if dist < nearest_distance:
-                            nearest_distance = dist
-                            nearest_anchor = prev_anchor
-                            nearest_direction = "DN"  # Down (lower milepost)
-                    
-                    # Check next anchor
-                    if next_anchor:
-                        dist = abs(next_anchor[1] - current_mile)
-                        if dist < nearest_distance:
-                            nearest_distance = dist
-                            nearest_anchor = next_anchor
-                            nearest_direction = "UP"  # Up (higher milepost)
-                    
-                    if nearest_anchor:
-                        row[6] = nearest_anchor[2]  # geo_nearest_place
-                        row[7] = nearest_distance   # geo_nearest_miles
-                        row[8] = nearest_direction  # geo_nearest_dir
-                        row[7] = nearest_distance   # geo_nearest_miles
-                        row[8] = nearest_direction  # geo_nearest_dir
-                        results["mile_filled_nearest"] += 1
-                        if len(results["nearest_examples"]) < 10:
-                            results["nearest_examples"].append(oid)
+
                 
                 cursor.updateRow(row)
     
     if logger:
         logger(f"Filled prev context for {results['mile_filled_prev']} points")
         logger(f"Filled next context for {results['mile_filled_next']} points")  
-        logger(f"Filled nearest context for {results['mile_filled_nearest']} points")
+
     
     return results
 
@@ -934,6 +898,7 @@ def promote_nearest_to_place(
 ) -> int:
     """
     Promote nearest place to actual place if within threshold distance.
+    Uses prev/next place data to dynamically determine nearest.
     
     Args:
         photos_fc: Path to photos feature class
@@ -945,21 +910,41 @@ def promote_nearest_to_place(
     """
     promoted_count = 0
     
-    # Find points with null place but nearby nearest place within threshold
+    # Find points with null place but have prev/next context
     where_clause = (f"({place_field} IS NULL OR {place_field} = '') "
-                   f"AND geo_nearest_place IS NOT NULL "
-                   f"AND geo_nearest_miles <= {max_nearest_miles}")
+                   f"AND (geo_prev_place IS NOT NULL OR geo_next_place IS NOT NULL)")
     
-    update_fields = [place_field, "geo_nearest_place", "geo_place_source", "geo_place_inferred"]
+    update_fields = [place_field, "geo_prev_place", "geo_prev_miles", 
+                     "geo_next_place", "geo_next_miles", "geo_place_source", "geo_place_inferred"]
     
     with arcpy.da.UpdateCursor(photos_fc, update_fields, where_clause=where_clause) as cursor:
         for row in cursor:
-            row[0] = row[1]  # geo_place = geo_nearest_place
-            row[2] = SourceType.NEAREST_ALONG  # geo_place_source
-            row[3] = 1  # geo_place_inferred
+            prev_place, prev_miles = row[1], row[2]
+            next_place, next_miles = row[3], row[4]
             
-            cursor.updateRow(row)
-            promoted_count += 1
+            # Determine nearest place dynamically
+            nearest_place = None
+            nearest_miles = None
+            
+            if prev_place and next_place:
+                # Both available, pick closer one
+                if prev_miles <= next_miles:
+                    nearest_place, nearest_miles = prev_place, prev_miles
+                else:
+                    nearest_place, nearest_miles = next_place, next_miles
+            elif prev_place:
+                nearest_place, nearest_miles = prev_place, prev_miles
+            elif next_place:
+                nearest_place, nearest_miles = next_place, next_miles
+            
+            # Promote if within threshold
+            if nearest_place and nearest_miles is not None and nearest_miles <= max_nearest_miles:
+                row[0] = nearest_place  # geo_place = nearest_place
+                row[5] = SourceType.NEAREST_ALONG  # geo_place_source
+                row[6] = 1  # geo_place_inferred
+                
+                cursor.updateRow(row)
+                promoted_count += 1
     
     return promoted_count
 
@@ -1019,7 +1004,6 @@ def geocode_geoareas(
         "state_filled": 0,
         "mile_filled_prev": 0,
         "mile_filled_next": 0,
-        "mile_filled_nearest": 0,
         "bridged": 0,
         "promoted_nearest": 0,
         "range_updates": 0,
@@ -1028,7 +1012,7 @@ def geocode_geoareas(
         "state_examples": [],
         "prev_examples": [],
         "next_examples": [], 
-        "nearest_examples": [],
+
         "bridge_examples": [],
         "promoted_examples": [],
         "range_examples": []
@@ -1057,8 +1041,8 @@ def geocode_geoareas(
         )
         
         # Merge milepost results
-        for key in ["mile_filled_prev", "mile_filled_next", "mile_filled_nearest",
-                   "prev_examples", "next_examples", "nearest_examples"]:
+        for key in ["mile_filled_prev", "mile_filled_next",
+                   "prev_examples", "next_examples"]:
             results[key] = milepost_results.get(key, 0)
         
         # Step 3: Gap bridging (optional)

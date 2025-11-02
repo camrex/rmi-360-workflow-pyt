@@ -123,7 +123,7 @@ def _extract_required_fields(tags, oid_fc=None):
         
         # For geo-areas fields, only require them if they exist
         geo_fields = ["geo_place", "geo_county", "geo_county_fips", "geo_state", "geo_place_source", 
-                     "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles", "geo_nearest_place"]
+                     "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles"]
         for field in geo_fields:
             if field in required_fields and field in oid_fields:
                 # Field is referenced and exists - keep it
@@ -315,7 +315,7 @@ def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
     is performed in batch using ExifTool, with tag values resolved from feature class fields. Handles GPS metadata
     updates for images flagged as outliers and logs all operations and errors.
     
-    When geocoding.method is "geo_areas" or "both", automatically integrates corridor geo-areas
+    When geocoding.method is "geo_areas", automatically integrates corridor geo-areas
     enrichment tags with standard EXIF/XMP location metadata.
     """
     logger = cfg.get_logger()
