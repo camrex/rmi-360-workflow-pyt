@@ -36,9 +36,10 @@
 #   - 🧮 UpdateLinearAndCustomTool
 #   - 🛰️ SmoothGPSNoiseTool
 #   - 🏷️ RenameAndTagImagesTool
+#   - 🌍 GeocodeImagesTool
+#   - 🌍 GeocodeGeoAreasTool
 #   - ☁️ CopyToAwsTool
 #   - 🌐 GenerateOIDService
-#   - 🌍 GeocodeImagesTool
 #   - 📝 GenerateReportFromJSONTool
 #   - 🔐 SetAWSKeyringCredentialsTool
 #
@@ -60,6 +61,7 @@ from tools.smooth_gps_noise_tool import SmoothGPSNoiseTool
 from tools.update_linear_and_custom_tool import UpdateLinearAndCustomTool
 from tools.rename_and_tag_tool import RenameAndTagImagesTool
 from tools.geocode_images_tool import GeocodeImagesTool
+from tools.geocode_geoareas_tool import GeocodeGeoAreasTool
 from tools.build_oid_footprints_tool import BuildOIDFootprints
 from tools.copy_to_aws_tool import CopyToAwsTool
 from tools.generate_oid_service_tool import GenerateOIDService
@@ -81,6 +83,7 @@ class Toolbox(object):
             UpdateLinearAndCustomTool,
             RenameAndTagImagesTool,
             GeocodeImagesTool,
+            GeocodeGeoAreasTool,
             BuildOIDFootprints,
             CopyToAwsTool,
             GenerateOIDService,
