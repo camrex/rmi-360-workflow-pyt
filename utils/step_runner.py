@@ -109,6 +109,29 @@ def run_steps(
                 logger.custom(f"Waiting {wait_seconds} seconds before running step: {lbl}", indent=0, emoji="⏳")
                 time.sleep(wait_seconds)
 
+    def perform_cache_clearing(stp_key: str, oid_fc: Optional[str]):
+        """Clear ArcGIS caches after steps that modify feature classes to prevent stale data issues"""
+        cache_clear_steps = ["smooth_gps_noise", "correct_gps_outliers"]
+        
+        if stp_key in cache_clear_steps and oid_fc:
+            try:
+                import arcpy
+                logger.info(f"🔄 Clearing ArcGIS caches after {stp_key} step...", indent=1)
+                
+                # Clear feature class caches
+                arcpy.ClearWorkspaceCache_management(arcpy.Describe(oid_fc).path)
+                
+                # Refresh workspace connections  
+                arcpy.RefreshCatalog(arcpy.Describe(oid_fc).path)
+                
+                # Force geometry index rebuild on next access
+                arcpy.management.RebuildIndexes(arcpy.Describe(oid_fc).path, "NO_SYSTEM")
+                
+                logger.info("✅ Cache clearing completed", indent=1)
+                
+            except Exception as e:
+                logger.warning(f"Cache clearing failed (non-critical): {e}", indent=1)
+
     def execute_step(lbl: str, function, rpt_data: Dict[str, Any], step_key=None):
         stp_start = datetime.now(timezone.utc)
         try:
@@ -149,6 +172,9 @@ def run_steps(
         backup_occurred = perform_oid_backup(step_key, param_values, cfg, wait_config)
         perform_wait(step_key, label, wait_config)
         status, notes, step_start, step_end, elapsed = execute_step(label, func, report_data, step_key=step_key)
+
+        # Perform post-step cache clearing for specific steps that modify feature classes
+        perform_cache_clearing(step_key, param_values.get("oid_fc"))
 
         step_result = {
             "name": label,

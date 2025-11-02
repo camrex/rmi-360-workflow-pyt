@@ -74,6 +74,7 @@ logs:
   geocode_logs: "exiftool_geocode_log.txt"
   geocode_args: "exiftool_geocode.args"
   gps_smooth_debug: "debuglog_outliers.csv"
+  distance_spacing_debug: "debuglog_distance_spacing.csv"
   aws_upload_log: "aws_upload_log.csv"
   aws_upload_summary: "aws_upload_summary.csv"
   rename_log: "rename_log.csv"

@@ -34,6 +34,9 @@ __all__ = ["filter_distance_spacing"]
 
 import arcpy
 import csv
+import os
+import shutil
+from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 from math import radians, sin, cos, sqrt, atan2
 
@@ -127,11 +130,13 @@ def analyze_spacing_by_reel(
         assumed_capture = "mixed/unclear pattern"
         capture_mode = "MIXED"
 
-    # Detect time-based reel: high percentage of very close points AND low average spacing
-    is_time_based = (close_points_ratio > 0.6 and avg_spacing < 2.0)
+    # Detect time-based reel: low average spacing is primary indicator
+    # Secondary check: high percentage of very close points
+    is_time_based = (avg_spacing < 2.5 or close_points_ratio > 0.6)
 
     logger.info(f"  [ANALYSIS] avg={avg_spacing:.2f}m; {assumed_capture}", indent=3)
     logger.debug(f"     Close points: {close_points_ratio:.1%} under {very_close_threshold}m threshold", indent=3)
+    logger.debug(f"     Time-based detection: avg<2.5m={avg_spacing < 2.5} OR close_ratio>60%={close_points_ratio > 0.6}", indent=3)
 
     oids_to_remove = []
     stats = {
@@ -277,8 +282,9 @@ def filter_distance_spacing(
                 "Action": "ANALYSIS",
                 "Reason": f"{stats['assumed_capture']} - avg {stats['avg_original_spacing']:.2f}m",
                 "Capture_Mode": stats["capture_mode"],
-                "Avg_Spacing": stats["avg_original_spacing"],
-                "Is_Time_Based": stats["is_time_based"]
+                "Avg_Spacing_m": round(stats["avg_original_spacing"], 2),
+                "Is_Time_Based_Reel": stats["is_time_based"],
+                "Close_Points_Ratio": round(stats["close_points_ratio"], 3)
             })
 
         # Add individual removed points
@@ -331,11 +337,56 @@ def filter_distance_spacing(
         logger.success(f"[FLAGGED] {len(all_oids_to_process)} image(s) with spacing issues", indent=1)
 
     elif action.lower() == "remove":
-        # Remove problematic images
+        # Remove problematic images and move panoramas to quarantine
         oid_field = arcpy.Describe(oid_fc).OIDFieldName
         oids_str = ",".join(map(str, all_oids_to_process))
         where_clause = f"{oid_field} IN ({oids_str})"
 
+        # Create quarantine folder for filtered panoramas
+        project_dir = cfg.get("__project_root__")
+        quarantine_dir = Path(project_dir) / "panos" / "filtered"
+        quarantine_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created quarantine folder: {quarantine_dir}", indent=2)
+
+        # First, move panorama files to quarantine before deleting OID records
+        moved_count = 0
+        failed_moves = 0
+
+        with arcpy.da.SearchCursor(oid_fc, ["ImagePath", "Name", "Reel"], where_clause) as cursor:
+            for image_path, image_name, reel in cursor:
+                if image_path and Path(image_path).exists():
+                    try:
+                        src_file = Path(image_path)
+
+                        # Preserve reel folder structure in quarantine
+                        reel_name = reel or "unknown_reel"
+                        reel_quarantine_dir = quarantine_dir / reel_name
+                        reel_quarantine_dir.mkdir(parents=True, exist_ok=True)
+
+                        dst_file = reel_quarantine_dir / src_file.name
+
+                        # Handle name conflicts by adding counter
+                        counter = 1
+                        while dst_file.exists():
+                            name_part = src_file.stem
+                            ext_part = src_file.suffix
+                            dst_file = reel_quarantine_dir / f"{name_part}_{counter}{ext_part}"
+                            counter += 1
+
+                        shutil.move(str(src_file), str(dst_file))
+                        moved_count += 1
+                        logger.debug(f"Quarantined: {src_file.name} -> {reel_name}/{dst_file.name}", indent=3)
+
+                    except Exception as e:
+                        failed_moves += 1
+                        logger.debug(f"Failed to quarantine {src_file.name}: {e}", indent=3)
+                elif image_path:
+                    logger.debug(f"Panorama file not found: {image_path}", indent=3)
+
+        if moved_count > 0 or failed_moves > 0:
+            logger.info(f"Quarantined panoramas: {moved_count} moved, {failed_moves} failed out of {len(all_oids_to_process)} total", indent=2)
+
+        # Then delete OID records
         deleted_count = 0
         with cfg.get_progressor(total=len(all_oids_to_process), label="Removing spacing issues") as progressor:
             with arcpy.da.UpdateCursor(oid_fc, ["OID@"], where_clause) as cursor:
@@ -344,7 +395,16 @@ def filter_distance_spacing(
                     deleted_count += 1
                     progressor.update(1)
 
-        logger.success(f"[REMOVED] {deleted_count} image(s) with spacing issues", indent=1)
+        # Ensure changes are committed and workspace is synchronized
+        try:
+            # Force workspace synchronization to ensure deletions are persisted
+            workspace = os.path.dirname(oid_fc)
+            arcpy.management.Compact(workspace)
+            logger.debug("✓ Workspace compacted - changes committed to disk", indent=2)
+        except Exception as e:
+            logger.warning(f"Could not compact workspace: {e}", indent=2)
+
+        logger.success(f"[REMOVED] {deleted_count} OID record(s) with spacing issues", indent=1)
 
     # Log detailed summary statistics
     total_images = sum(stats["total_points"] for stats in reel_stats.values())
@@ -370,3 +430,47 @@ def filter_distance_spacing(
 
     if total_removed > 0:
         logger.info(f"   [TOTAL] {action}: {total_removed}/{total_images} images ({total_removed/total_images*100:.1f}%)", indent=2)
+
+    # Clear ArcGIS workspace cache and refresh spatial indexes after record deletion
+    # This prevents stale spatial indexes that can cause issues in subsequent linear referencing operations
+    if total_removed > 0:
+        logger.info("Refreshing workspace cache and spatial indexes after record deletion...", indent=1)
+
+        # Log feature class state for debugging linear referencing issues
+        try:
+            final_count = int(arcpy.GetCount_management(oid_fc)[0])
+            desc = arcpy.Describe(oid_fc)
+            logger.debug(f"📊 Post-filter feature class state:", indent=1)
+            logger.debug(f"   • Feature count: {final_count}", indent=2)
+            logger.debug(f"   • Spatial reference: {desc.spatialReference.name}", indent=2)
+            logger.debug(f"   • Has spatial index: {desc.hasSpatialIndex}", indent=2)
+            if hasattr(desc, 'extent'):
+                ext = desc.extent
+                logger.debug(f"   • Extent: ({ext.XMin:.2f}, {ext.YMin:.2f}) to ({ext.XMax:.2f}, {ext.YMax:.2f})", indent=2)
+        except Exception as e:
+            logger.debug(f"Could not log feature class state: {e}", indent=2)
+
+        try:
+            # Clear workspace cache to remove stale references
+            arcpy.ClearWorkspaceCache_management()
+
+            # Rebuild spatial indexes to ensure they reflect the updated feature class
+            try:
+                arcpy.management.RemoveSpatialIndex(oid_fc)
+                arcpy.management.AddSpatialIndex(oid_fc)
+                logger.debug("✓ Spatial index rebuilt", indent=2)
+            except Exception as idx_e:
+                logger.debug(f"Could not rebuild spatial index: {idx_e}", indent=2)
+
+            logger.success("Workspace cache and spatial indexes refreshed successfully", indent=1)
+
+            # Verify spatial index was rebuilt
+            try:
+                desc_after = arcpy.Describe(oid_fc)
+                logger.debug(f"✓ Spatial index status after rebuild: {desc_after.hasSpatialIndex}", indent=2)
+            except:
+                pass
+
+        except Exception as e:
+            logger.warning(f"Failed to refresh workspace cache/indexes: {e}", indent=1)
+            logger.info("This may cause issues in subsequent linear referencing operations", indent=1)

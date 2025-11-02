@@ -75,7 +75,7 @@ class MosaicProcessorMonitor:
         self._expected_frames = {}
         self._last_status = {}
         self._last_callback_percent = -1
-        
+
         # ETA and timing tracking
         self._start_time = None
         self._frame_history = []  # List of (timestamp, generated_frames) for rate smoothing
@@ -219,7 +219,7 @@ class MosaicProcessorMonitor:
             (total_generated / total_expected * 100) if total_expected > 0 else 0, 1
         )
         status["totals"]["reels_completed"] = reels_completed
-        
+
         # Add ETA information
         eta_info = self._calculate_eta_info(total_generated, total_expected)
         status["totals"]["eta_info"] = eta_info
@@ -229,29 +229,29 @@ class MosaicProcessorMonitor:
     def _calculate_eta_info(self, total_generated: int, total_expected: int) -> Dict:
         """
         Calculate estimated time remaining and processing rate.
-        
+
         Args:
             total_generated: Current number of frames generated
             total_expected: Total expected frames
-            
+
         Returns:
             Dictionary with ETA and rate information
         """
         current_time = time.time()
-        
+
         # Initialize start time on first call
         if self._start_time is None:
             self._start_time = current_time
-            
+
         elapsed_time = current_time - self._start_time
-        
+
         # Add current data point to history for smoothing
         self._frame_history.append((current_time, total_generated))
-        
+
         # Keep only recent history for smoothing
         if len(self._frame_history) > self._history_window:
             self._frame_history = self._frame_history[-self._history_window:]
-        
+
         eta_info = {
             "elapsed_seconds": elapsed_time,
             "elapsed_formatted": self._format_duration(elapsed_time),
@@ -260,20 +260,20 @@ class MosaicProcessorMonitor:
             "eta_formatted": None,
             "completion_time": None
         }
-        
+
         # Need at least 2 data points and some progress to calculate rate
         if len(self._frame_history) >= 2 and total_generated > 0 and elapsed_time > 30:
             # Calculate rate using smoothed history
             first_point = self._frame_history[0]
             last_point = self._frame_history[-1]
-            
+
             time_span = last_point[0] - first_point[0]
             frame_span = last_point[1] - first_point[1]
-            
+
             if time_span > 0 and frame_span > 0:
                 frames_per_second = frame_span / time_span
                 eta_info["frames_per_second"] = round(frames_per_second, 2)
-                
+
                 # Calculate ETA if we have meaningful data
                 frames_remaining = total_expected - total_generated
                 if frames_remaining > 0 and frames_per_second > 0:
@@ -281,22 +281,22 @@ class MosaicProcessorMonitor:
                     eta_info["eta_seconds"] = eta_seconds
                     eta_info["eta_formatted"] = self._format_duration(eta_seconds)
                     eta_info["completion_time"] = time.strftime(
-                        "%Y-%m-%d %H:%M:%S", 
+                        "%Y-%m-%d %H:%M:%S",
                         time.localtime(current_time + eta_seconds)
                     )
-        
+
         return eta_info
-    
+
     def _format_duration(self, seconds: float) -> str:
         """Format duration in seconds to human-readable string."""
         if seconds is None or seconds <= 0:
             return "Unknown"
-            
+
         seconds = int(seconds)
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         secs = seconds % 60
-        
+
         if hours > 0:
             return f"{hours}h {minutes}m"
         elif minutes > 0:
@@ -367,15 +367,15 @@ class MosaicProcessorMonitor:
                         f"Progress: {current_progress:.1f}% "
                         f"({generated:,}/{expected:,} frames, {completed_reels}/{total_reels} reels complete)"
                     )
-                    
+
                     # Add ETA and rate if available
                     if eta_info.get("eta_formatted"):
                         rate = eta_info.get("frames_per_second", 0)
                         elapsed = eta_info.get("elapsed_formatted", "")
                         eta_formatted = eta_info.get("eta_formatted")
-                        
+
                         progress_msg += f" | Rate: {rate:.1f} fps | Elapsed: {elapsed} | ETA: {eta_formatted}"
-                    
+
                     self.logger.info(progress_msg, indent=2)
 
                     # Call progress callback if provided

@@ -769,6 +769,18 @@ class Process360Workflow(object):
         # ----------- Map params by name -----------
         pmap = {param.name: param for param in parameters}
 
+        # ----------- Early start_step resolution -----------
+        # Resolve start_step early so we can check if staging cleanup is needed
+        if not hasattr(self, "_step_label_to_name"):
+            self._step_label_to_name = {label: name for _, name, label in self.STEP_FUNCTIONS}
+        
+        step_label = pmap.get("start_step")
+        start_step_value = step_label.valueAsText if step_label and step_label.valueAsText else None
+        early_start_step = (
+            self._step_label_to_name.get(start_step_value) 
+            if start_step_value and start_step_value != "--SELECT STEP--" else None
+        )
+
         # Build dict with typed booleans for enable_* flags
         p = self.parameters_to_dict(parameters)
 
@@ -812,22 +824,26 @@ class Process360Workflow(object):
         reels_root = work_project_dir / "reels"
         reels_root.mkdir(parents=True, exist_ok=True)
 
-        # Clear staging folder to ensure only selected reels are processed
+        # Clear staging folder only when starting from run_mosaic_processor
         # This prevents old reels from previous runs from being processed when user selects different reels
-        logger.info("Clearing staging folder to ensure fresh reel selection...", indent=1)
-        import shutil
-        for item in reels_root.iterdir():
-            try:
-                if item.is_dir():
-                    logger.info(f"Removing old reel folder: {item.name}", indent=2)
-                    shutil.rmtree(item)
-                elif item.is_file():
-                    logger.info(f"Removing file: {item.name}", indent=2)
-                    item.unlink()
-            except Exception as e:
-                logger.error(f"Failed to clear staging folder - cannot remove {item.name}: {e}", indent=2)
-                logger.error("Aborting workflow to prevent processing unintended reels.", indent=1)
-                return
+        # Skip cleanup if starting from later steps (user may want to preserve existing staging)
+        if early_start_step is None or early_start_step == "run_mosaic_processor":
+            logger.info("Clearing staging folder to ensure fresh reel selection...", indent=1)
+            import shutil
+            for item in reels_root.iterdir():
+                try:
+                    if item.is_dir():
+                        logger.info(f"Removing old reel folder: {item.name}", indent=2)
+                        shutil.rmtree(item)
+                    elif item.is_file():
+                        logger.info(f"Removing file: {item.name}", indent=2)
+                        item.unlink()
+                except Exception as e:
+                    logger.error(f"Failed to clear staging folder - cannot remove {item.name}: {e}", indent=2)
+                    logger.error("Aborting workflow to prevent processing unintended reels.", indent=1)
+                    return
+        else:
+            logger.info(f"Skipping staging cleanup (starting from '{early_start_step}' - preserving existing reels)", indent=1)
 
         # ----------- Resolve reels locally based on Source Mode -----------
         source_mode = (pmap.get("source_mode").valueAsText if pmap.get("source_mode") else "Local") or "Local"
@@ -914,14 +930,11 @@ class Process360Workflow(object):
 
         # Run steps
         t_start = self.time_mod.time()
-        if not hasattr(self, "_step_label_to_name") or not hasattr(self, "_step_name_to_label"):
-            self._step_label_to_name = {label: name for _, name, label in self.STEP_FUNCTIONS}
+        if not hasattr(self, "_step_name_to_label"):
             self._step_name_to_label = {name: label for _, name, label in self.STEP_FUNCTIONS}
 
-        step_label = p.get("start_step")
-        start_step = (
-            self._step_label_to_name.get(step_label, step_order[0]) if step_label and step_label != "--SELECT STEP--" else step_order[0]
-        )
+        # Use early resolved start_step or default to first step
+        start_step = early_start_step if early_start_step else step_order[0]
         if start_step not in step_order:
             logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", indent=1)
             start_step = step_order[0]

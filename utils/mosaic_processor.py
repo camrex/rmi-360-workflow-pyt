@@ -393,12 +393,12 @@ def run_mosaic_processor(
                     skip_gpx=True
             ):
                 return
-            
+
             # Stop progress monitoring after Render + Reel Fix completes
             if monitor_started and progress_monitor.is_monitoring():
                 logger.info("📊 Stopping progress monitoring...", indent=2)
                 progress_monitor.stop_monitoring(timeout=10.0)
-                
+
                 # Log final status summary
                 final_status = progress_monitor.get_current_status()
                 if final_status:
@@ -406,7 +406,7 @@ def run_mosaic_processor(
                     generated = totals.get('generated_frames', 0)
                     expected = totals.get('expected_frames', 0)
                     logger.info(f"📊 Final: {generated:,}/{expected:,} frames generated", indent=2)
-            
+
             progressor.update(1)
 
             # === Step 2: Pad frame numbers ===
