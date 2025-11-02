@@ -179,12 +179,13 @@ class Process360Workflow(object):
         "8) Filter Distance Spacing (optional)\n"
         "9) Update Linear and Custom Attributes (linear referencing optional)\n"
         "10) Rename Images\n"
-        "11) Update EXIF Metadata\n"
-        "12) Geocode Images (optional)\n"
-        "13) Create OID Footprints\n"
-        "14) Deploy Lambda Monitor (optional)\n"
-        "15) Copy to AWS (optional)\n"
-        "16) Generate OID Service (optional)"
+        "11) Geo-Areas Enrichment (optional)\n"
+        "12) Update EXIF Metadata\n"
+        "13) ExifTool Geocoding (optional)\n"
+        "14) Create OID Footprints\n"
+        "15) Deploy Lambda Monitor (optional)\n"
+        "16) Copy to AWS (optional)\n"
+        "17) Generate OID Service (optional)"
     )
     canRunInBackground = False
 
@@ -200,12 +201,13 @@ class Process360Workflow(object):
         (8, "filter_distance", "Filter Distance Spacing"),
         (9, "update_linear_custom", "Update Linear and Custom Attributes"),
         (10, "rename_images", "Rename Images"),
-        (11, "update_metadata", "Update EXIF Metadata"),
-        (12, "geocode", "Geocode Images"),
-        (13, "build_footprints", "Build OID Footprints"),
-        (14, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
-        (15, "copy_to_aws", "Upload to AWS S3"),
-        (16, "generate_service", "Generate OID Service")
+        (11, "geoareas_enrichment", "Geo-Areas Enrichment"),
+        (12, "update_metadata", "Update EXIF Metadata"),
+        (13, "exiftool_geocoding", "ExifTool Geocoding"),
+        (14, "build_footprints", "Build OID Footprints"),
+        (15, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
+        (16, "copy_to_aws", "Upload to AWS S3"),
+        (17, "generate_service", "Generate OID Service")
     ]
 
     # Sort by numeric index and extract step names in the correct order

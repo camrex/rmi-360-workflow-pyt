@@ -705,20 +705,38 @@ portal:
   summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
 
 # ------------------------------------------------------------------------------
-# 🌍 REVERSE GEOCODING
+# 🌍 GEOCODING & GEOGRAPHIC ENRICHMENT
 # ------------------------------------------------------------------------------
-# Controls how location names (City, State, Country) are applied to images
+# Controls how location names and geographic context are applied to images
 # based on their GPS coordinates. This step is handled by the geocode_images.py
 # script and is typically run after all GPS corrections are complete.
 #
-# Supported methods:
-#   - "exiftool": Uses ExifTool's internal Geolocation module.
+# Supported methods (mutually exclusive):
+#   - "exiftool": Uses ExifTool's internal Geolocation module for basic reverse geocoding
+#   - "geo_areas": Uses corridor geo-areas enrichment with Living Atlas data sources
 #
-# Location tags written may include:
-#   - City / State / Country (EXIF)
-#   - LocationShownCity / ProvinceState / CountryName (XMP/IPTC-Ext)
+# Note: Methods are mutually exclusive - ExifTool geocoding would overwrite geo-areas 
+# EXIF data, so only one method can be active per workflow run.
 #
-# Supported ExifTool Configs:
+# Method details:
+#   🔍 "exiftool": Basic reverse geocoding using ExifTool's Geolocation module
+#      - Location tags: City / State / Country (EXIF)
+#      - LocationShownCity / ProvinceState / CountryName (XMP/IPTC-Ext)
+#      - Simple point-based lookup from built-in or custom databases
+#
+#   🗺️ "geo_areas": Advanced corridor-aware geographic enrichment 
+#      - Uses Living Atlas Places and Counties polygon data
+#      - Milepost-aware context (prev/next/nearest places along route)
+#      - Gap bridging and range building for continuous coverage
+#      - Multi-tier verification with source tracking
+#      - Detailed geographic context beyond simple reverse geocoding
+#
+#   🔄 "both": Combined approach (recommended for comprehensive tagging)
+#      - Applies geo-areas enrichment first to populate corridor context
+#      - Follows with ExifTool reverse geocoding for additional location data
+#      - Provides both detailed corridor intelligence and standard location tags
+#
+# Supported ExifTool Configs (when method includes "exiftool"):
 #   - "default" (no config file used; built-in DB of cities with population > 2000)
 #   - "geolocation500" (uses config file that points to Geolocation500 DB)
 #   - "geocustom" (uses config file that points to a custom geolocation DB built by user
@@ -740,10 +758,86 @@ portal:
 #        $Image::ExifTool::Geolocation::geoDir = '/ABSOLUTE/PATH/TO/[NameOfYourCustomGeoDB]"';
 #   ➤ Note: Relative paths in .config are not supported.
 geocoding:
-  method: "exiftool"
+  method: "geo_areas"  # Options: "exiftool", "geo_areas" (mutually exclusive)
   exiftool_geodb: "default"  # Options: default, geolocation500, geocustom
   geoloc500_config_path: "templates/exiftool/geolocation500.config"
   geocustom_config_path: "templates/exiftool/geocustom.config"
+
+# ------------------------------------------------------------------------------
+# 🌍 GEO-AREAS ENRICHMENT  
+# ------------------------------------------------------------------------------
+# Controls how corridor photo points are enriched with Place/County/State context
+# and milepost-aware information before ExifTool tagging. This provides more
+# detailed geographic context than basic reverse geocoding.
+#
+# This enrichment runs BEFORE apply_exif_metadata to ensure all geographic area
+# data is available for EXIF metadata application in a single batch operation.
+#
+# Processing modes:
+#   - CONTAINMENT_ONLY: Only polygon containment joins
+#   - CONTAINMENT+MILEPOST_CONTEXT: Add prev/next/nearest milepost context (legacy)
+#   - CONTAINMENT+MILEPOST+GAP_BRIDGE: Add gap bridging between same places (legacy)  
+#   - CONTAINMENT+RANGES_BUILD_APPLY: Add range-based lookup from anchors (recommended - most efficient)
+#   - FULL: Complete enrichment workflow (comprehensive but includes redundant milepost step)
+#
+# Data sources (recommend Esri Living Atlas cached locally):
+#   - places_fc: Polygon FC with place boundaries (cities, towns, CDPs)
+#   - counties_fc: Polygon FC with county boundaries including state info
+#
+geo_areas:
+  # Enable geo-areas enrichment (set to false to skip entirely)
+  enabled: true
+  
+  # Processing mode - controls which enrichment steps to perform
+  mode: "CONTAINMENT+RANGES_BUILD_APPLY"  # Options: CONTAINMENT_ONLY, CONTAINMENT+MILEPOST_CONTEXT, CONTAINMENT+MILEPOST+GAP_BRIDGE, CONTAINMENT+RANGES_BUILD_APPLY, FULL
+  
+  # Field names in the photos feature class
+  mile_field: "milepost"        # Field containing milepost values
+  route_field: "route_id"       # Field for route identification (optional, leave null for single route)
+  
+  # Gap bridging parameters
+  max_gap_miles: 1.0           # Maximum gap distance (miles) for bridging between same-place anchors
+  break_gap_miles: 0.5         # Gap distance (miles) that breaks range continuity
+  min_points_per_range: 2      # Minimum points required for a valid place range
+  
+  # Nearest place promotion
+  promote_nearest_to_actual: false    # Promote nearest place to actual place if within threshold
+  max_nearest_miles: 2.0             # Maximum distance (miles) for promoting nearest place
+  
+  # Data source paths (update these to point to your Living Atlas data)
+  places_fc: "gis_data/reference.gdb/USA_Places"      # Polygon FC containing place boundaries
+  counties_fc: "gis_data/reference.gdb/USA_Counties"  # Polygon FC containing county boundaries
+  
+  # Optional corridor-specific places (for future near-buffer logic)
+  corridor_places_fc: null     # Optional places clipped to corridor buffer
+  
+  # Reporting
+  write_report_csv: true       # Generate QA report CSV with enrichment statistics  
+  report_csv_filename: "geocode_geoareas_report.csv"  # Filename for QA report
+  
+  # EXIF metadata fallback strategy for points outside places
+  # Controls what gets written to City/LocationShownCity tags when no place containment found
+  city_fallback_strategy: "nearest_then_county"  # Options: "county_only", "nearest_only", "nearest_then_county"
+  #   - "county_only": Use county name as fallback (e.g., "Adams County")
+  #   - "nearest_only": Use nearest place name with optional indicator (e.g., "Springfield (nearest)")  
+  #   - "nearest_then_county": Try nearest place first, then county (recommended)
+  include_nearest_indicator: true                 # Add "(nearest)" suffix for nearest place fallbacks in City tags
+  
+  # XPKeywords enrichment for enhanced searchability
+  include_county_keyword: true                    # Add county name to XPKeywords (e.g., "Adams County")
+  include_directional_context: true              # Add directional context for points outside places (e.g., "2.4 miles east of Sedalia")
+  
+  # Milepost-based direction mapping (railroad operational directions)
+  # Define directions based on increasing/decreasing milepost values along the route
+  # This follows railroad operational direction rather than cardinal directions
+  milepost_directions:
+    increasing_direction: "west"   # Direction for increasing milepost values (e.g., "west", "north", "east", "south")
+    decreasing_direction: "east"   # Direction for decreasing milepost values (opposite of increasing)
+  #   Example: If closest place is at MP 125.2 and point is at MP 127.8,
+  #   point is 2.6 miles in the "increasing_direction" (west) of the place
+  
+  # Performance tuning (advanced)
+  nearest_radius_m: 8000       # Radius for nearest calculations (currently unused - using milepost logic)
 
 # ----------------------------------------------------------------
 # ORCHESTRATOR CONFIG

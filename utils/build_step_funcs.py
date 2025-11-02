@@ -41,6 +41,7 @@ from utils.update_linear_and_custom import update_linear_and_custom
 from utils.rename_images import rename_images
 from utils.apply_exif_metadata import update_metadata_from_config
 from utils.geocode_images import geocode_images
+from utils.geocode_geoareas import geocode_geoareas
 from utils.build_oid_footprints import build_oid_footprints
 from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
@@ -72,11 +73,70 @@ def skip_if_distance_filter_disabled(params):
 def skip_if_geocode_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_geocode", False) else None
 
+def skip_if_geoareas_not_needed(params, cfg):
+    """Skip geo-areas step if geocode disabled or method not geo_areas"""
+    if not params.get("enable_geocode", False):
+        return "Skipped (geocode disabled by user)"
+    
+    method = cfg.get("geocoding.method", "").lower()
+    if method != "geo_areas":
+        return f"Skipped (method={method})"
+    
+    from utils.geoareas_exif_integration import should_use_geoareas
+    if not should_use_geoareas(cfg.config):
+        return "Skipped (geo-areas not configured)"
+    
+    return None
+
+def skip_if_exiftool_not_needed(params, cfg):
+    """Skip exiftool step if geocode disabled or method not exiftool"""
+    if not params.get("enable_geocode", False):
+        return "Skipped (geocode disabled by user)"
+    
+    method = cfg.get("geocoding.method", "").lower()
+    if method != "exiftool":
+        return f"Skipped (method={method})"
+    
+    return None
+
 def skip_if_deploy_lambda_monitor_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_deploy_lambda_monitor", False) else None
 
 def skip_if_generate_service_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_generate_service", False) else None
+
+def run_geoareas_enrichment(oid_fc: str, cfg):
+    """Run geo-areas enrichment (before EXIF metadata application)"""
+    logger = cfg.get_logger()
+    logger.custom("Running geo-areas enrichment...", emoji="🌍", indent=1)
+    
+    # Get geo-areas configuration
+    places_fc = cfg.get("geo_areas.places_fc", "")
+    counties_fc = cfg.get("geo_areas.counties_fc", "")
+    
+    if not places_fc or not counties_fc:
+        logger.warning("geo_areas method selected but places_fc or counties_fc not configured", indent=1)
+        return
+    
+    # Call geo-areas enrichment with full configuration
+    geocode_geoareas(
+        photos_fc=oid_fc,
+        places_fc=places_fc,
+        counties_fc=counties_fc,
+        corridor_places_fc=cfg.get("geo_areas.corridor_places_fc"),
+        mile_field=cfg.get("geo_areas.mile_field", "milepost"),
+        route_field=cfg.get("geo_areas.route_field"),
+        max_gap_miles=cfg.get("geo_areas.max_gap_miles", 1.0),
+        promote_nearest_to_actual=cfg.get("geo_areas.promote_nearest_to_actual", False),
+        max_nearest_miles=cfg.get("geo_areas.max_nearest_miles", 2.0),
+        logger=logger.log
+    )
+
+def run_exiftool_geocoding(oid_fc: str, cfg):
+    """Run ExifTool geocoding (after EXIF metadata application)"""
+    logger = cfg.get_logger()
+    logger.custom("Running ExifTool geocoding...", emoji="🏷️", indent=1)
+    geocode_images(cfg=cfg, oid_fc=oid_fc)
 
 def build_step_funcs(p, cfg):
     """
@@ -112,10 +172,12 @@ def build_step_funcs(p, cfg):
             lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg), None),
         StepSpec("rename_images", "Rename Images",
             lambda params, config: lambda **kwargs: rename_images(oid_fc=p["oid_fc"], cfg=cfg, enable_linear_ref=p["enable_linear_ref"]), None),
+        StepSpec("geoareas_enrichment", "Geo-Areas Enrichment", 
+            lambda params, config: lambda **kwargs: run_geoareas_enrichment(oid_fc=p["oid_fc"], cfg=cfg), lambda params: skip_if_geoareas_not_needed(params, cfg)),
         StepSpec("update_metadata", "Update EXIF Metadata",
             lambda params, config: lambda **kwargs: update_metadata_from_config(oid_fc=p["oid_fc"], cfg=cfg), None),
-        StepSpec("geocode", "Geocode Images",
-            lambda params, config: lambda **kwargs: geocode_images(oid_fc=p["oid_fc"], cfg=cfg), skip_if_geocode_disabled),
+        StepSpec("exiftool_geocoding", "ExifTool Geocoding",
+            lambda params, config: lambda **kwargs: run_exiftool_geocoding(oid_fc=p["oid_fc"], cfg=cfg), lambda params: skip_if_exiftool_not_needed(params, cfg)),
         StepSpec("build_footprints", "Build OID Footprints",
             lambda params, config: lambda **kwargs: build_oid_footprints(oid_fc=p["oid_fc"], cfg=cfg), None),
         StepSpec("deploy_lambda_monitor", "Deploy Lambda AWS Monitor",
