@@ -36,11 +36,68 @@ import os
 import re
 import subprocess
 import arcpy
-from typing import Dict, Any
+from typing import Dict, Any, Union, List
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
 from utils.shared.arcpy_utils import validate_fields_exist
+from utils.geoareas_exif_integration import should_use_geoareas, get_geoareas_exif_mapping, get_geoareas_xpkeywords_additions
+
+
+def _merge_geoareas_tags(cfg: Any, base_tags: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Merge geo-areas EXIF tags into base metadata tags when geo-areas method is enabled.
+    
+    Args:
+        cfg: ConfigManager instance
+        base_tags: Base metadata tags from configuration
+        
+    Returns:
+        Merged tags dictionary with geo-areas tags integrated
+    """
+    if not should_use_geoareas(cfg.config):
+        return base_tags
+        
+    logger = cfg.get_logger()
+    logger.info("Integrating geo-areas tags into metadata configuration...")
+    
+    # Get geo-areas tag mappings with config-based fallback strategy
+    geoareas_tags = get_geoareas_exif_mapping(cfg.config)
+    
+    # Deep copy base tags to avoid modifying original
+    import copy
+    merged_tags = copy.deepcopy(base_tags)
+    
+    # Merge geo-areas tags, with geo-areas taking precedence for location fields
+    for tag_name, tag_value in geoareas_tags.items():
+        if isinstance(tag_value, dict):
+            # Handle nested tags (XMP-iptcExt, XMP-photoshop, etc.)
+            if tag_name not in merged_tags:
+                merged_tags[tag_name] = {}
+            if isinstance(merged_tags[tag_name], dict):
+                merged_tags[tag_name].update(tag_value)
+            else:
+                # If base has scalar value, replace with dict
+                merged_tags[tag_name] = tag_value
+        else:
+            # Handle scalar tags (City, State, Country, etc.)
+            merged_tags[tag_name] = tag_value
+    
+    # Augment XPKeywords with geo-areas specific keywords
+    geoareas_keywords = get_geoareas_xpkeywords_additions(cfg.config)
+    if geoareas_keywords:
+        if 'XPKeywords' not in merged_tags:
+            merged_tags['XPKeywords'] = []
+        elif not isinstance(merged_tags['XPKeywords'], list):
+            # Convert single value to list
+            merged_tags['XPKeywords'] = [merged_tags['XPKeywords']]
+        
+        # Add geo-areas keywords to the list
+        merged_tags['XPKeywords'].extend(geoareas_keywords)
+        logger.debug(f"Added {len(geoareas_keywords)} geo-areas keywords to XPKeywords")
+    
+    logger.debug(f"Added geo-areas tags: {list(geoareas_tags.keys())}")
+    return merged_tags
 
 
 def _extract_required_fields(tags, oid_fc=None):
@@ -57,28 +114,44 @@ def _extract_required_fields(tags, oid_fc=None):
             required_fields.update(matches)
     recurse_tags(tags)
     required_fields.update(["X", "Y"])
+    
     # Only require QCFlag if it exists in the feature class
     if oid_fc:
         oid_fields = {f.name for f in arcpy.ListFields(oid_fc)}
         if "QCFlag" in oid_fields:
             required_fields.add("QCFlag")
+        
+        # For geo-areas fields, only require them if they exist
+        geo_fields = ["geo_place", "geo_county", "geo_county_fips", "geo_state", "geo_place_source", 
+                     "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles"]
+        for field in geo_fields:
+            if field in required_fields and field in oid_fields:
+                # Field is referenced and exists - keep it
+                continue
+            elif field in required_fields and field not in oid_fields:
+                # Field is referenced but doesn't exist - remove from requirements
+                # This handles cases where geo-areas hasn't run yet
+                required_fields.discard(field)
+                
     return required_fields
 
 
-def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str, str]:
+def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str, Any]:
     """
     Recursively flattens nested tag dictionaries for ExifTool, e.g.,
     {'GPano': {'PoseHeadingDegrees': '...'}} -> {'XMP-GPano:PoseHeadingDegrees': value}
+    
+    Returns dict with either string values or list values (for multi-value tags like XPKeywords)
     """
     logger = cfg.get_logger()
-    flat: Dict[str, str] = {}
+    flat: Dict[str, Any] = {}
     for tag_name, value in tags.items():
         if isinstance(value, dict):
             # Nested dict (e.g., GPano)
             new_prefix = f"{prefix}{tag_name}:" if prefix else f"XMP-{tag_name}:"
             flat.update(_flatten_tags(new_prefix, value, cfg, row_dict))
         elif isinstance(value, list):
-            # List of expressions (e.g., XPKeywords)
+            # List of expressions (e.g., XPKeywords) - keep as list for proper multi-value handling
             keywords = []
             for item in value:
                 try:
@@ -88,7 +161,7 @@ def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str
                     keywords.append(val)
                 except Exception as e:
                     logger.error(f"Failed to resolve tag {tag_name}: {e}", indent=1)
-            flat[f"{prefix}{tag_name}"] = ";".join(keywords)
+            flat[f"{prefix}{tag_name}"] = keywords  # Keep as list, don't join
         else:
             # String or numeric expression
             try:
@@ -101,9 +174,30 @@ def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str
     return flat
 
 
-def _resolve_tags(cfg: Any, tags: dict, row_dict: dict) -> Dict[str, str]:
+def _resolve_tags(cfg: Any, tags: dict, row_dict: dict) -> Dict[str, Union[str, List[str]]]:
     # Handles both flat and nested tags
     return _flatten_tags("", tags, cfg, row_dict)
+
+
+def _escape_exif_value(value: str) -> str:
+    """
+    Safely escape ExifTool argument values to handle edge cases.
+    
+    Args:
+        value: Raw tag value
+        
+    Returns:
+        Properly escaped value for ExifTool arg file
+    """
+    # Handle values with quotes by escaping them
+    if '"' in value:
+        escaped = value.replace('"', '\\"')
+        return f'"{escaped}"'
+    # Handle values starting with @ or containing newlines
+    elif value.startswith('@') or '\n' in value:
+        return f'"{value}"'
+    else:
+        return value
 
 
 def _write_exiftool_args(cfg, tags, rows, cursor_fields):
@@ -112,6 +206,16 @@ def _write_exiftool_args(cfg, tags, rows, cursor_fields):
     lines = []
     log_entries = []
     logger = cfg.get_logger()
+    
+    # Add global ExifTool configuration at start of file
+    lines.extend([
+        "-charset filename=UTF8",  # Ensure UTF-8 interpretation
+        "-n",                      # Numeric mode for GPS/GPano values
+        "-P",                      # Preserve file timestamps
+        "-overwrite_original_in_place",  # Global flag instead of per-image
+        ""  # Empty line for readability
+    ])
+    
     for i, row in enumerate(rows):
         # Build row_dict from actual cursor_fields
         row_dict = dict(zip(cursor_fields, row))
@@ -124,14 +228,32 @@ def _write_exiftool_args(cfg, tags, rows, cursor_fields):
         if i == 0:
             logger.debug(f"row_dict for first image: {row_dict}")
             logger.debug(f"resolved_tags for first image: {resolved_tags}")
+        
+        # Add echo marker for this image (helps with troubleshooting)
+        lines.append(f"-echo3 OID={row_dict['OID@']}")
+        
+        # Process resolved tags with proper EXIF group prefixes and multi-value handling
         for tag_name, value in resolved_tags.items():
-            lines.append(f"-{tag_name}={value}")
+            # Add explicit EXIF group for common EXIF tags
+            if tag_name in ['Artist', 'Software', 'Make', 'Model', 'ImageDescription', 'Copyright', 'SerialNumber', 'FirmwareVersion']:
+                tag_name = f"EXIF:{tag_name}"
+            
+            if isinstance(value, list):
+                # Multi-value tags (XPKeywords, etc.) - emit one line per value
+                for item in value:
+                    escaped_item = _escape_exif_value(str(item))
+                    lines.append(f"-{tag_name}={escaped_item}")
+            else:
+                # Single value tags
+                escaped_value = _escape_exif_value(str(value))
+                lines.append(f"-{tag_name}={escaped_value}")
 
-        # Only add GPS_OUTLIER logic if QCFlag is present
-        if "QCFlag" in row_dict and row_dict["QCFlag"] == "GPS_OUTLIER":
+        # Only add GPS_OUTLIER logic if QCFlag is present and matches (case-insensitive)
+        if "QCFlag" in row_dict and str(row_dict["QCFlag"]).upper() == "GPS_OUTLIER":
             lat, lon = row_dict["Y"], row_dict["X"]
-            lat_ref = "North" if lat >= 0 else "South"
-            lon_ref = "East" if lon >= 0 else "West"
+            # Fix: Use single-letter GPS reference values
+            lat_ref = "N" if lat >= 0 else "S"
+            lon_ref = "E" if lon >= 0 else "W"
             lines.extend([
                 f"-GPSLatitude={abs(lat)}",
                 f"-GPSLatitudeRef={lat_ref}",
@@ -140,10 +262,9 @@ def _write_exiftool_args(cfg, tags, rows, cursor_fields):
             ])
 
         lines.extend([
-            "-overwrite_original_in_place",
-            path.replace('\\', '/'),
+            path.replace('\\', '/'),  # File path (global flags already set)
             "-execute",
-            ""
+            ""  # Empty line between image blocks
         ])
         log_entries.append(f"✅ Tagged OID {row_dict['OID@']} → {os.path.basename(path)}")
 
@@ -158,11 +279,32 @@ def _run_exiftool(cfg, args_file):
     exe_path = cfg.paths.exiftool_exe
     if not cfg.paths.check_exiftool_available():
         logger.error(f"ExifTool not found or not working at: {exe_path}", error_type=RuntimeError, indent=1)
+    
     try:
-        subprocess.run([exe_path, "-@", args_file], check=True)
-        logger.success("Metadata tagging completed.", indent=1)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"ExifTool failed: {e}", error_type=RuntimeError, indent=1)
+        # Capture both stdout and stderr for better logging and troubleshooting
+        result = subprocess.run([exe_path, "-@", args_file], 
+                              check=False, capture_output=True, text=True)
+        
+        # Log stdout (normal ExifTool output including echo3 messages)
+        if result.stdout.strip():
+            logger.debug("ExifTool output:")
+            for line in result.stdout.strip().split('\n'):
+                logger.debug(f"  {line}", indent=2)
+        
+        # Check for errors
+        if result.returncode != 0:
+            logger.error("ExifTool failed with errors:", indent=1)
+            if result.stderr.strip():
+                for line in result.stderr.strip().split('\n'):
+                    logger.error(f"  {line}", indent=2)
+            raise RuntimeError(f"ExifTool exited with code {result.returncode}")
+        else:
+            logger.success("Metadata tagging completed successfully.", indent=1)
+            
+    except FileNotFoundError:
+        logger.error(f"ExifTool executable not found: {exe_path}", error_type=RuntimeError, indent=1)
+    except Exception as e:
+        logger.error(f"ExifTool execution failed: {e}", error_type=RuntimeError, indent=1)
 
 
 def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
@@ -172,13 +314,19 @@ def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
     Applies metadata tags to images by evaluating expressions defined in a configuration file or dictionary. Tagging
     is performed in batch using ExifTool, with tag values resolved from feature class fields. Handles GPS metadata
     updates for images flagged as outliers and logs all operations and errors.
+    
+    When geocoding.method is "geo_areas", automatically integrates corridor geo-areas
+    enrichment tags with standard EXIF/XMP location metadata.
     """
     logger = cfg.get_logger()
     cfg.validate(tool="apply_exif_metadata")
 
-    tags = cfg.get("image_output.metadata_tags", {})
-    if not tags:
+    base_tags = cfg.get("image_output.metadata_tags", {})
+    if not base_tags:
         logger.error("No metadata_tags defined in config.yaml.", error_type=ValueError, indent=1)
+    
+    # Merge geo-areas tags if enabled
+    tags = _merge_geoareas_tags(cfg, base_tags)
 
     required_fields = _extract_required_fields(tags, oid_fc=oid_fc)
     validate_fields_exist(oid_fc, list(required_fields))
