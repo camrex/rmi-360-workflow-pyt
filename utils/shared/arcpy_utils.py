@@ -56,7 +56,9 @@ def validate_fields_exist(
     """
     arcpy_mod = arcpy_mod or arcpy
     existing_fields = {f.name for f in arcpy_mod.ListFields(feature_class)}
-    missing = [f for f in required_fields if f not in existing_fields]
+    # Case-insensitive field comparison
+    existing_lower = {f.lower(): f for f in existing_fields}
+    missing = [f for f in required_fields if f.lower() not in existing_lower]
     if missing:
         msg = f"Missing required field(s) in {feature_class}: {', '.join(missing)}"
         if logger:
