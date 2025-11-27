@@ -52,6 +52,13 @@
 #   - All tool logic is modularized for maintainability and extensibility
 # =============================================================================
 
+# Add toolbox directory to Python path for imports
+import sys
+import os
+toolbox_dir = os.path.dirname(os.path.abspath(__file__))
+if toolbox_dir not in sys.path:
+    sys.path.insert(0, toolbox_dir)
+
 # Import tools to run individually
 from tools.process_360_orchestrator import Process360Workflow
 from tools.run_mosaic_processor_tool import RunMosaicProcessorTool
@@ -68,6 +75,7 @@ from tools.generate_oid_service_tool import GenerateOIDService
 from tools.generate_report_tool import GenerateReportFromJSONTool
 from tools.create_oid_template_tool import CreateOIDTemplateTool
 from tools.set_aws_keyring_tool import SetAWSKeyringCredentialsTool
+from tools.export_oid_for_colmap_tool import ExportOIDForCOLMAPTool
 
 
 class Toolbox(object):
@@ -89,5 +97,6 @@ class Toolbox(object):
             GenerateOIDService,
             GenerateReportFromJSONTool,
             CreateOIDTemplateTool,
-            SetAWSKeyringCredentialsTool
+            SetAWSKeyringCredentialsTool,
+            ExportOIDForCOLMAPTool
         ]
