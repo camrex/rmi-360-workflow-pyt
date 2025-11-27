@@ -208,12 +208,17 @@ def _extract_image_metadata(row_dict: Dict[str, Any], cursor_fields: List[str]) 
     # Create case-insensitive lookup
     row_lower = {k.lower(): v for k, v in row_dict.items()}
     
+    # Convert datetime to string if present
+    acquisition_date = row_lower.get("acquisitiondate")
+    if acquisition_date and hasattr(acquisition_date, 'strftime'):
+        acquisition_date = acquisition_date.strftime("%Y-%m-%d %H:%M:%S")
+    
     # Map to exact field names from OID schema
     metadata = {
         "oid": row_lower.get("oid@") or row_lower.get("objectid"),
         "name": row_lower.get("name"),
         "image_path": row_lower.get("imagepath"),
-        "acquisition_date": row_lower.get("acquisitiondate"),
+        "acquisition_date": acquisition_date,
         "camera_heading": row_lower.get("cameraheading"),
         "camera_pitch": row_lower.get("camerapitch"),
         "camera_roll": row_lower.get("cameraroll"),
@@ -221,7 +226,7 @@ def _extract_image_metadata(row_dict: Dict[str, Any], cursor_fields: List[str]) 
         "vfov": row_lower.get("verticalfieldofview"),
         "near_distance": row_lower.get("neardistance"),
         "far_distance": row_lower.get("fardistance"),
-        "camera_height": row_lower.get("cameraheight"),  # Changed from avg_height
+        "camera_height": row_lower.get("cameraheight"),
         "oriented_imagery_type": row_lower.get("orientedimagerytype"),
         "image_rotation": row_lower.get("imagerotation"),
         "camera_orientation": row_lower.get("cameraorientation"),
