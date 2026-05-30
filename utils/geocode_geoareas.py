@@ -95,6 +95,36 @@ def _get_text_field_lengths(feature_class: str) -> Dict[str, int]:
     return lengths
 
 
+def _resolve_join_field(join_field_names: List[str], candidates: List[str]) -> Optional[str]:
+    """Resolve a field name from SpatialJoin output, handling ArcGIS suffixes like _1."""
+    upper_to_original = {name.upper(): name for name in join_field_names}
+
+    # Prefer exact candidate names first.
+    for candidate in candidates:
+        matched = upper_to_original.get(candidate)
+        if matched:
+            return matched
+
+    # Fall back to suffixed variants produced by SpatialJoin field conflict handling.
+    for candidate in candidates:
+        prefix = f"{candidate}_"
+        for upper_name, original in upper_to_original.items():
+            if upper_name.startswith(prefix):
+                return original
+
+    return None
+
+
+def _ensure_temp_oid_join_field(feature_class: str, field_name: str = "TMP_OID_JOIN") -> Tuple[str, bool]:
+    """Ensure a stable numeric key field exists for join round-trips; returns (field_name, created)."""
+    existing = {f.name.upper() for f in arcpy.ListFields(feature_class)}
+    if field_name.upper() not in existing:
+        arcpy.management.AddField(feature_class, field_name, "LONG")
+        arcpy.management.CalculateField(feature_class, field_name, "!OBJECTID!", "PYTHON3")
+        return field_name, True
+    return field_name, False
+
+
 def _fit_text_value(value: Any, max_length: int) -> Optional[str]:
     """Safely coerce and truncate text to the destination field length."""
     if value is None:
@@ -203,7 +233,8 @@ def enrich_points_places_counties(
     places_fc: str, 
     counties_fc: str,
     logger: Optional[Callable] = None,
-    progress: Optional[Callable] = None
+    progress: Optional[Callable] = None,
+    raise_on_error: bool = False
 ) -> Dict[str, Any]:
     """
     Perform polygon containment joins to fill place, county, and state fields.
@@ -230,15 +261,27 @@ def enrich_points_places_counties(
         "state_filled": 0,
         "place_examples": [],
         "county_examples": [],
-        "state_examples": []
+        "state_examples": [],
+        "_debug": {
+            "places": {},
+            "counties": {}
+        }
     }
+    temp_oid_field, temp_oid_created = _ensure_temp_oid_join_field(photos_fc)
+
+    try:
+        temp_workspace = arcpy.Describe(photos_fc).path
+    except Exception:
+        temp_workspace = None
+    if not temp_workspace or not arcpy.Exists(temp_workspace):
+        temp_workspace = "in_memory"
     
     # Spatial join with places
     if logger:
         logger("Performing spatial join with places...")
     
     # Create temporary layer for spatial join
-    temp_places_join = "temp_places_join"
+    temp_places_join = arcpy.CreateUniqueName("temp_places_join", temp_workspace)
     
     try:
         # Spatial join with places (one-to-one, within)
@@ -248,27 +291,23 @@ def enrich_points_places_counties(
             out_feature_class=temp_places_join,
             join_operation="JOIN_ONE_TO_ONE",
             join_type="KEEP_ALL",
-            match_option="WITHIN"
+            match_option="INTERSECT"
         )
         
         # Update photos_fc with place information
         place_updates = 0
-        join_oid_field = "TARGET_FID" if any(f.name.upper() == "TARGET_FID" for f in arcpy.ListFields(temp_places_join)) else "OBJECTID"
+        # Detect joined fields from SpatialJoin output (field names may be suffixed).
+        places_join_fields = [f.name for f in arcpy.ListFields(temp_places_join)]
+        results["_debug"]["places"]["join_fields"] = places_join_fields
+        join_oid_field = _resolve_join_field(places_join_fields, [temp_oid_field, "TARGET_FID", "ORIG_FID"])
+        if not join_oid_field:
+            raise RuntimeError("Unable to resolve target OID field from places spatial join output")
+        results["_debug"]["places"]["join_oid_field"] = join_oid_field
         join_fields = [join_oid_field]
-        
-        # Detect available fields in places (flexible field mapping)
-        places_fields = [f.name for f in arcpy.ListFields(places_fc)]
-        
-        # Map place fields (try common variations)
-        place_name_field = None
-        place_fips_field = None
-        
-        for field in places_fields:
-            field_upper = field.upper()
-            if field_upper in ["NAME", "PLACE_NAME", "PLACENAME"]:
-                place_name_field = field
-            elif field_upper in ["GEOID", "FIPS", "PLACE_FIPS", "PLACEFIPS"]:
-                place_fips_field = field
+        place_name_field = _resolve_join_field(places_join_fields, ["NAME", "PLACE_NAME", "PLACENAME"])
+        place_fips_field = _resolve_join_field(places_join_fields, ["GEOID", "FIPS", "PLACE_FIPS", "PLACEFIPS"])
+        results["_debug"]["places"]["place_name_field"] = place_name_field
+        results["_debug"]["places"]["place_fips_field"] = place_fips_field
         
         if place_name_field:
             join_fields.append(place_name_field)
@@ -276,36 +315,44 @@ def enrich_points_places_counties(
             join_fields.append(place_fips_field)
         
         # Update photos with place data
-        update_fields = ["OID@", "geo_place", "geo_place_fips", "geo_place_source", "geo_place_inferred"]
+        update_fields = ["OID@", temp_oid_field, "geo_place", "geo_place_fips", "geo_place_source", "geo_place_inferred"]
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields) as update_cursor:
             # Create lookup from join results
             join_lookup = {}
+            join_row_count = 0
             try:
                 with arcpy.da.SearchCursor(temp_places_join, join_fields) as join_cursor:
                     for row in join_cursor:
-                        oid = row[0]
+                        join_row_count += 1
+                        join_key = row[0]
                         place_name = row[1] if len(row) > 1 and row[1] else None
                         place_fips = row[2] if len(row) > 2 and row[2] else None
                         
                         if place_name:  # Only store if we got a place
-                            join_lookup[oid] = (place_name, place_fips)
+                            join_lookup[join_key] = (place_name, place_fips)
             except Exception as e:
                 if logger:
                     logger(f"Warning: Issue reading place join results: {e}")
+                if raise_on_error:
+                    raise
+            results["_debug"]["places"]["join_row_count"] = join_row_count
+            results["_debug"]["places"]["lookup_count"] = len(join_lookup)
             
             # Update photos with place data
             for row in update_cursor:
                 oid = row[0]
-                current_place = row[1]
+                row_key = row[1]
+                current_place = row[2]
                 
                 # Only update if place is currently null/empty
-                if not current_place and oid in join_lookup:
-                    place_name, place_fips = join_lookup[oid]
-                    row[1] = place_name  # geo_place
-                    row[2] = place_fips  # geo_place_fips
-                    row[3] = SourceType.CONTAINED  # geo_place_source
-                    row[4] = 0  # geo_place_inferred (direct containment)
+                lookup_key = row_key if row_key in join_lookup else oid
+                if not current_place and lookup_key in join_lookup:
+                    place_name, place_fips = join_lookup[lookup_key]
+                    row[2] = place_name  # geo_place
+                    row[3] = place_fips  # geo_place_fips
+                    row[4] = SourceType.CONTAINED  # geo_place_source
+                    row[5] = 0  # geo_place_inferred (direct containment)
                     
                     update_cursor.updateRow(row)
                     place_updates += 1
@@ -314,13 +361,17 @@ def enrich_points_places_counties(
                         results["place_examples"].append(oid)
         
         results["place_contained"] = place_updates
+        results["_debug"]["places"]["place_updates"] = place_updates
         
         if logger:
             logger(f"Updated {place_updates} photos with place containment")
             
     except Exception as e:
+        results["_debug"]["places"]["error"] = str(e)
         if logger:
             logger(f"Error in places spatial join: {e}")
+        if raise_on_error:
+            raise
     finally:
         # Clean up
         if arcpy.Exists(temp_places_join):
@@ -330,7 +381,7 @@ def enrich_points_places_counties(
     if logger:
         logger("Performing spatial join with counties...")
     
-    temp_counties_join = "temp_counties_join"
+    temp_counties_join = arcpy.CreateUniqueName("temp_counties_join", temp_workspace)
     
     try:
         # Spatial join with counties
@@ -340,38 +391,32 @@ def enrich_points_places_counties(
             out_feature_class=temp_counties_join,
             join_operation="JOIN_ONE_TO_ONE", 
             join_type="KEEP_ALL",
-            match_option="WITHIN"
+            match_option="INTERSECT"
         )
         
         # Update photos_fc with county/state information
         county_updates = 0
         state_updates = 0
         
-        # Detect available fields in counties
-        counties_fields = [f.name for f in arcpy.ListFields(counties_fc)]
-        
-        # Map county fields (try common variations)
-        county_name_field = None
-        county_fips_field = None
-        state_fips_field = None
-        state_abbr_field = None
-        state_name_field = None
-        
-        for field in counties_fields:
-            field_upper = field.upper()
-            if field_upper in ["NAME", "COUNTY_NAME", "COUNTYNAME"]:
-                county_name_field = field
-            elif field_upper in ["GEOID", "FIPS", "COUNTY_FIPS", "COUNTYFIPS"]:
-                county_fips_field = field
-            elif field_upper in ["STATEFP", "STATE_FIPS", "STATEFIPS"]:
-                state_fips_field = field
-            elif field_upper in ["STUSPS", "STATE_ABBR", "STATEABBR"]:
-                state_abbr_field = field
-            elif field_upper in ["STATE_NAME", "STATENAME"]:
-                state_name_field = field
+        # Detect joined fields from SpatialJoin output (field names may be suffixed).
+        counties_join_fields = [f.name for f in arcpy.ListFields(temp_counties_join)]
+        results["_debug"]["counties"]["join_fields"] = counties_join_fields
+        county_name_field = _resolve_join_field(counties_join_fields, ["NAME", "COUNTY_NAME", "COUNTYNAME"])
+        county_fips_field = _resolve_join_field(counties_join_fields, ["GEOID", "FIPS", "COUNTY_FIPS", "COUNTYFIPS"])
+        state_fips_field = _resolve_join_field(counties_join_fields, ["STATEFP", "STATE_FIPS", "STATEFIPS"])
+        state_abbr_field = _resolve_join_field(counties_join_fields, ["STUSPS", "STATE_ABBR", "STATEABBR"])
+        state_name_field = _resolve_join_field(counties_join_fields, ["STATE_NAME", "STATENAME"])
+        results["_debug"]["counties"]["county_name_field"] = county_name_field
+        results["_debug"]["counties"]["county_fips_field"] = county_fips_field
+        results["_debug"]["counties"]["state_fips_field"] = state_fips_field
+        results["_debug"]["counties"]["state_abbr_field"] = state_abbr_field
+        results["_debug"]["counties"]["state_name_field"] = state_name_field
         
         # Build join fields list
-        join_oid_field = "TARGET_FID" if any(f.name.upper() == "TARGET_FID" for f in arcpy.ListFields(temp_counties_join)) else "OBJECTID"
+        join_oid_field = _resolve_join_field(counties_join_fields, [temp_oid_field, "TARGET_FID", "ORIG_FID"])
+        if not join_oid_field:
+            raise RuntimeError("Unable to resolve target OID field from counties spatial join output")
+        results["_debug"]["counties"]["join_oid_field"] = join_oid_field
         join_fields = [join_oid_field]
         if county_name_field:
             join_fields.append(county_name_field)
@@ -385,17 +430,19 @@ def enrich_points_places_counties(
             join_fields.append(state_name_field)
         
         # Update photos with county/state data
-        update_fields = ["OID@", "geo_county", "geo_county_fips", "geo_state"]
+        update_fields = ["OID@", temp_oid_field, "geo_county", "geo_county_fips", "geo_state"]
         text_lengths = _get_text_field_lengths(photos_fc)
         truncation_counts = {"geo_county": 0, "geo_county_fips": 0, "geo_state": 0}
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields) as update_cursor:
             # Create lookup from join results
             join_lookup = {}
+            join_row_count = 0
             try:
                 with arcpy.da.SearchCursor(temp_counties_join, join_fields) as join_cursor:
                     for row in join_cursor:
-                        oid = row[0]
+                        join_row_count += 1
+                        join_key = row[0]
                         
                         # Extract values based on available fields
                         idx = 1
@@ -421,18 +468,24 @@ def enrich_points_places_counties(
                         state_display = state_name if state_name else state_abbr
                         
                         if county_name or county_fips or state_display or state_fips:
-                            join_lookup[oid] = (county_name, county_fips, state_display, state_fips)
+                            join_lookup[join_key] = (county_name, county_fips, state_display, state_fips)
                             
             except Exception as e:
                 if logger:
                     logger(f"Warning: Issue reading county join results: {e}")
+                if raise_on_error:
+                    raise
+            results["_debug"]["counties"]["join_row_count"] = join_row_count
+            results["_debug"]["counties"]["lookup_count"] = len(join_lookup)
             
             # Update photos with county/state data
             for row in update_cursor:
                 oid = row[0]
+                row_key = row[1]
                 
-                if oid in join_lookup:
-                    county_name, county_fips, state_display, state_fips = join_lookup[oid]
+                lookup_key = row_key if row_key in join_lookup else oid
+                if lookup_key in join_lookup:
+                    county_name, county_fips, state_display, state_fips = join_lookup[lookup_key]
 
                     county_text = _fit_text_value(county_name, text_lengths.get("geo_county", 0))
                     county_fips_text = _fit_text_value(county_fips, text_lengths.get("geo_county_fips", 0))
@@ -446,19 +499,19 @@ def enrich_points_places_counties(
                         truncation_counts["geo_state"] += 1
                     
                     # Update county if currently null
-                    if not row[1] and county_text:
-                        row[1] = county_text
+                    if not row[2] and county_text:
+                        row[2] = county_text
                         county_updates += 1
                         if len(results["county_examples"]) < 10:
                             results["county_examples"].append(oid)
                     
                     # Update county FIPS if currently null  
-                    if not row[2] and county_fips_text:
-                        row[2] = county_fips_text
+                    if not row[3] and county_fips_text:
+                        row[3] = county_fips_text
                     
                     # Update state if currently null
-                    if not row[3] and state_text:
-                        row[3] = state_text
+                    if not row[4] and state_text:
+                        row[4] = state_text
                         state_updates += 1
                         if len(results["state_examples"]) < 10:
                             results["state_examples"].append(oid)
@@ -467,6 +520,8 @@ def enrich_points_places_counties(
         
         results["county_filled"] = county_updates
         results["state_filled"] = state_updates
+        results["_debug"]["counties"]["county_updates"] = county_updates
+        results["_debug"]["counties"]["state_updates"] = state_updates
         
         if logger:
             logger(f"Updated {county_updates} photos with county data")
@@ -481,12 +536,21 @@ def enrich_points_places_counties(
                 )
             
     except Exception as e:
+        results["_debug"]["counties"]["error"] = str(e)
         if logger:
             logger(f"Error in counties spatial join: {e}")
+        if raise_on_error:
+            raise
     finally:
         # Clean up
         if arcpy.Exists(temp_counties_join):
             arcpy.Delete_management(temp_counties_join)
+        if temp_oid_created:
+            try:
+                arcpy.management.DeleteField(photos_fc, temp_oid_field)
+            except Exception:
+                if logger:
+                    logger(f"Warning: Could not remove temporary field {temp_oid_field}")
     
     if progress:
         progress(100)
@@ -754,9 +818,6 @@ def build_place_mile_ranges(
     Returns:
         Path to ranges table
     """
-    if logger := None:  # Will be passed in from calling function
-        pass
-    
     # Create output table if not specified
     if out_table is None:
         out_table = arcpy.CreateScratchName("place_mile_ranges", "", "Table")

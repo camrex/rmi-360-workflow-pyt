@@ -12,7 +12,10 @@ Usage:
 
 import argparse
 import csv
-import xml.etree.ElementTree as ET
+try:
+    import defusedxml.ElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from typing import List, Tuple
 
@@ -128,7 +131,7 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Remove stationary segments from video based on GPX track"
     )
@@ -253,7 +256,8 @@ def main():
     print("NOTE: Concatenated video will have discontinuous timestamps!")
     print("Use individual segments for Video Multiplexer, or adjust timeshift dynamically.")
     print("=" * 70)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -98,7 +98,7 @@ def _discover_toolbox_dir():
     return str(Path.cwd())
 
 
-def _purge_conflicting_modules(package_prefix):
+def _purge_conflicting_modules(package_prefix, toolbox_dir):
     """Remove non-local modules that would shadow the repository packages."""
     for name, module in list(sys.modules.items()):
         if name != package_prefix and not name.startswith(package_prefix + "."):
@@ -117,9 +117,9 @@ def _purge_conflicting_modules(package_prefix):
             del sys.modules[name]
 
 
-def _load_local_package(package_name, package_path):
+def _load_local_package(package_name, package_path, toolbox_dir):
     """Load a local package so absolute imports resolve to this repository."""
-    _purge_conflicting_modules(package_name)
+    _purge_conflicting_modules(package_name, toolbox_dir)
     init_file = package_path / "__init__.py"
     spec = importlib.util.spec_from_file_location(
         package_name,
@@ -138,7 +138,7 @@ toolbox_dir = _discover_toolbox_dir()
 if toolbox_dir not in sys.path:
     sys.path.insert(0, toolbox_dir)
 
-_load_local_package("utils", Path(toolbox_dir) / "utils")
+_load_local_package("utils", Path(toolbox_dir) / "utils", toolbox_dir)
 
 
 def _load_tool_class(module_filename, class_name):

@@ -344,17 +344,16 @@ def validate_geoareas_fields_available(photos_fc: str) -> Dict[str, bool]:
     Returns:
         Dictionary indicating availability of each geo-areas field
     """
+    geoareas_fields = [
+        "geo_place", "geo_county", "geo_state",  # Core EXIF tags
+        "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles"  # Context calculation
+    ]
+
     try:
         import arcpy
         
         # Get field names (case insensitive)
         field_names = {f.name.lower(): f.name for f in arcpy.ListFields(photos_fc)}
-        
-        # Check geo-areas fields (only those used for ExifTool integration)
-        geoareas_fields = [
-            "geo_place", "geo_county", "geo_state",  # Core EXIF tags
-            "geo_prev_place", "geo_prev_miles", "geo_next_place", "geo_next_miles"  # Context calculation
-        ]
         
         availability = {}
         for field in geoareas_fields:

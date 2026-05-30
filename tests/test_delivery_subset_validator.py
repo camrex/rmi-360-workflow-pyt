@@ -2,7 +2,11 @@ import importlib.util
 import pathlib
 import sys
 import types
+import atexit
 from unittest.mock import MagicMock
+
+
+_MISSING = object()
 
 # Targeted stubs for imports used by delivery_subset_validator.py.
 utils_mod = types.ModuleType("utils")
@@ -28,6 +32,14 @@ utils_mod.manager = manager_mod
 shared_mod.rmi_exceptions = rmi_ex_mod
 manager_mod.config_manager = cfg_mgr_mod
 
+_STUBBED_MODULE_NAMES = [
+    "utils",
+    "utils.shared",
+    "utils.manager",
+    "utils.shared.rmi_exceptions",
+    "utils.manager.config_manager",
+]
+_snapshots = {name: sys.modules.get(name, _MISSING) for name in _STUBBED_MODULE_NAMES}
 sys.modules["utils"] = utils_mod
 sys.modules["utils.shared"] = shared_mod
 sys.modules["utils.manager"] = manager_mod
@@ -40,6 +52,17 @@ spec = importlib.util.spec_from_file_location("delivery_subset_validator_under_t
 validator = importlib.util.module_from_spec(spec)
 assert spec is not None and spec.loader is not None
 spec.loader.exec_module(validator)
+
+
+def _restore_modules() -> None:
+    for _name, _prior in _snapshots.items():
+        if _prior is _MISSING:
+            sys.modules.pop(_name, None)
+        else:
+            sys.modules[_name] = _prior
+
+
+atexit.register(_restore_modules)
 
 
 class DummyCfg:

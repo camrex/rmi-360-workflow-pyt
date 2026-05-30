@@ -63,7 +63,7 @@ def validate(cfg: "ConfigManager") -> bool:
     error_count += validate_keys_with_types(cfg, gps, optional_keys, "gps_smoothing", required=False)
 
     angle_bounds = gps.get("angle_bounds_deg")
-    if angle_bounds is None:
+    if angle_bounds is not None:
         if not (isinstance(angle_bounds, list) and len(angle_bounds) == 2):
             logger.error("gps_smoothing.angle_bounds_deg must be a list of two values",
                          error_type=ConfigValidationError)

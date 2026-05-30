@@ -16,7 +16,10 @@ Usage:
 import argparse
 import subprocess
 import json
-import xml.etree.ElementTree as ET
+try:
+    import defusedxml.ElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -52,7 +55,7 @@ def get_video_creation_time(video_file: str) -> datetime:
         # Parse ISO format
         try:
             return datetime.fromisoformat(creation_time.replace('Z', '+00:00'))
-        except:
+        except (TypeError, ValueError):
             pass
     
     # Fallback to file creation time

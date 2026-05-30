@@ -285,9 +285,19 @@ def copy_to_aws(
     try:
         logger.info("Retrieving AWS credentials...", indent=1)
         session = get_boto3_session(cfg)
-    except Exception:
-        # Error already logged; handle accordingly
-        return
+    except Exception as e:
+        # Error already logged upstream; return a consistent error payload.
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": str(e),
+        }
 
     s3, using_acceleration = resolve_s3_client(session, bucket, use_accel, logger)
 

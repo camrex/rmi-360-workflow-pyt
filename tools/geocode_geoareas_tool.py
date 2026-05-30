@@ -284,7 +284,8 @@ class GeocodeGeoAreasTool:
         min_points_per_range = parameters[8].value or 2
         promote_nearest = parameters[9].value or False
         max_nearest_miles = parameters[10].value or 2.0
-        write_report_csv = parameters[11].value or True
+        write_report_csv_value = parameters[11].value
+        write_report_csv = True if write_report_csv_value is None else bool(write_report_csv_value)
         report_csv_path = parameters[12].valueAsText or None
 
         # Setup logging functions

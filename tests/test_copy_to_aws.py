@@ -6,6 +6,9 @@ import types
 from unittest.mock import MagicMock
 
 
+_MISSING = object()
+
+
 # Lightweight stubs so utils/copy_to_aws.py can load without full runtime deps.
 boto3_mod = types.ModuleType("boto3")
 boto3_s3_mod = types.ModuleType("boto3.s3")
@@ -44,13 +47,6 @@ boto3_transfer_mod.create_transfer_manager = create_transfer_manager
 botocore_config_mod.Config = Config
 botocore_ex_mod.ClientError = ClientError
 botocore_ex_mod.NoCredentialsError = NoCredentialsError
-
-sys.modules["boto3"] = boto3_mod
-sys.modules["boto3.s3"] = boto3_s3_mod
-sys.modules["boto3.s3.transfer"] = boto3_transfer_mod
-sys.modules["botocore"] = botocore_mod
-sys.modules["botocore.config"] = botocore_config_mod
-sys.modules["botocore.exceptions"] = botocore_ex_mod
 
 utils_mod = types.ModuleType("utils")
 manager_mod = types.ModuleType("utils.manager")
@@ -98,19 +94,48 @@ manager_mod.config_manager = manager_cfg_mod
 shared_mod.aws_utils = shared_aws_mod
 shared_mod.oid_storage_paths = shared_paths_mod
 
-sys.modules["utils"] = utils_mod
-sys.modules["utils.manager"] = manager_mod
-sys.modules["utils.manager.config_manager"] = manager_cfg_mod
-sys.modules["utils.shared"] = shared_mod
-sys.modules["utils.shared.aws_utils"] = shared_aws_mod
-sys.modules["utils.shared.oid_storage_paths"] = shared_paths_mod
+_STUBBED_MODULE_NAMES = [
+    "boto3",
+    "boto3.s3",
+    "boto3.s3.transfer",
+    "botocore",
+    "botocore.config",
+    "botocore.exceptions",
+    "utils",
+    "utils.manager",
+    "utils.manager.config_manager",
+    "utils.shared",
+    "utils.shared.aws_utils",
+    "utils.shared.oid_storage_paths",
+]
+_snapshots = {name: sys.modules.get(name, _MISSING) for name in _STUBBED_MODULE_NAMES}
+try:
+    sys.modules["boto3"] = boto3_mod
+    sys.modules["boto3.s3"] = boto3_s3_mod
+    sys.modules["boto3.s3.transfer"] = boto3_transfer_mod
+    sys.modules["botocore"] = botocore_mod
+    sys.modules["botocore.config"] = botocore_config_mod
+    sys.modules["botocore.exceptions"] = botocore_ex_mod
 
-repo_root = pathlib.Path(__file__).resolve().parents[1]
-module_path = repo_root / "utils" / "copy_to_aws.py"
-spec = importlib.util.spec_from_file_location("copy_to_aws_under_test", module_path)
-copy_to_aws_mod = importlib.util.module_from_spec(spec)
-assert spec is not None and spec.loader is not None
-spec.loader.exec_module(copy_to_aws_mod)
+    sys.modules["utils"] = utils_mod
+    sys.modules["utils.manager"] = manager_mod
+    sys.modules["utils.manager.config_manager"] = manager_cfg_mod
+    sys.modules["utils.shared"] = shared_mod
+    sys.modules["utils.shared.aws_utils"] = shared_aws_mod
+    sys.modules["utils.shared.oid_storage_paths"] = shared_paths_mod
+
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    module_path = repo_root / "utils" / "copy_to_aws.py"
+    spec = importlib.util.spec_from_file_location("copy_to_aws_under_test", module_path)
+    copy_to_aws_mod = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(copy_to_aws_mod)
+finally:
+    for _name, _prior in _snapshots.items():
+        if _prior is _MISSING:
+            sys.modules.pop(_name, None)
+        else:
+            sys.modules[_name] = _prior
 
 collect_upload_tasks = copy_to_aws_mod.collect_upload_tasks
 collect_upload_tasks_from_manifest = copy_to_aws_mod.collect_upload_tasks_from_manifest
@@ -199,7 +224,7 @@ def test_collect_upload_tasks_from_manifest_missing_file_raises(tmp_path):
 
     try:
         collect_upload_tasks_from_manifest(missing, [".jpg", ".jpeg"], cfg, secured_mode=False)
-        assert False, "Expected FileNotFoundError"
+        raise AssertionError("Expected FileNotFoundError")
     except FileNotFoundError:
         assert True
 

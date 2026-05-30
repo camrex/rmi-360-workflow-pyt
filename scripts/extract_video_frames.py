@@ -49,8 +49,12 @@ def extract_frames_ffmpeg(
     frame_interval: int = 10,
     crop: str = None,
     quality: int = 1
-) -> None:
+) -> int:
     """Extract frames using ffmpeg."""
+    if not Path(video_file).exists():
+        raise FileNotFoundError(f"Video file not found: {video_file}")
+    if frame_interval <= 0:
+        raise ValueError(f"frame_interval must be positive, got {frame_interval}")
     
     # Check for ffmpeg
     ffmpeg_cmd = check_ffmpeg()

@@ -31,7 +31,7 @@ from __future__ import annotations
 import keyring
 from boto3.session import Session
 from botocore.exceptions import ClientError, NoCredentialsError
-from typing import Tuple, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
@@ -120,7 +120,7 @@ def get_boto3_session(cfg):
         return verify_aws_credentials(access_key, secret_key, region, logger)
 
 
-def validate_s3_bucket_access(cfg: "ConfigManager", bucket: str = None) -> Session:
+def validate_s3_bucket_access(cfg: "ConfigManager", bucket: Optional[str] = None) -> Session:
     """Verify AWS auth and target S3 bucket access before starting upload-dependent work."""
     logger = cfg.get_logger()
     bucket = bucket or cfg.get("aws.s3_bucket")

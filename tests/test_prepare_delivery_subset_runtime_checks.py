@@ -4,6 +4,14 @@ import sys
 import types
 
 
+_MISSING = object()
+_STUBBED_MODULE_NAMES = [
+    "arcpy",
+    "utils.manager",
+    "utils.manager.config_manager",
+]
+
+
 # Minimal stubs for importing prepare_delivery_subset.py in isolation.
 arcpy_mod = types.ModuleType("arcpy")
 manager_mod = types.ModuleType("utils.manager")
@@ -15,16 +23,24 @@ class ConfigManager:  # pragma: no cover - typing import target
 
 
 cfg_mgr_mod.ConfigManager = ConfigManager
-sys.modules["arcpy"] = arcpy_mod
-sys.modules["utils.manager"] = manager_mod
-sys.modules["utils.manager.config_manager"] = cfg_mgr_mod
+_snapshots = {name: sys.modules.get(name, _MISSING) for name in _STUBBED_MODULE_NAMES}
+try:
+    sys.modules["arcpy"] = arcpy_mod
+    sys.modules["utils.manager"] = manager_mod
+    sys.modules["utils.manager.config_manager"] = cfg_mgr_mod
 
-repo_root = pathlib.Path(__file__).resolve().parents[1]
-module_path = repo_root / "utils" / "prepare_delivery_subset.py"
-spec = importlib.util.spec_from_file_location("prepare_delivery_subset_under_test", module_path)
-prepare_mod = importlib.util.module_from_spec(spec)
-assert spec is not None and spec.loader is not None
-spec.loader.exec_module(prepare_mod)
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    module_path = repo_root / "utils" / "prepare_delivery_subset.py"
+    spec = importlib.util.spec_from_file_location("prepare_delivery_subset_under_test", module_path)
+    prepare_mod = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(prepare_mod)
+finally:
+    for _name, _prior in _snapshots.items():
+        if _prior is _MISSING:
+            sys.modules.pop(_name, None)
+        else:
+            sys.modules[_name] = _prior
 
 
 class DummyLogger:

@@ -103,7 +103,7 @@ def interpolate_gps_outliers_by_reel(
     ordered_rows = []
     for reel_rows in rows_by_reel.values():
         reel_rows.sort(key=lambda row: (row.get("ts") is None, row.get("ts"), row.get("seq", 0)))
-        segment_cfg = row_cfg = rows[0].get("cfg") if rows else None
+        segment_cfg = reel_rows[0].get("cfg") if reel_rows else None
         if segment_cfg:
             reel_segments = split_reel_into_capture_segments(reel_rows, segment_cfg)
         else:
@@ -142,12 +142,25 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
     default_v_wkid = cfg.get("spatial_ref.vcs_vertical_wkid", 5703)
 
     # Load relevant data into memory
+    available_fields = {f.name for f in arcpy.ListFields(oid_fc)}
     fields = ["OID@", "QCFlag", "SHAPE@XY", "CameraOrientation", "CameraHeading",
-              "CameraPitch", "CameraRoll", "Z", "X", "Y", "AcquisitionDate", "Reel"]
+              "CameraPitch", "CameraRoll", "Z", "X", "Y"]
+    has_acquisition_date = "AcquisitionDate" in available_fields
+    has_reel = "Reel" in available_fields
+    if has_acquisition_date:
+        fields.append("AcquisitionDate")
+    if has_reel:
+        fields.append("Reel")
 
     rows = []
     with arcpy.da.SearchCursor(oid_fc, fields) as cursor:
         for seq, row in enumerate(cursor):
+            idx = 10
+            ts = row[idx] if has_acquisition_date else None
+            if has_acquisition_date:
+                idx += 1
+            reel = row[idx] if has_reel else None
+
             rows.append({
                 "oid": row[0],
                 "qcflag": row[1],
@@ -159,8 +172,8 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
                 "z": row[7],
                 "x": row[8],
                 "y": row[9],
-                "ts": row[10],
-                "reel": row[11] or "__UNREEL__",
+                "ts": ts,
+                "reel": reel or "__UNREEL__",
                 "seq": seq,
                 "cfg": cfg,
             })

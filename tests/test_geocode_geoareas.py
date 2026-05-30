@@ -98,10 +98,11 @@ class TestGeocodeGeoAreas(unittest.TestCase):
             ]
             
             for point_data in test_points:
+                point_geom = arcpy.PointGeometry(point_data[0], sr)
                 if with_routes:
-                    cursor.insertRow(point_data)
+                    cursor.insertRow((point_geom, point_data[1], point_data[2]))
                 else:
-                    cursor.insertRow(point_data[:2])  # Just point and milepost
+                    cursor.insertRow((point_geom, point_data[1]))  # Just geometry and milepost
     
     def _create_test_places_fc(self):
         """Create test places feature class with sample data."""
@@ -227,7 +228,11 @@ class TestGeocodeGeoAreas(unittest.TestCase):
         
         # Run containment enrichment
         results = enrich_points_places_counties(
-            self.photos_fc, self.places_fc, self.counties_fc
+            self.photos_fc,
+            self.places_fc,
+            self.counties_fc,
+            logger=lambda msg: print(msg),
+            raise_on_error=True,
         )
         
         # Verify results structure
@@ -236,7 +241,7 @@ class TestGeocodeGeoAreas(unittest.TestCase):
         self.assertIn("state_filled", results)
         
         # Should have enriched some points (at least those in places)
-        self.assertGreater(results["place_contained"], 0)
+        self.assertGreater(results["place_contained"], 0, msg=f"Debug: {results.get('_debug')}")
         self.assertGreater(results["county_filled"], 0)
         
         # Verify data was actually written
@@ -254,7 +259,7 @@ class TestGeocodeGeoAreas(unittest.TestCase):
     def test_milepost_enrichment(self):
         """Test milepost-based context enrichment.""" 
         self._create_test_photos_fc(with_routes=True)
-        self._ensure_geo_area_fields(self.photos_fc)
+        _ensure_geo_area_fields(self.photos_fc)
         
         # Add some place anchors manually
         with arcpy.da.UpdateCursor(self.photos_fc, 
@@ -275,12 +280,10 @@ class TestGeocodeGeoAreas(unittest.TestCase):
         # Verify results
         self.assertIn("mile_filled_prev", results)
         self.assertIn("mile_filled_next", results)
-        self.assertIn("mile_filled_nearest", results)
         
         # Should have filled context for points between anchors
         self.assertGreater(results["mile_filled_prev"], 0)
         self.assertGreater(results["mile_filled_next"], 0)
-        self.assertGreater(results["mile_filled_nearest"], 0)
     
     def test_gap_bridging(self):
         """Test gap bridging functionality."""

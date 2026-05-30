@@ -136,6 +136,51 @@ def _extract_required_fields(tags, oid_fc=None):
     return required_fields
 
 
+def _try_float(value: Any) -> Any:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _resolve_geoareas_city_fallback(row_dict: dict, with_nearest_indicator: bool = False) -> str:
+    place = row_dict.get("geo_place")
+    if place:
+        return str(place)
+
+    prev_place = row_dict.get("geo_prev_place")
+    next_place = row_dict.get("geo_next_place")
+    prev_miles = _try_float(row_dict.get("geo_prev_miles"))
+    next_miles = _try_float(row_dict.get("geo_next_miles"))
+
+    nearest = None
+    if prev_place and next_place and prev_miles is not None and next_miles is not None:
+        nearest = prev_place if prev_miles <= next_miles else next_place
+    elif prev_place:
+        nearest = prev_place
+    elif next_place:
+        nearest = next_place
+
+    if nearest:
+        suffix = " (nearest)" if with_nearest_indicator else ""
+        return f"{nearest}{suffix}"
+
+    county = row_dict.get("geo_county")
+    if county:
+        county_text = str(county)
+        return f"{county_text} County" if with_nearest_indicator else county_text
+
+    return ""
+
+
+def _resolve_unresolved_geoareas_value(exif_key: str, row_dict: dict) -> Any:
+    if exif_key in ("City", "XMP-photoshop:City"):
+        return _resolve_geoareas_city_fallback(row_dict, with_nearest_indicator=False)
+    if exif_key == "XMP-iptcExt:LocationShownCity":
+        return _resolve_geoareas_city_fallback(row_dict, with_nearest_indicator=True)
+    return None
+
+
 def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str, Any]:
     """
     Recursively flattens nested tag dictionaries for ExifTool, e.g.,
@@ -168,7 +213,12 @@ def _flatten_tags(prefix: str, tags: dict, cfg: Any, row_dict: dict) -> Dict[str
                 val = resolve_expression(value, cfg, row=row_dict)
                 if not isinstance(val, str):
                     val = str(val)
-                flat[f"{prefix}{tag_name}"] = val
+                exif_key = f"{prefix}{tag_name}"
+                if isinstance(val, str) and "field." in val:
+                    fallback = _resolve_unresolved_geoareas_value(exif_key, row_dict)
+                    if fallback is not None:
+                        val = fallback
+                flat[exif_key] = val
             except Exception as e:
                 logger.error(f"Failed to resolve tag {tag_name}: {e}", indent=1)
     return flat
@@ -231,8 +281,6 @@ def _write_exiftool_args(cfg, tags, rows, cursor_fields):
         
         # Add echo marker for this image (helps with troubleshooting)
         lines.append(f"-echo3 OID={row_dict['OID@']}")
-        # Ensure no backup file is created for each -execute block.
-        lines.append("-overwrite_original_in_place")
         
         # Process resolved tags with proper EXIF group prefixes and multi-value handling
         for tag_name, value in resolved_tags.items():

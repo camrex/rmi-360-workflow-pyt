@@ -368,6 +368,7 @@ def prepare_delivery_subset(cfg: ConfigManager, oid_fc: str, params: Dict) -> Di
     records = _fetch_records(oid_fc)
     if not records:
         logger.error("No records found in OID; cannot prepare delivery subset.", error_type=RuntimeError)
+        return {"enabled": False, "error": "No records found in OID"}
 
     _validate_source_capture_spacing(records, cfg, logger)
 
@@ -392,6 +393,7 @@ def prepare_delivery_subset(cfg: ConfigManager, oid_fc: str, params: Dict) -> Di
 
     if not keep_ids:
         logger.error("Delivery subset produced zero records. Check selector configuration.", error_type=RuntimeError)
+        return {"enabled": False, "error": "Zero records after selection"}
 
     delivery_oid_fc = _build_delivery_oid_path(oid_fc)
     if arcpy.Exists(delivery_oid_fc):

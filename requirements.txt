@@ -9,6 +9,7 @@ numpy           # Numerical computing
 jinja2          # Templating for reports or config generation
 pytest          # Unit testing
 matplotlib      # Plotting and visualization
+defusedxml      # Hardened XML parsing for GPX/script inputs
 
 # Documentation dependencies (optional - only needed for building docs)
 sphinx>=4.0     # Documentation generator

@@ -5,6 +5,32 @@ import types
 from pathlib import Path
 
 
+_MISSING = object()
+_STUBBED_MODULE_NAMES = [
+    "arcpy",
+    "utils",
+    "utils.mosaic_processor",
+    "utils.create_oid_feature_class",
+    "utils.add_images_to_oid_fc",
+    "utils.assign_group_index",
+    "utils.calculate_oid_attributes",
+    "utils.smooth_gps_noise",
+    "utils.correct_gps_outliers",
+    "utils.filter_distance_spacing",
+    "utils.update_linear_and_custom",
+    "utils.rename_images",
+    "utils.apply_exif_metadata",
+    "utils.geocode_images",
+    "utils.geocode_geoareas",
+    "utils.build_oid_footprints",
+    "utils.prepare_delivery_subset",
+    "utils.deploy_lambda_monitor",
+    "utils.copy_to_aws",
+    "utils.generate_oid_service",
+    "utils.geoareas_exif_integration",
+]
+
+
 def _install_stub_module(module_name, **attrs):
     mod = types.ModuleType(module_name)
     for key, value in attrs.items():
@@ -14,40 +40,49 @@ def _install_stub_module(module_name, **attrs):
 
 
 def _stubbed_build_step_funcs_module():
+    snapshots = {name: sys.modules.get(name, _MISSING) for name in _STUBBED_MODULE_NAMES}
+
     # External dependency imported at module import time.
-    _install_stub_module("arcpy")
+    try:
+        _install_stub_module("arcpy")
 
-    # Build minimal stubs for all modules imported by build_step_funcs.
-    noop = lambda *args, **kwargs: None
+        # Build minimal stubs for all modules imported by build_step_funcs.
+        noop = lambda *args, **kwargs: None
 
-    _install_stub_module("utils")
-    _install_stub_module("utils.mosaic_processor", run_mosaic_processor=noop)
-    _install_stub_module("utils.create_oid_feature_class", create_oriented_imagery_dataset=noop)
-    _install_stub_module("utils.add_images_to_oid_fc", add_images_to_oid=noop)
-    _install_stub_module("utils.assign_group_index", assign_group_index=noop)
-    _install_stub_module("utils.calculate_oid_attributes", enrich_oid_attributes=noop)
-    _install_stub_module("utils.smooth_gps_noise", smooth_gps_noise=noop)
-    _install_stub_module("utils.correct_gps_outliers", correct_gps_outliers=noop)
-    _install_stub_module("utils.filter_distance_spacing", filter_distance_spacing=noop)
-    _install_stub_module("utils.update_linear_and_custom", update_linear_and_custom=noop)
-    _install_stub_module("utils.rename_images", rename_images=noop)
-    _install_stub_module("utils.apply_exif_metadata", update_metadata_from_config=noop)
-    _install_stub_module("utils.geocode_images", geocode_images=noop)
-    _install_stub_module("utils.geocode_geoareas", geocode_geoareas=noop)
-    _install_stub_module("utils.build_oid_footprints", build_oid_footprints=noop)
-    _install_stub_module("utils.prepare_delivery_subset", prepare_delivery_subset=noop)
-    _install_stub_module("utils.deploy_lambda_monitor", deploy_lambda_monitor=noop)
-    _install_stub_module("utils.copy_to_aws", copy_to_aws=noop)
-    _install_stub_module("utils.generate_oid_service", generate_oid_service=noop)
-    _install_stub_module("utils.geoareas_exif_integration", should_use_geoareas=lambda cfg: True)
+        _install_stub_module("utils")
+        _install_stub_module("utils.mosaic_processor", run_mosaic_processor=noop)
+        _install_stub_module("utils.create_oid_feature_class", create_oriented_imagery_dataset=noop)
+        _install_stub_module("utils.add_images_to_oid_fc", add_images_to_oid=noop)
+        _install_stub_module("utils.assign_group_index", assign_group_index=noop)
+        _install_stub_module("utils.calculate_oid_attributes", enrich_oid_attributes=noop)
+        _install_stub_module("utils.smooth_gps_noise", smooth_gps_noise=noop)
+        _install_stub_module("utils.correct_gps_outliers", correct_gps_outliers=noop)
+        _install_stub_module("utils.filter_distance_spacing", filter_distance_spacing=noop)
+        _install_stub_module("utils.update_linear_and_custom", update_linear_and_custom=noop)
+        _install_stub_module("utils.rename_images", rename_images=noop)
+        _install_stub_module("utils.apply_exif_metadata", update_metadata_from_config=noop)
+        _install_stub_module("utils.geocode_images", geocode_images=noop)
+        _install_stub_module("utils.geocode_geoareas", geocode_geoareas=noop)
+        _install_stub_module("utils.build_oid_footprints", build_oid_footprints=noop)
+        _install_stub_module("utils.prepare_delivery_subset", prepare_delivery_subset=noop)
+        _install_stub_module("utils.deploy_lambda_monitor", deploy_lambda_monitor=noop)
+        _install_stub_module("utils.copy_to_aws", copy_to_aws=noop)
+        _install_stub_module("utils.generate_oid_service", generate_oid_service=noop)
+        _install_stub_module("utils.geoareas_exif_integration", should_use_geoareas=lambda cfg: True)
 
-    repo_root = pathlib.Path(__file__).resolve().parents[1]
-    module_path = repo_root / "utils" / "build_step_funcs.py"
-    spec = importlib.util.spec_from_file_location("build_step_funcs_under_test", module_path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec is not None and spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
+        repo_root = pathlib.Path(__file__).resolve().parents[1]
+        module_path = repo_root / "utils" / "build_step_funcs.py"
+        spec = importlib.util.spec_from_file_location("build_step_funcs_under_test", module_path)
+        module = importlib.util.module_from_spec(spec)
+        assert spec is not None and spec.loader is not None
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        for name, prior in snapshots.items():
+            if prior is _MISSING:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = prior
 
 
 class DummyCfg:

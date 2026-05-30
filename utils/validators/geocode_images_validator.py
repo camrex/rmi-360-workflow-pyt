@@ -69,7 +69,7 @@ def validate(cfg: "ConfigManager") -> bool:
             if not path:
                 logger.error("Missing geolocation500 config path", error_type=ConfigValidationError)
                 error_count += 1
-            if not check_file_exists(path, "geocoding.geoloc500_config_path", cfg):
+            elif path != "DISABLED" and not check_file_exists(path, "geocoding.geoloc500_config_path", cfg):
                 error_count += 1
 
         if db == "geocustom":
@@ -77,7 +77,7 @@ def validate(cfg: "ConfigManager") -> bool:
             if not path:
                 logger.error("Missing geocustom config path", error_type=ConfigValidationError)
                 error_count += 1
-            if not check_file_exists(path, "geocoding.geocustom_config_path", cfg):
+            elif path != "DISABLED" and not check_file_exists(path, "geocoding.geocustom_config_path", cfg):
                 error_count += 1
 
         # ✅ Validate exiftool executable path

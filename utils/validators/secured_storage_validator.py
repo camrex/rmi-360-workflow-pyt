@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple
 
@@ -10,6 +11,7 @@ if TYPE_CHECKING:
 
 
 _CACHE_KEY = "__secured_storage_deployment_validation__"
+_LOG = logging.getLogger(__name__)
 
 
 def _normalize_admin_base_url(raw_url: str) -> Optional[str]:
@@ -97,16 +99,16 @@ def _as_plain_dict(obj: Any) -> Dict[str, Any]:
                 value = fn()
                 if isinstance(value, dict):
                     return value
-            except Exception:
-                pass
+            except Exception as ex:
+                _LOG.debug("_as_plain_dict: %s conversion failed: %s", attr, ex)
 
     # ArcGIS API PropertyMap objects usually support dict().
     try:
         value = dict(obj)
         if isinstance(value, dict):
             return value
-    except Exception:
-        pass
+    except Exception as ex:
+        _LOG.debug("_as_plain_dict: dict(obj) conversion failed: %s", ex)
 
     return {}
 

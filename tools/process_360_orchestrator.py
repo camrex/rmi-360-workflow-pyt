@@ -865,9 +865,8 @@ class Process360Workflow(object):
             work_project_dir_path = work_project_dir.resolve()
             project_reels = project_folder_path / "reels"
             
-            # Skip reorganization if project folder contains the work directory or they're the same
-            # This happens when running locally without needing the projects/{slug} structure
-            if project_folder_path == work_project_dir_path or work_project_dir_path.is_relative_to(project_folder_path):
+            # Skip reorganization only when source reels and destination reels are the exact same folder.
+            if project_reels.resolve() == reels_root.resolve():
                 logger.info("Using existing project folder structure (no reorganization needed)", indent=1)
                 # Reels are already in the right place - nothing to copy
             elif not project_reels.is_dir():
@@ -932,15 +931,26 @@ class Process360Workflow(object):
         # Validate config
         cfg.validate()
 
-        if p.get("enable_copy_to_aws", False):
-            logger.custom("Running AWS upload preflight checks...", indent=1, emoji="🧪")
-            secured_mode = is_secured_storage_enabled(cfg)
-            preflight_bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
-            validate_s3_bucket_access(cfg, bucket=preflight_bucket)
-
         # Build steps + order
         step_funcs = self.build_step_funcs_fn(p, cfg)
         step_order = self.get_step_order_fn(step_funcs)
+
+        # Resolve start step before preflight so we only validate AWS when copy step will run.
+        start_step = early_start_step if early_start_step else step_order[0]
+        if start_step not in step_order:
+            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", indent=1)
+            start_step = step_order[0]
+        start_index = step_order.index(start_step)
+
+        if p.get("enable_copy_to_aws", False):
+            copy_step_index = step_order.index("copy_to_aws") if "copy_to_aws" in step_order else None
+            if copy_step_index is not None and copy_step_index >= start_index:
+                logger.custom("Running AWS upload preflight checks...", indent=1, emoji="🧪")
+                secured_mode = is_secured_storage_enabled(cfg)
+                preflight_bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
+                validate_s3_bucket_access(cfg, bucket=preflight_bucket)
+            else:
+                logger.info("Skipping AWS upload preflight (copy_to_aws step not in this run).", indent=1)
 
         # Initialize or load report data
         report_data = self.load_report_json_if_exists_fn(cfg)
@@ -954,13 +964,6 @@ class Process360Workflow(object):
         t_start = self.time_mod.time()
         if not hasattr(self, "_step_name_to_label"):
             self._step_name_to_label = {name: label for _, name, label in self.STEP_FUNCTIONS}
-
-        # Use early resolved start_step or default to first step
-        start_step = early_start_step if early_start_step else step_order[0]
-        if start_step not in step_order:
-            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", indent=1)
-            start_step = step_order[0]
-        start_index = step_order.index(start_step)
 
         wait_config = cfg.get("orchestrator", {})
         step_results = self.run_steps_fn(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
