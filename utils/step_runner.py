@@ -77,6 +77,35 @@ def run_steps(
         ensure_report_steps(report)
         report["steps"].append(result)
 
+    def is_cancelled() -> bool:
+        messages = getattr(logger, "messages", None)
+        if not messages:
+            return False
+
+        for attr in ("isCanceled", "isCancelled"):
+            check = getattr(messages, attr, None)
+            if callable(check):
+                try:
+                    if check():
+                        return True
+                except Exception:
+                    return False
+        return False
+
+    def mark_workflow_cancelled(note: str) -> Dict[str, Any]:
+        logger.custom(note, indent=0, emoji="🛑")
+        report_data["cancelled"] = True
+        step_result = {
+            "name": "Workflow Cancelled",
+            "status": "🛑",
+            "time": "—",
+            "notes": note
+        }
+        append_step_result(report_data, step_result)
+        save_report_json(report_data, cfg)
+        results.append(step_result)
+        return step_result
+
     def should_skip_step(stp: Dict[str, Any], params: Dict[str, Any]) -> Optional[str]:
         skip_fn = stp.get("skip")
         if skip_fn:
@@ -148,6 +177,10 @@ def run_steps(
         return stts, note, stp_start, stp_end, elpsd
 
     for step_key in step_order[start_index:]:
+        if is_cancelled():
+            mark_workflow_cancelled("Workflow canceled by user before next step.")
+            break
+
         if step_key not in step_funcs:
             logger.error(f"Step '{step_key}' not found in step_funcs dictionary", error_type=KeyError, indent=0)
             break
@@ -189,6 +222,9 @@ def run_steps(
         append_step_result(report_data, step_result)
         save_report_json(report_data, cfg)
         results.append(step_result)
+        if is_cancelled():
+            mark_workflow_cancelled(f"Workflow canceled by user after step '{label}'.")
+            break
         if status == "❌":
             break
     return results

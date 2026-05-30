@@ -5,7 +5,7 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.3.1
+schema_version: 1.3.3
 debug_messages: false
 
 # NEW RUNTIME CONFIG
@@ -384,6 +384,37 @@ oid_schema_template:
 #      expression: ""
 
 # ------------------------------------------------------------------------------
+# 🔢 SEQUENCE ORDER (Optional OID Navigation Ordering)
+# ------------------------------------------------------------------------------
+# Controls optional population of the SequenceOrder field used by OID sequential
+# navigation.
+#
+# Behavior:
+#   - enabled: false -> field remains null
+#   - enabled: true  -> values are assigned deterministically across the full OID
+#
+# Ordering mode:
+#   - If Linear Referencing is enabled in the workflow and MP fields are present,
+#     ordering uses grouped MP_Pre + MP_Num.
+#   - Otherwise ordering falls back to AcquisitionDate.
+#
+# Decision controls:
+#   - prefix_order: explicit group order for MP_Pre values. Any prefixes not listed
+#     are ordered alphabetically after listed prefixes.
+#   - descending_prefixes: prefixes where MP_Num should run high to low.
+#   - null_milepost_position: where null MP_Num rows are placed inside each prefix group.
+# ------------------------------------------------------------------------------
+sequence_order:
+  enabled: false
+  field_name: "SequenceOrder"
+  acquisition_datetime_field: "AcquisitionDate"
+  lr_prefix_field: "MP_Pre"
+  lr_mile_field: "MP_Num"
+  prefix_order: []              # Example: ["G", "H", "K", "MH"]
+  descending_prefixes: []       # Example: ["MH"]
+  null_milepost_position: "end"  # Options: "start", "end"
+
+# ------------------------------------------------------------------------------
 # 🛰️ GPS CORRECTION / SMOOTHING – Outlier Detection Configuration
 # ------------------------------------------------------------------------------
 # Controls the detection and flagging of GPS noise using deviation,
@@ -401,6 +432,8 @@ oid_schema_template:
 #   max_route_dist_deviation_m: Allowed distance drift from centerline (if provided)
 #   smoothing_window: Number of neighbors before/after to evaluate
 #   outlier_reason_threshold: Minimum failed criteria to flag outlier
+#   segment_break_distance_m: Distance jump that starts a new capture segment within a reel
+#   segment_break_time_seconds: Time gap that starts a new capture segment within a reel
 #
 # Example:
 #   If a point is >0.5m from midpoint, angle is outside [175, 185],
@@ -414,6 +447,100 @@ gps_smoothing:
   max_route_dist_deviation_m: 0.5
   smoothing_window: 2
   outlier_reason_threshold: 2
+  segment_break_distance_m: 100.0
+  segment_break_time_seconds: 120.0
+
+# ------------------------------------------------------------------------------
+# 🚚 DELIVERY SUBSET (Pre-AWS OID/Image Selection)
+# ------------------------------------------------------------------------------
+# Builds a publish/delivery subset from the master OID right before cloud delivery
+# steps (Upload to AWS and service publication).
+#
+# Why this exists:
+#   - Keep local master OID/images at full density (for QA and future analytics)
+#   - Deliver a practical subset OID/image set to AWS and hosted services
+#
+# High-level behavior:
+#   1) Optional spacing selector chooses candidates by index stride
+#      (with optional distance validation/correction)
+#   2) Optional MP range selector restricts rows by milepost windows
+#   3) If both selectors are enabled, final selection is the INTERSECTION
+#      (rows must pass both)
+#
+# Selector details:
+#   spacing_selector
+#     - mode=auto_stride: stride = round(target_spacing / source_capture_spacing)
+#     - mode=fixed_stride: uses stride_override directly
+#     - validate_distance=true: checks selected spacing against tolerance_percent
+#       and applies local correction_strategy when needed
+#
+#   mp_range_selector
+#     - Supports multiple MP_Pre windows in one run
+#     - Each entry in ranges is inclusive on [min, max]
+#     - Example combined selection:
+#         M 1.0-2.0 and N 5.0-6.0
+#
+# Output strategies:
+#   output.strategy=manifest
+#     - Preferred default; files remain in place
+#     - Downstream steps consume selected filenames from manifest
+#
+#   output.strategy=subset_folder
+#     - Materializes selected images in a dedicated folder
+#     - Useful for compatibility with folder-only downstream tooling
+#
+# Failure policy:
+#   on_validation_failure=warn_and_continue
+#     - Keep best candidate and continue; write warning details to logs/manifest
+#   on_validation_failure=error
+#     - Stop the step on unresolved spacing validation/correction
+# ------------------------------------------------------------------------------
+delivery_subset:
+  enabled: false
+
+  # Source capture profile and target delivery spacing (meters)
+  source_capture_spacing_meters: 1.0
+  target_spacing_meters: 5.0
+
+  # Runtime sanity-check of source capture spacing from OID geometry.
+  # Computes median spacing from consecutive points per reel (no cross-reel segments),
+  # then compares observed median against source_capture_spacing_meters.
+  capture_spacing_validation:
+    max_deviation_percent: 25.0         # Warn/error when observed vs configured exceeds this percent
+    min_reels_with_estimate: 1          # Minimum reels with valid geometry needed to evaluate
+
+  spacing_selector:
+    enabled: true
+
+    # Primary index selection strategy
+    mode: "auto_stride"                 # Options: "auto_stride", "fixed_stride"
+    stride_override: null                # Integer stride used only when mode="fixed_stride"
+    group_by_reel: true                  # Restart index counting per reel
+
+    # Distance QA and local correction controls
+    validate_distance: true              # Validate selected spacing with lat/long distance
+    tolerance_percent: 10.0              # Accept spacing in target +/- tolerance_percent
+    max_local_adjustments_per_pick: 2    # Local adjustment attempts per selected pair
+    correction_strategy: "nearest_candidate"  # Options: "nearest_candidate", "forward_only"
+
+  mp_range_selector:
+    enabled: false
+
+    # Multiple ranges can be combined in one delivery OID.
+    # Each range is inclusive on milepost values and tied to one MP_Pre.
+    # Examples:
+    #   - { mp_pre: "M", min: 1.0, max: 2.0 }
+    #   - { mp_pre: "N", min: 5.0, max: 6.0 }
+    ranges: []
+
+  # Output artifact consumed by downstream delivery steps
+  output:
+    strategy: "manifest"               # Options: "manifest", "subset_folder"
+    manifest_filename: "delivery_subset_manifest.csv"
+    subset_folder_name: "delivery_subset"
+
+  # Behavior when spacing validation/correction cannot confirm target spacing
+  on_validation_failure: "warn_and_continue"  # Options: "warn_and_continue", "error"
 
 # --------------------------------------------------------------------
 # 📏 DISTANCE-BASED SPACING FILTER
@@ -575,70 +702,103 @@ image_output:
 # ------------------------------------------------------------------------------
 # ☁️ AWS CLOUD EXPORT & HOSTING
 # ------------------------------------------------------------------------------
-# This section defines parameters used for both uploading images to AWS S3
-# and generating public image URLs for hosted Oriented Imagery services.
+# Defines AWS auth and upload mechanics for copy_to_aws.py. This block governs
+# HOW images and artifacts are uploaded (credentials, threading, retries) and
+# the available buckets. WHICH bucket OID images land in, and how ImagePath is
+# written, is decided by the secured_storage block below.
 #
-# Used by:
-#   - copy_to_aws.py            → For uploading images in batches with resume support
-#   - generate_oid_service.py   → For rewriting ImagePath with public URLs
+# The toolbox runs in one AWS account (the account that owns the upload
+# buckets). ArcGIS Enterprise may live in a separate account and reach the
+# secured bucket at view time via credentials on the registered cloud store.
+# That cross-account bridge is not handled by this toolbox.
 #
-# ─── Authentication Options ───────────────────────────────────────────────────
-# AWS credentials can be provided using any of the following methods:
-#   1. Environment variables      (recommended for automation)
-#   2. Plaintext access keys      (fallback for development only)
-#   3. Secure keyring             (enabled via `keyring_aws`)
+# Authentication (auth_mode):
+#   - instance: EC2 instance role (production)
+#   - keyring: Pull keys from OS keyring (keyring_service_name)
+#   - config: Plaintext keys below (development only)
 #
-# keyring_aws            (bool)   - If true, retrieves AWS credentials from keyring
-# keyring_service_name   (str)    - Optional override for keyring service name
+# Buckets:
+#   - s3_bucket: Public or unsecured hosting bucket (legacy OID model)
+#   - s3_bucket_raw: Raw video and artifact uploads (raw and prod split)
+#   - secured_storage.s3_bucket: Secured OID bucket used in virtual cache mode
 #
-# access_key             (str)    - Fallback AWS Access Key (used if keyring is false)
-# secret_key             (str)    - Fallback AWS Secret Key (used if keyring is false)
+# Upload settings:
+#   - use_acceleration: Enable S3 Transfer Acceleration
+#   - skip_existing: Skip files already logged as uploaded
+#   - max_workers: Upload threads; fixed int (16) or pattern (cpu*2)
+#   - retries: Retry attempts for failed uploads
+#   - upload_batch_size: Files per batch (enables cancel checkpoints)
+#   - allow_cancel_file_trigger: Allow cancel via cancel_copy.txt
 #
-# ─── Upload Settings ──────────────────────────────────────────────────────────
-# region                 (str)    - AWS region of your S3 bucket (e.g., "us-east-2")
-# s3_bucket              (str)    - Name of the target S3 bucket
-# s3_bucket_folder       (expr)   - Expression to define folder path in S3 bucket
-#                                  Example: "config.project.number + '/' + config.project.rr_mark"
-#
-# skip_existing          (bool)   - If true, skip uploading files already logged
-# use_acceleration       (bool)   - If true, enables S3 Transfer Acceleration
-# max_workers            (int/str)- Number of threads for upload concurrency
-#                                  Can be fixed (e.g., 16) or relative (e.g., "cpu*2")
-# retries                (int)    - Number of retry attempts for failed uploads
-# upload_batch_size      (int)    - Number of files uploaded per batch (enables cancel points)
-# allow_cancel_file_trigger (bool)- If true, allows upload cancellation via 'cancel_copy.txt'
-#
-# ─── Lambda / Publishing ──────────────────────────────────────────────────────
-# lambda_role_arn (str) - IAM Role ARN assumed by the Lambda progress monitor.
-# Required Permissions:
-#   - "s3:ListBucket"         on your S3 bucket
-#   - "s3:GetObject"          on your bucket/folder (e.g., "rmi-orient-img/*")
-#   - "cloudwatch:PutMetricData" (optional, for monitoring/logging)
-# The role must have trust policy allowing Lambda service to assume it.
+# Lambda / publishing:
+#   - lambda_role_arn: IAM role assumed by the Lambda progress monitor
+#     Required permissions: s3:ListBucket on target bucket, s3:GetObject on
+#     bucket or folder, cloudwatch:PutMetricData (optional).
 # ------------------------------------------------------------------------------
 
 aws:
   region: "<YOUR_AWS_S3_REGION>"
-  s3_bucket: "<YOUR_S3_BUCKET_NAME>"
-  s3_bucket_raw: "<YOUR_S3_RAW_BUCKET_NAME>"    # new; allows raw+prod split
-  s3_bucket_folder: "config.project.slug"
-  auth_mode: "instance"     # Options: "instance", "keyring", "config"
-  use_acceleration: true
+  auth_mode: "instance"            # "instance" | "keyring" | "config"
 
+  # Buckets
+  s3_bucket: "<YOUR_S3_BUCKET_NAME>"             # Public or unsecured hosting bucket
+  s3_bucket_raw: "<YOUR_S3_RAW_BUCKET_NAME>"     # Raw uploads
+  s3_bucket_folder: "config.project.slug"        # Key prefix; aligns with ImagePath model
+
+  # Upload mechanics
+  use_acceleration: true
   skip_existing: true
-  max_workers: 16           # Accepts fixed integer (e.g., 16) or pattern like "cpu*2"
+  max_workers: 16                  # Fixed int (16) or pattern (cpu*2)
   retries: 3
-  upload_batch_size: 25     # Enables cancellation checks between batch groups
+  upload_batch_size: 25
   allow_cancel_file_trigger: true
 
+  # Keyring (used when auth_mode: keyring)
   keyring_aws: false
   keyring_service_name: aws_s3
 
-  # Access credentials should only be included for development testing
-  access_key: "<ACCESS_KEY_ID>"           # Placeholder should be "<ACCESS_KEY_ID>" for validation check
-  secret_key: "<SECRET_ACCESS_KEY>"       # Placeholder should be "<SECRET_ACCESS_KEY>" for validation check
+  # Plaintext keys (development only; used when auth_mode: config)
+  access_key: "<ACCESS_KEY_ID>"
+  secret_key: "<SECRET_ACCESS_KEY>"
 
   lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"
+
+# ------------------------------------------------------------------------------
+# 🔒 SECURED STORAGE (ArcGIS Cloud Store / Virtual Cache Directory)
+# ------------------------------------------------------------------------------
+# Single switch between two OID image-delivery models.
+#
+# Behavior:
+#   enabled: false -> legacy mode
+#     - Images upload to aws.s3_bucket
+#     - generate_oid_service rewrites ImagePath as public URLs
+#
+#   enabled: true -> secured mode
+#     - Images upload to secured_storage.s3_bucket
+#     - ImagePath is written as:
+#         $virtualCacheDirectory:<project_slug>/<image_filename>
+#
+# In secured mode, the bucket name is not written in ImagePath. The registered
+# cloud store resolves it. Image Path Prefix and Suffix are not used.
+#
+# The upload destination and ImagePath model should switch together from this
+# one flag so uploads and paths stay aligned.
+#
+# Requirements:
+#   ArcGIS Pro 3.7+ and ArcGIS Enterprise 12.0+.
+#   Cloud store must be registered on the hosting server.
+#
+# Notes:
+#   - Keep enabled: false in config.sample.yaml.
+#   - Enable per project when secured delivery is validated.
+#   - s3_bucket_folder must match upload key prefix to avoid path drift.
+# ------------------------------------------------------------------------------
+secured_storage:
+  enabled: false                                # Sample default: legacy mode
+  cloud_store_name: "<CLOUD_STORE_NAME>"       # Name registered in Server Manager
+  s3_bucket: "<YOUR_SECURED_S3_BUCKET_NAME>"   # Secured OID bucket
+  region: "<YOUR_AWS_S3_REGION>"
+  s3_bucket_folder: "config.project.slug"      # Must match upload key prefix
 
 # ------------------------------------------------------------------------------
 # 🌐 PORTAL SERVICE PUBLISHING
@@ -730,11 +890,6 @@ portal:
 #      - Gap bridging and range building for continuous coverage
 #      - Multi-tier verification with source tracking
 #      - Detailed geographic context beyond simple reverse geocoding
-#
-#   🔄 "both": Combined approach (recommended for comprehensive tagging)
-#      - Applies geo-areas enrichment first to populate corridor context
-#      - Follows with ExifTool reverse geocoding for additional location data
-#      - Provides both detailed corridor intelligence and standard location tags
 #
 # Supported ExifTool Configs (when method includes "exiftool"):
 #   - "default" (no config file used; built-in DB of cities with population > 2000)

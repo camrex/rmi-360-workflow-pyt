@@ -92,6 +92,8 @@ def create_oid_schema_template(
 
         # Load registry-defined fields (assumes prior validation)
         for category in ("standard", "not_applicable"):
+            # not_applicable fields are supported by the registry but remain opt-in.
+            # Keep this gate config-driven so inert fields are not forced into all schemas.
             if esri_cfg.get(category, True):
                 entries = load_field_registry(cfg, category_filter=category)
                 if not entries:

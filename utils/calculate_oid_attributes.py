@@ -107,14 +107,30 @@ def load_reel_from_info_file(image_path: str, logger) -> Tuple[Optional[str], Op
 
 def extract_reel_from_path(image_path: str) -> Optional[str]:
     """
-    Extracts a 4-digit reel number from the grandparent directory of an image path.
+    Extract a 4-digit reel number from image context.
     
-    The function searches for a folder name matching the pattern 'reel_XXXX' (where XXXX is a 4-digit number) two
-    levels above the provided image file. Returns the reel number if found, otherwise returns None.
+    Priority:
+      1) grandparent folder matching 'reel_XXXX'
+      2) filename token matching 'reel_XXXX'
+      3) filename token matching 'RLXXXX'
+
+    Returns the 4-digit reel string when found, otherwise None.
     """
     reel_folder = os.path.basename(os.path.dirname(os.path.dirname(image_path)))
     match = re.search(r"reel_(\d{4})", reel_folder, re.IGNORECASE)
-    return match.group(1) if match else None
+    if match:
+        return match.group(1)
+
+    image_file = os.path.basename(image_path)
+    match = re.search(r"(?:^|_)reel_(\d{4})(?:_|$)", image_file, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    match = re.search(r"(?:^|_)RL(\d{4})(?:_|$)", image_file, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    return None
 
 
 def extract_frame_from_filename(image_path: str) -> Optional[str]:
@@ -170,6 +186,8 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
     fields = ["OID@", "SHAPE@X", "SHAPE@Y", "SHAPE@Z"]
 
     for field in registry.values():
+        # not_applicable fields (for example CameraOffset, OffsetFromStart) are
+        # intentionally excluded unless explicitly enabled in config.
         if field.get("category") == "standard" or (field.get("category") == "not_applicable" and
                                                    esri_cfg.get("not_applicable", False)):
             fields.append(field["name"])

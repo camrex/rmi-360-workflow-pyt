@@ -8,12 +8,16 @@ class DummyLogger:
         self.warnings = []
         self.errors = []
         self.step_calls = []
+        self.customs = []
+        self.messages = None
     def info(self, msg):
         self.infos.append(msg)
     def warning(self, msg):
         self.warnings.append(msg)
     def error(self, msg, error_type=None):
         self.errors.append((msg, error_type))
+    def custom(self, msg, indent=0, emoji=None):
+        self.customs.append((msg, indent, emoji))
     def step(self, label):
         # Context manager for 'with logger.step(label)'
         self.step_calls.append(label)
@@ -110,3 +114,27 @@ def test_report_data_missing_steps_key(dummy_cfg):
         results = run_steps(step_funcs, step_order, 0, {}, report_data, dummy_cfg)
     assert "steps" in report_data
     assert results[0]["status"] == "✅"
+
+
+def test_cancel_stops_after_current_step(dummy_report, dummy_cfg):
+    cancel_state = {"count": 0}
+
+    class DummyMessages:
+        def isCanceled(self):
+            cancel_state["count"] += 1
+            return cancel_state["count"] >= 2
+
+    dummy_cfg.get_logger().messages = DummyMessages()
+
+    step_funcs = {
+        "a": {"label": "Step A", "func": Mock()},
+        "b": {"label": "Step B", "func": Mock()}
+    }
+    step_order = ["a", "b"]
+
+    with patch("utils.step_runner.save_report_json"):
+        results = run_steps(step_funcs, step_order, 0, {}, dummy_report, dummy_cfg)
+
+    assert [result["status"] for result in results] == ["✅", "🛑"]
+    assert dummy_report["cancelled"] is True
+    step_funcs["b"]["func"].assert_not_called()

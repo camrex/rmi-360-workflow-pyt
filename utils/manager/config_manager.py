@@ -4,7 +4,7 @@
 # Purpose:             Loads, validates, and manages access to YAML configuration and project settings for the RMI 360
 #                      Workflow Toolbox.
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.3.1
+# Version:             1.3.3
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-11
 # Last Updated:        2025-10-31
@@ -61,11 +61,12 @@ from utils.validators import (
     geocode_images_validator,
     build_oid_footprints_validator,
     deploy_lambda_monitor_validator,
+    delivery_subset_validator,
     copy_to_aws_validator,
     generate_oid_service_validator
 )
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.3.1"}
+SUPPORTED_SCHEMA_VERSIONS = {"1.3.1", "1.3.2", "1.3.3"}
 
 
 class ConfigManager:
@@ -393,6 +394,7 @@ class ConfigManager:
         "geocode_images": geocode_images_validator.validate,
         "build_oid_footprints": build_oid_footprints_validator.validate,
         "deploy_lambda_monitor": deploy_lambda_monitor_validator.validate,
+        "delivery_subset": delivery_subset_validator.validate,
         "copy_to_aws": copy_to_aws_validator.validate,
         "generate_oid_service": generate_oid_service_validator.validate
     }

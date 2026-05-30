@@ -119,3 +119,23 @@ def get_boto3_session(cfg):
         access_key, secret_key = get_aws_credentials(cfg)
         return verify_aws_credentials(access_key, secret_key, region, logger)
 
+
+def validate_s3_bucket_access(cfg: "ConfigManager", bucket: str = None) -> Session:
+    """Verify AWS auth and target S3 bucket access before starting upload-dependent work."""
+    logger = cfg.get_logger()
+    bucket = bucket or cfg.get("aws.s3_bucket")
+
+    if not bucket:
+        logger.error("AWS S3 bucket is not configured.", indent=2, error_type=RuntimeError)
+
+    try:
+        session = get_boto3_session(cfg)
+        logger.info(f"Verifying S3 bucket access: {bucket}", indent=1)
+        s3 = session.client("s3")
+        s3.head_bucket(Bucket=bucket)
+        logger.custom(f"S3 bucket access verified: {bucket}", indent=2, emoji="🪣")
+        return session
+    except (ClientError, NoCredentialsError, Exception) as e:
+        logger.error(f"AWS S3 preflight failed for bucket '{bucket}': {e}", indent=2, error_type=RuntimeError)
+        raise
+

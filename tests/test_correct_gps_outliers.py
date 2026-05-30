@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from utils.correct_gps_outliers import interpolate_gps_outliers, correct_gps_outliers
+from utils.correct_gps_outliers import interpolate_gps_outliers, interpolate_gps_outliers_by_reel, correct_gps_outliers
 
 @pytest.fixture
 def sample_rows():
@@ -50,9 +50,26 @@ def test_interpolate_gps_outliers_skips_edges(sample_rows):
     assert 1 not in corrected
     assert 6 not in corrected
 
+
+def test_interpolate_gps_outliers_by_reel_does_not_cross_reels():
+    rows = [
+        {'oid': 1, 'qcflag': None, 'x': 0, 'y': 0, 'z': 10, 'heading': 0, 'pitch': 0, 'roll': 0, 'orientation': '', 'xy': (0, 0), 'reel': 'A', 'ts': 1, 'seq': 0, 'cfg': None},
+        {'oid': 2, 'qcflag': 'GPS_OUTLIER', 'x': 0, 'y': 0, 'z': 10, 'heading': 0, 'pitch': 0, 'roll': 0, 'orientation': '', 'xy': (0, 0), 'reel': 'A', 'ts': 2, 'seq': 1, 'cfg': None},
+        {'oid': 3, 'qcflag': None, 'x': 10, 'y': 0, 'z': 10, 'heading': 0, 'pitch': 0, 'roll': 0, 'orientation': '', 'xy': (10, 0), 'reel': 'B', 'ts': 3, 'seq': 2, 'cfg': None},
+        {'oid': 4, 'qcflag': 'GPS_OUTLIER', 'x': 0, 'y': 0, 'z': 10, 'heading': 0, 'pitch': 0, 'roll': 0, 'orientation': '', 'xy': (0, 0), 'reel': 'B', 'ts': 4, 'seq': 3, 'cfg': None},
+        {'oid': 5, 'qcflag': None, 'x': 20, 'y': 0, 'z': 10, 'heading': 0, 'pitch': 0, 'roll': 0, 'orientation': '', 'xy': (20, 0), 'reel': 'B', 'ts': 5, 'seq': 4, 'cfg': None},
+    ]
+
+    updated_rows, corrected = interpolate_gps_outliers_by_reel(rows, 4326, 5703)
+    updated_by_oid = {row['oid']: row for row in updated_rows}
+
+    assert corrected == {4}
+    assert updated_by_oid[2]['x'] == 0
+    assert updated_by_oid[4]['x'] == pytest.approx(15)
+
 @patch('arcpy.da.UpdateCursor')
 @patch('arcpy.da.SearchCursor')
-@patch('utils.correct_gps_outliers.interpolate_gps_outliers')
+@patch('utils.correct_gps_outliers.interpolate_gps_outliers_by_reel')
 def test_correct_gps_outliers_main_logic(mock_interpolate, mock_search, mock_update):
     # Setup mocks
     mock_logger = MagicMock()
@@ -69,9 +86,9 @@ def test_correct_gps_outliers_main_logic(mock_interpolate, mock_search, mock_upd
     ]
     mock_interpolate.return_value = (mock_rows, {2})
     mock_search.return_value.__enter__.return_value = [
-        (1, None, (0,0), '', 0, 0, 0, 10, 0, 0),
-        (2, 'GPS_OUTLIER', (0,0), '', 0, 0, 0, 10, 0, 0),
-        (3, None, (10,0), '', 0, 0, 0, 10, 10, 0),
+        (1, None, (0,0), '', 0, 0, 0, 10, 0, 0, '2025-01-01T00:00:00', 'A'),
+        (2, 'GPS_OUTLIER', (0,0), '', 0, 0, 0, 10, 0, 0, '2025-01-01T00:01:00', 'A'),
+        (3, None, (10,0), '', 0, 0, 0, 10, 10, 0, '2025-01-01T00:02:00', 'A'),
     ]
     mock_update.return_value.__enter__.return_value = [
         [1, None, (0,0), '', 0, 0, 0, 10, 0, 0],

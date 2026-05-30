@@ -77,6 +77,8 @@ from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
 from utils.shared.gather_metrics import collect_oid_metrics, summarize_oid_metrics
 from utils.shared.folder_stats import folder_stats
+from utils.shared.aws_utils import validate_s3_bucket_access
+from utils.shared.oid_storage_paths import is_secured_storage_enabled, resolve_oid_target_bucket
 from utils.shared.report_data_builder import (
     initialize_report_data,
     save_report_json,
@@ -183,9 +185,10 @@ class Process360Workflow(object):
         "12) Update EXIF Metadata\n"
         "13) ExifTool Geocoding (optional)\n"
         "14) Create OID Footprints\n"
-        "15) Deploy Lambda Monitor (optional)\n"
-        "16) Copy to AWS (optional)\n"
-        "17) Generate OID Service (optional)"
+        "15) Prepare Delivery Subset (optional; config-driven)\n"
+        "16) Deploy Lambda Monitor (optional)\n"
+        "17) Copy to AWS (optional)\n"
+        "18) Generate OID Service (optional)"
     )
     canRunInBackground = False
 
@@ -205,9 +208,10 @@ class Process360Workflow(object):
         (12, "update_metadata", "Update EXIF Metadata"),
         (13, "exiftool_geocoding", "ExifTool Geocoding"),
         (14, "build_footprints", "Build OID Footprints"),
-        (15, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
-        (16, "copy_to_aws", "Upload to AWS S3"),
-        (17, "generate_service", "Generate OID Service")
+        (15, "prepare_delivery_subset", "Prepare Delivery Subset"),
+        (16, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
+        (17, "copy_to_aws", "Upload to AWS S3"),
+        (18, "generate_service", "Generate OID Service")
     ]
 
     # Sort by numeric index and extract step names in the correct order
@@ -857,26 +861,36 @@ class Process360Workflow(object):
                 logger.error("Project Folder is required for Local mode.", indent=1)
                 return
 
-            project_reels = Path(project_folder) / "reels"
-            if not project_reels.is_dir():
+            project_folder_path = Path(project_folder).resolve()
+            work_project_dir_path = work_project_dir.resolve()
+            project_reels = project_folder_path / "reels"
+            
+            # Skip reorganization if project folder contains the work directory or they're the same
+            # This happens when running locally without needing the projects/{slug} structure
+            if project_folder_path == work_project_dir_path or work_project_dir_path.is_relative_to(project_folder_path):
+                logger.info("Using existing project folder structure (no reorganization needed)", indent=1)
+                # Reels are already in the right place - nothing to copy
+            elif not project_reels.is_dir():
                 logger.error(f"Local reels folder not found: {project_reels}", indent=1)
                 return
-
-            if selected_reels:
-                for r in selected_reels:
-                    src = project_reels / r
-                    dst = reels_root / r
-                    if not src.is_dir():
-                        logger.warning(f"Skipping missing reel folder: {src}", indent=1)
-                        continue
-                    self._symlink_or_copy(src, dst, logger=logger)
             else:
-                # No selection → include all subfolders in <project>\reels
-                for name in os.listdir(project_reels):
-                    src = project_reels / name
-                    if src.is_dir():
-                        dst = reels_root / name
+                # Need to symlink/copy reels to staging area
+                logger.info(f"Organizing reels from {project_folder} to {work_project_dir}", indent=1)
+                if selected_reels:
+                    for r in selected_reels:
+                        src = project_reels / r
+                        dst = reels_root / r
+                        if not src.is_dir():
+                            logger.warning(f"Skipping missing reel folder: {src}", indent=1)
+                            continue
                         self._symlink_or_copy(src, dst, logger=logger)
+                else:
+                    # No selection → include all subfolders in <project>\reels
+                    for name in os.listdir(project_reels):
+                        src = project_reels / name
+                        if src.is_dir():
+                            dst = reels_root / name
+                            self._symlink_or_copy(src, dst, logger=logger)
 
             # Downstream expects a local folder that CONTAINS reel folders
             p["input_reels_folder"] = str(reels_root)
@@ -918,6 +932,12 @@ class Process360Workflow(object):
         # Validate config
         cfg.validate()
 
+        if p.get("enable_copy_to_aws", False):
+            logger.custom("Running AWS upload preflight checks...", indent=1, emoji="🧪")
+            secured_mode = is_secured_storage_enabled(cfg)
+            preflight_bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
+            validate_s3_bucket_access(cfg, bucket=preflight_bucket)
+
         # Build steps + order
         step_funcs = self.build_step_funcs_fn(p, cfg)
         step_order = self.get_step_order_fn(step_funcs)
@@ -943,7 +963,15 @@ class Process360Workflow(object):
         start_index = step_order.index(start_step)
 
         wait_config = cfg.get("orchestrator", {})
-        self.run_steps_fn(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
+        step_results = self.run_steps_fn(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
+
+        if report_data.get("cancelled"):
+            logger.custom("Workflow canceled by user. Skipping post-run metrics, report generation, and uploads.", indent=1, emoji="🛑")
+            return
+
+        if any(step.get("status") == "❌" for step in step_results):
+            logger.warning("Workflow stopped after a failed step. Skipping success summary and post-run uploads.", indent=1)
+            return
 
         # Post-run: OID path, metrics, reel count, folder stats
         try:

@@ -20,7 +20,9 @@
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
-    validate_field_block
+    validate_field_block,
+    validate_keys_with_types,
+    validate_type,
 )
 
 def validate(cfg: "ConfigManager") -> bool:
@@ -56,5 +58,35 @@ def validate(cfg: "ConfigManager") -> bool:
     for key, field in custom_fields.items():
         if not validate_field_block(field, cfg, context=f"custom_fields.{key}"):
             error_count += 1
+
+    sequence_cfg = cfg.get("sequence_order", {})
+    if sequence_cfg:
+        if not validate_type(sequence_cfg, "sequence_order", dict, cfg):
+            error_count += 1
+        else:
+            optional_keys = {
+                "enabled": bool,
+                "field_name": str,
+                "acquisition_datetime_field": str,
+                "lr_prefix_field": str,
+                "lr_mile_field": str,
+                "prefix_order": list,
+                "descending_prefixes": list,
+                "null_milepost_position": str,
+            }
+            error_count += validate_keys_with_types(cfg, sequence_cfg, optional_keys, "sequence_order", required=False)
+
+            null_position = sequence_cfg.get("null_milepost_position", "end")
+            if isinstance(null_position, str) and null_position.lower() not in {"start", "end"}:
+                logger.error("sequence_order.null_milepost_position must be 'start' or 'end'", error_type=ConfigValidationError)
+                error_count += 1
+
+            for key in ("prefix_order", "descending_prefixes"):
+                values = sequence_cfg.get(key, [])
+                if isinstance(values, list):
+                    for i, value in enumerate(values):
+                        if not isinstance(value, str):
+                            logger.error(f"sequence_order.{key}[{i}] must be a string", error_type=ConfigValidationError)
+                            error_count += 1
 
     return error_count == 0

@@ -5,6 +5,27 @@ This changelog tracks structural changes to the Oriented Imagery Dataset (OID) s
 
 ---
 
+## [1.3.3] - 2026-05-30
+
+### Added
+- Added `sequence_order` config block for optional SequenceOrder population.
+- Added `secured_storage` config block for virtual cache ImagePath mode.
+
+### Changed
+- `config.sample.yaml` now declares schema version `1.3.3`.
+- Runtime accepts `1.3.1`, `1.3.2`, and `1.3.3` for backward compatibility.
+
+## [1.3.2] - 2026-05-30
+
+### Added
+- Added optional `gps_smoothing.segment_break_distance_m`.
+- Added optional `gps_smoothing.segment_break_time_seconds`.
+- GPS smoothing/correction can now split a single reel into multiple capture segments when there is a large location or time gap.
+
+### Changed
+- `config.sample.yaml` now declares schema version `1.3.2`.
+- Runtime continues accepting `1.3.1` configs for backward compatibility.
+
 ## [1.0.0] – 2025-05-08
 
 ### ✅ Added

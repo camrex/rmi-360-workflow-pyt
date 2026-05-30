@@ -55,6 +55,13 @@ def validate(cfg: "ConfigManager") -> bool:
 
     error_count += validate_keys_with_types(cfg, gps, required_keys, "gps_smoothing", required=True)
 
+    optional_keys = {
+        "segment_break_distance_m": (int, float),
+        "segment_break_time_seconds": (int, float),
+    }
+
+    error_count += validate_keys_with_types(cfg, gps, optional_keys, "gps_smoothing", required=False)
+
     angle_bounds = gps.get("angle_bounds_deg")
     if angle_bounds is None:
         if not (isinstance(angle_bounds, list) and len(angle_bounds) == 2):

@@ -61,7 +61,7 @@ GEO_AREA_FIELDS = [
     # Place/County/State core fields
     ("geo_place", "TEXT", 100),
     ("geo_place_fips", "TEXT", 20), 
-    ("geo_county", "TEXT", 50),
+    ("geo_county", "TEXT", 100),
     ("geo_county_fips", "TEXT", 10),  # 5-digit FIPS (first 2 = state, last 3 = county)
     ("geo_state", "TEXT", 30),
     
@@ -84,6 +84,25 @@ class SourceType:
     NEAREST_ALONG = "NEAREST_ALONG"
     RANGE_LOOKUP = "RANGE_LOOKUP"
     COUNTY_ONLY = "COUNTY_ONLY"
+
+
+def _get_text_field_lengths(feature_class: str) -> Dict[str, int]:
+    """Return TEXT field lengths keyed by lowercase field name."""
+    lengths: Dict[str, int] = {}
+    for field in arcpy.ListFields(feature_class):
+        if getattr(field, "type", "").upper() == "STRING":
+            lengths[field.name.lower()] = int(getattr(field, "length", 0) or 0)
+    return lengths
+
+
+def _fit_text_value(value: Any, max_length: int) -> Optional[str]:
+    """Safely coerce and truncate text to the destination field length."""
+    if value is None:
+        return None
+    text = str(value)
+    if max_length and len(text) > max_length:
+        return text[:max_length]
+    return text
 
 
 # =============================================================================
@@ -115,13 +134,18 @@ def _ensure_geo_area_fields(photos_fc: str, logger: Optional[Callable] = None) -
                 arcpy.management.AddField(photos_fc, field_name, field_type)
 
 
+def _fields_exist(photos_fc: str, required_fields: List[str]) -> bool:
+    existing_fields = {f.name.lower() for f in arcpy.ListFields(photos_fc)}
+    return all(field.lower() in existing_fields for field in required_fields)
+
+
 def _get_route_groups(photos_fc: str, route_field: Optional[str] = None) -> Dict[str, List[int]]:
     """Group OIDs by route_id, treating missing route_field as single route."""
     route_groups = {}
     
     # Build field list
     fields = ["OID@"]
-    if route_field and validate_fields_exist(photos_fc, [route_field], raise_on_missing=False):
+    if route_field and _fields_exist(photos_fc, [route_field]):
         fields.append(route_field)
         use_route_field = True
     else:
@@ -229,7 +253,8 @@ def enrich_points_places_counties(
         
         # Update photos_fc with place information
         place_updates = 0
-        join_fields = ["OBJECTID"]
+        join_oid_field = "TARGET_FID" if any(f.name.upper() == "TARGET_FID" for f in arcpy.ListFields(temp_places_join)) else "OBJECTID"
+        join_fields = [join_oid_field]
         
         # Detect available fields in places (flexible field mapping)
         places_fields = [f.name for f in arcpy.ListFields(places_fc)]
@@ -251,7 +276,7 @@ def enrich_points_places_counties(
             join_fields.append(place_fips_field)
         
         # Update photos with place data
-        update_fields = ["geo_place", "geo_place_fips", "geo_place_source", "geo_place_inferred"]
+        update_fields = ["OID@", "geo_place", "geo_place_fips", "geo_place_source", "geo_place_inferred"]
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields) as update_cursor:
             # Create lookup from join results
@@ -271,16 +296,16 @@ def enrich_points_places_counties(
             
             # Update photos with place data
             for row in update_cursor:
-                oid = update_cursor.oid
-                current_place = row[0]
+                oid = row[0]
+                current_place = row[1]
                 
                 # Only update if place is currently null/empty
                 if not current_place and oid in join_lookup:
                     place_name, place_fips = join_lookup[oid]
-                    row[0] = place_name  # geo_place
-                    row[1] = place_fips  # geo_place_fips
-                    row[2] = SourceType.CONTAINED  # geo_place_source
-                    row[3] = 0  # geo_place_inferred (direct containment)
+                    row[1] = place_name  # geo_place
+                    row[2] = place_fips  # geo_place_fips
+                    row[3] = SourceType.CONTAINED  # geo_place_source
+                    row[4] = 0  # geo_place_inferred (direct containment)
                     
                     update_cursor.updateRow(row)
                     place_updates += 1
@@ -346,7 +371,8 @@ def enrich_points_places_counties(
                 state_name_field = field
         
         # Build join fields list
-        join_fields = ["OBJECTID"]
+        join_oid_field = "TARGET_FID" if any(f.name.upper() == "TARGET_FID" for f in arcpy.ListFields(temp_counties_join)) else "OBJECTID"
+        join_fields = [join_oid_field]
         if county_name_field:
             join_fields.append(county_name_field)
         if county_fips_field:
@@ -359,7 +385,9 @@ def enrich_points_places_counties(
             join_fields.append(state_name_field)
         
         # Update photos with county/state data
-        update_fields = ["geo_county", "geo_county_fips", "geo_state"]
+        update_fields = ["OID@", "geo_county", "geo_county_fips", "geo_state"]
+        text_lengths = _get_text_field_lengths(photos_fc)
+        truncation_counts = {"geo_county": 0, "geo_county_fips": 0, "geo_state": 0}
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields) as update_cursor:
             # Create lookup from join results
@@ -401,25 +429,36 @@ def enrich_points_places_counties(
             
             # Update photos with county/state data
             for row in update_cursor:
-                oid = update_cursor.oid
+                oid = row[0]
                 
                 if oid in join_lookup:
                     county_name, county_fips, state_display, state_fips = join_lookup[oid]
+
+                    county_text = _fit_text_value(county_name, text_lengths.get("geo_county", 0))
+                    county_fips_text = _fit_text_value(county_fips, text_lengths.get("geo_county_fips", 0))
+                    state_text = _fit_text_value(state_display, text_lengths.get("geo_state", 0))
+
+                    if county_name and county_text and county_text != str(county_name):
+                        truncation_counts["geo_county"] += 1
+                    if county_fips and county_fips_text and county_fips_text != str(county_fips):
+                        truncation_counts["geo_county_fips"] += 1
+                    if state_display and state_text and state_text != str(state_display):
+                        truncation_counts["geo_state"] += 1
                     
                     # Update county if currently null
-                    if not row[0] and county_name:
-                        row[0] = county_name
+                    if not row[1] and county_text:
+                        row[1] = county_text
                         county_updates += 1
                         if len(results["county_examples"]) < 10:
                             results["county_examples"].append(oid)
                     
                     # Update county FIPS if currently null  
-                    if not row[1] and county_fips:
-                        row[1] = county_fips
+                    if not row[2] and county_fips_text:
+                        row[2] = county_fips_text
                     
                     # Update state if currently null
-                    if not row[2] and state_display:
-                        row[2] = state_display
+                    if not row[3] and state_text:
+                        row[3] = state_text
                         state_updates += 1
                         if len(results["state_examples"]) < 10:
                             results["state_examples"].append(oid)
@@ -432,6 +471,14 @@ def enrich_points_places_counties(
         if logger:
             logger(f"Updated {county_updates} photos with county data")
             logger(f"Updated {state_updates} photos with state data")
+            total_truncations = sum(truncation_counts.values())
+            if total_truncations:
+                logger(
+                    "Truncated geo-area text values to fit destination field lengths: "
+                    f"geo_county={truncation_counts['geo_county']}, "
+                    f"geo_county_fips={truncation_counts['geo_county_fips']}, "
+                    f"geo_state={truncation_counts['geo_state']}"
+                )
             
     except Exception as e:
         if logger:
@@ -481,7 +528,7 @@ def enrich_places_by_milepost(
     }
     
     # Validate required fields
-    if not validate_fields_exist(photos_fc, [mile_field], raise_on_missing=False):
+    if not _fields_exist(photos_fc, [mile_field]):
         if logger:
             logger(f"Warning: Mile field '{mile_field}' not found, skipping milepost enrichment")
         return results
@@ -593,7 +640,7 @@ def bridge_place_gaps_by_milepost(
     
     # Validate required fields
     required_fields = [mile_field, place_field]
-    if not validate_fields_exist(photos_fc, required_fields, raise_on_missing=False):
+    if not _fields_exist(photos_fc, required_fields):
         if logger:
             logger("Required fields missing for gap bridging")
         return 0
@@ -642,7 +689,7 @@ def bridge_place_gaps_by_milepost(
                         "geo_place_inferred", "geo_place_gap_miles"]
         
         # Add county field if it exists
-        use_county_check = validate_fields_exist(photos_fc, [county_field], raise_on_missing=False)
+        use_county_check = _fields_exist(photos_fc, [county_field])
         if use_county_check:
             update_fields.append(county_field)
         
@@ -788,7 +835,7 @@ def build_place_mile_ranges(
                 # Get county from first point in range (simplified)
                 county = "Unknown"  # Default
                 
-                if validate_fields_exist(photos_fc, [county_field], raise_on_missing=False):
+                if _fields_exist(photos_fc, [county_field]):
                     first_oid = range_info['points'][0]
                     with arcpy.da.SearchCursor(photos_fc, [county_field], 
                                              where_clause=f"OBJECTID = {first_oid}") as cursor:

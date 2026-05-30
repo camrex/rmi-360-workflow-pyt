@@ -28,6 +28,12 @@
 # =============================================================================
 
 from collections import namedtuple
+import json
+from pathlib import Path
+from urllib.parse import urlencode
+from urllib.request import urlopen
+
+import arcpy
 
 from utils.mosaic_processor import run_mosaic_processor
 from utils.create_oid_feature_class import create_oriented_imagery_dataset
@@ -43,6 +49,7 @@ from utils.apply_exif_metadata import update_metadata_from_config
 from utils.geocode_images import geocode_images
 from utils.geocode_geoareas import geocode_geoareas
 from utils.build_oid_footprints import build_oid_footprints
+from utils.prepare_delivery_subset import prepare_delivery_subset
 from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
 from utils.generate_oid_service import generate_oid_service
@@ -83,7 +90,7 @@ def skip_if_geoareas_not_needed(params, cfg):
         return f"Skipped (method={method})"
     
     from utils.geoareas_exif_integration import should_use_geoareas
-    if not should_use_geoareas(cfg.config):
+    if not should_use_geoareas(cfg._config):
         return "Skipped (geo-areas not configured)"
     
     return None
@@ -105,17 +112,97 @@ def skip_if_deploy_lambda_monitor_disabled(params):
 def skip_if_generate_service_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_generate_service", False) else None
 
+
+def skip_if_delivery_subset_disabled(params, cfg):
+    subset_enabled = bool(cfg.get("delivery_subset.enabled", False))
+    if not subset_enabled:
+        return "Skipped (delivery_subset.disabled)"
+    if not params.get("enable_copy_to_aws", False) and not params.get("enable_generate_service", False):
+        return "Skipped (no delivery steps enabled)"
+    return None
+
+
+def _resolve_project_path(cfg, value):
+    if not value:
+        return value
+
+    raw_value = str(value).strip()
+    if raw_value.lower().startswith(("http://", "https://")):
+        return raw_value
+
+    path = Path(raw_value)
+    if path.is_absolute():
+        return str(path)
+
+    project_root = cfg.get("__project_root__")
+    if project_root:
+        return str((Path(project_root) / path).resolve())
+
+    return str(path.resolve())
+
+
+def _resolve_feature_service_layer(url: str, layer_role: str, logger) -> str:
+    raw_url = str(url).strip().rstrip("/")
+    if "/FeatureServer/" in raw_url:
+        return raw_url
+    if not raw_url.lower().endswith("/featureserver"):
+        return raw_url
+
+    metadata_url = f"{raw_url}?{urlencode({'f': 'pjson'})}"
+    try:
+        with urlopen(metadata_url) as response:
+            payload = json.load(response)
+    except Exception as e:
+        logger.warning(f"Could not inspect FeatureServer metadata for {raw_url}: {e}", indent=1)
+        return raw_url
+
+    layers = payload.get("layers", [])
+    if not layers:
+        logger.warning(f"No layers found at FeatureServer URL: {raw_url}", indent=1)
+        return raw_url
+
+    if len(layers) == 1:
+        return f"{raw_url}/{layers[0]['id']}"
+
+    preferred_terms = {
+        "places": ["populated", "place", "places"],
+        "counties": ["county", "counties"]
+    }.get(layer_role, [layer_role])
+
+    for layer in layers:
+        name = str(layer.get("name", "")).lower()
+        if any(term in name for term in preferred_terms):
+            resolved = f"{raw_url}/{layer['id']}"
+            logger.info(f"Resolved {layer_role} FeatureServer URL to layer '{layer.get('name')}'", indent=1)
+            return resolved
+
+    logger.warning(f"Could not infer {layer_role} layer from FeatureServer URL: {raw_url}", indent=1)
+    return raw_url
+
 def run_geoareas_enrichment(oid_fc: str, cfg):
     """Run geo-areas enrichment (before EXIF metadata application)"""
     logger = cfg.get_logger()
     logger.custom("Running geo-areas enrichment...", emoji="🌍", indent=1)
     
     # Get geo-areas configuration
-    places_fc = cfg.get("geo_areas.places_fc", "")
-    counties_fc = cfg.get("geo_areas.counties_fc", "")
+    places_fc = _resolve_project_path(cfg, cfg.get("geo_areas.places_fc", ""))
+    counties_fc = _resolve_project_path(cfg, cfg.get("geo_areas.counties_fc", ""))
+
+    if isinstance(places_fc, str) and places_fc.lower().startswith(("http://", "https://")):
+        places_fc = _resolve_feature_service_layer(places_fc, "places", logger)
+    if isinstance(counties_fc, str) and counties_fc.lower().startswith(("http://", "https://")):
+        counties_fc = _resolve_feature_service_layer(counties_fc, "counties", logger)
     
     if not places_fc or not counties_fc:
         logger.warning("geo_areas method selected but places_fc or counties_fc not configured", indent=1)
+        return
+
+    if not arcpy.Exists(places_fc):
+        logger.warning(f"geo_areas places_fc does not exist: {places_fc}", indent=1)
+        return
+
+    if not arcpy.Exists(counties_fc):
+        logger.warning(f"geo_areas counties_fc does not exist: {counties_fc}", indent=1)
         return
     
     # Call geo-areas enrichment with full configuration
@@ -180,12 +267,25 @@ def build_step_funcs(p, cfg):
             lambda params, config: lambda **kwargs: run_exiftool_geocoding(oid_fc=p["oid_fc"], cfg=cfg), lambda params: skip_if_exiftool_not_needed(params, cfg)),
         StepSpec("build_footprints", "Build OID Footprints",
             lambda params, config: lambda **kwargs: build_oid_footprints(oid_fc=p["oid_fc"], cfg=cfg), None),
+        StepSpec("prepare_delivery_subset", "Prepare Delivery Subset",
+            lambda params, config: lambda **kwargs: prepare_delivery_subset(cfg=cfg, oid_fc=p["oid_fc"], params=p),
+            lambda params: skip_if_delivery_subset_disabled(params, cfg)),
         StepSpec("deploy_lambda_monitor", "Deploy Lambda AWS Monitor",
             lambda params, config: lambda **kwargs: deploy_lambda_monitor(cfg=cfg), skip_if_deploy_lambda_monitor_disabled),
         StepSpec("copy_to_aws", "Upload to AWS S3",
-            lambda params, config: lambda **kwargs: copy_to_aws(cfg=cfg, **kwargs), skip_if_copy_to_aws_disabled),
+            lambda params, config: lambda **kwargs: copy_to_aws(
+                cfg=cfg,
+                local_dir=p.get("delivery_local_dir") or cfg.paths.renamed,
+                manifest_path=p.get("delivery_manifest_path"),
+                **kwargs,
+            ),
+            skip_if_copy_to_aws_disabled),
         StepSpec("generate_service", "Generate OID Service",
-            lambda params, config: lambda **kwargs: generate_oid_service(oid_fc=p["oid_fc"], cfg=cfg), skip_if_generate_service_disabled),
+            lambda params, config: lambda **kwargs: generate_oid_service(
+                oid_fc=p.get("delivery_oid_fc", p["oid_fc"]),
+                cfg=cfg,
+            ),
+            skip_if_generate_service_disabled),
     ]
     step_funcs = {}
     for spec in step_specs:

@@ -55,14 +55,14 @@ def _merge_geoareas_tags(cfg: Any, base_tags: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Merged tags dictionary with geo-areas tags integrated
     """
-    if not should_use_geoareas(cfg.config):
+    if not should_use_geoareas(cfg._config):
         return base_tags
         
     logger = cfg.get_logger()
     logger.info("Integrating geo-areas tags into metadata configuration...")
     
     # Get geo-areas tag mappings with config-based fallback strategy
-    geoareas_tags = get_geoareas_exif_mapping(cfg.config)
+    geoareas_tags = get_geoareas_exif_mapping(cfg._config)
     
     # Deep copy base tags to avoid modifying original
     import copy
@@ -84,7 +84,7 @@ def _merge_geoareas_tags(cfg: Any, base_tags: Dict[str, Any]) -> Dict[str, Any]:
             merged_tags[tag_name] = tag_value
     
     # Augment XPKeywords with geo-areas specific keywords
-    geoareas_keywords = get_geoareas_xpkeywords_additions(cfg.config)
+    geoareas_keywords = get_geoareas_xpkeywords_additions(cfg._config)
     if geoareas_keywords:
         if 'XPKeywords' not in merged_tags:
             merged_tags['XPKeywords'] = []
@@ -231,6 +231,8 @@ def _write_exiftool_args(cfg, tags, rows, cursor_fields):
         
         # Add echo marker for this image (helps with troubleshooting)
         lines.append(f"-echo3 OID={row_dict['OID@']}")
+        # Ensure no backup file is created for each -execute block.
+        lines.append("-overwrite_original_in_place")
         
         # Process resolved tags with proper EXIF group prefixes and multi-value handling
         for tag_name, value in resolved_tags.items():
@@ -307,6 +309,38 @@ def _run_exiftool(cfg, args_file):
         logger.error(f"ExifTool execution failed: {e}", error_type=RuntimeError, indent=1)
 
 
+def _cleanup_exiftool_original_backups(rows, cursor_fields, logger) -> int:
+    """Delete ExifTool backup artifacts created as <image>_original for processed rows."""
+    if not rows:
+        return 0
+
+    try:
+        path_idx = cursor_fields.index("ImagePath")
+    except ValueError:
+        return 0
+
+    deleted = 0
+    seen = set()
+
+    for row in rows:
+        try:
+            image_path = row[path_idx]
+            if not image_path:
+                continue
+            backup_path = f"{image_path}_original"
+            if backup_path in seen:
+                continue
+            seen.add(backup_path)
+
+            if os.path.isfile(backup_path):
+                os.remove(backup_path)
+                deleted += 1
+        except (OSError, TypeError) as exc:
+            logger.warning(f"Failed to remove ExifTool backup '{backup_path}': {exc}", indent=2)
+
+    return deleted
+
+
 def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
     """
     Updates image metadata for images referenced in a feature class using configuration rules.
@@ -343,3 +377,7 @@ def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
 
     _write_exiftool_args(cfg, tags, rows, cursor_fields)
     _run_exiftool(cfg, cfg.paths.get_log_file_path("exiftool_args", cfg))
+
+    removed_count = _cleanup_exiftool_original_backups(rows, cursor_fields, logger)
+    if removed_count:
+        logger.info(f"Removed {removed_count} ExifTool backup file(s) (*_original).", indent=1)

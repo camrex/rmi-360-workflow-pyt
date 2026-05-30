@@ -34,28 +34,35 @@ import arcpy
 import os
 from typing import Literal
 from arcgis.gis import GIS
-from urllib.parse import quote_plus
 
 from utils.manager.config_manager import ConfigManager
+from utils.shared.oid_storage_paths import (
+    build_oid_image_path,
+    is_secured_storage_enabled,
+    resolve_oid_target_bucket,
+    resolve_oid_target_region,
+)
 
 
-def build_s3_url(bucket, region, bucket_folder, filename):
-    return (
-        f"https://{bucket}.s3.{region}.amazonaws.com/"
-        f"{quote_plus(bucket_folder)}/{quote_plus(filename)}")
+def build_s3_url(bucket, region, object_key):
+    from utils.shared.oid_storage_paths import build_public_s3_image_url
+
+    return build_public_s3_image_url(bucket, region, object_key)
 
 
-def update_oid_image_paths(oid_fc, bucket, region, bucket_folder, logger):
+def update_oid_image_paths(oid_fc, cfg: ConfigManager, logger):
     updated_count = 0
     with arcpy.da.UpdateCursor(oid_fc, ["ImagePath"]) as cursor:
         for row in cursor:
             local_path = row[0]
             filename = os.path.basename(local_path)
-            aws_url = build_s3_url(bucket, region, bucket_folder, filename)
-            row[0] = aws_url
+            row[0] = build_oid_image_path(cfg, filename)
             cursor.updateRow(row)
             updated_count += 1
-    logger.info(f"Updated {updated_count} image paths to AWS URLs.", indent=2)
+    if is_secured_storage_enabled(cfg):
+        logger.info(f"Updated {updated_count} image paths to secured virtual cache paths.", indent=2)
+    else:
+        logger.info(f"Updated {updated_count} image paths to AWS URLs.", indent=2)
     return updated_count
 
 
@@ -119,12 +126,14 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     logger = cfg.get_logger()
     cfg.validate(tool="generate_oid_service")
     logger.info("Starting OID Service Generation...", indent=1)
+    logger.info(f"ImagePath delivery mode: {'secured virtual cache' if is_secured_storage_enabled(cfg) else 'legacy public URL'}", indent=2)
 
     # Required AWS details
-    bucket = cfg.get("aws.s3_bucket")
-    region = cfg.get("aws.region")
-    bucket_folder = cfg.resolve(cfg.get("aws.s3_bucket_folder"))
-    if not all([bucket, region, bucket_folder]):
+    secured_mode = is_secured_storage_enabled(cfg)
+    bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
+    region = resolve_oid_target_region(cfg, secured_mode=secured_mode)
+
+    if not all([bucket, region]):
         logger.error("Missing required AWS values in config.yaml", error_type=ValueError, indent=2)
         return None  # or `raise ValueError("AWS configuration incomplete")`
 
@@ -142,7 +151,7 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     logger.info(f"Duplicated OID to: {aws_oid_fc}", indent=2)
 
     # Step 2: Update ImagePath values
-    update_oid_image_paths(aws_oid_fc, bucket, region, bucket_folder, logger)
+    update_oid_image_paths(aws_oid_fc, cfg, logger)
 
     # Step 3: Assemble service metadata
     service_name, portal_folder, share_with, add_footprint, tags_str, summary = assemble_service_metadata(cfg, oid_name)

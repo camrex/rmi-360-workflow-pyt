@@ -4,6 +4,22 @@
 
 > **📝 Maintenance Note**: Please update this CHANGELOG with significant changes, new features, bug fixes, and breaking changes. Follow the existing format with clear categories (Added, Changed, Fixed, Removed, etc.).
 
+## [v1.3.3] - 2026-05-30 - Secured Storage and Sequence Ordering
+
+### Added
+- Added shared OID storage path helpers to centralize object key and ImagePath generation.
+- Added secured storage config block support for virtual cache ImagePath mode.
+- Added optional SequenceOrder population logic with LR-aware ordering controls.
+
+### Changed
+- `copy_to_aws.py` now derives upload destination bucket and object keys from shared OID storage helpers.
+- `generate_oid_service.py` now derives ImagePath values from the same shared OID storage helpers.
+- Added validation for `secured_storage` and `sequence_order` config settings.
+- Updated `config.sample.yaml` to schema version `1.3.3` with new `sequence_order` and `secured_storage` sections.
+
+### Fixed
+- Prevented upload key and ImagePath drift by using one source of truth for OID object key construction.
+
 ## [v1.3.0] - 2025-10-30 - Major Architecture Enhancement & AWS Integration
 *Combined release including AWS/Local infrastructure (1.2.0) and Enhancement Removal (1.3.0)*
 

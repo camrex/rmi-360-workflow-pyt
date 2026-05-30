@@ -3,12 +3,12 @@ from unittest.mock import MagicMock
 from utils.generate_oid_service import build_s3_url, assemble_service_metadata, update_oid_image_paths, ensure_portal_folder
 
 # Test build_s3_url
-@pytest.mark.parametrize("bucket,region,bucket_folder,filename,expected_url", [
-    ("mybucket", "us-west-2", "images", "img1.jpg", "https://mybucket.s3.us-west-2.amazonaws.com/images/img1.jpg"),
-    ("b", "r", "f", "file.png", "https://b.s3.r.amazonaws.com/f/file.png"),
+@pytest.mark.parametrize("bucket,region,object_key,expected_url", [
+    ("mybucket", "us-west-2", "images/img1.jpg", "https://mybucket.s3.us-west-2.amazonaws.com/images/img1.jpg"),
+    ("b", "r", "f/file.png", "https://b.s3.r.amazonaws.com/f/file.png"),
 ])
-def test_build_s3_url(bucket, region, bucket_folder, filename, expected_url):
-    assert build_s3_url(bucket, region, bucket_folder, filename) == expected_url
+def test_build_s3_url(bucket, region, object_key, expected_url):
+    assert build_s3_url(bucket, region, object_key) == expected_url
 
 # Test assemble_service_metadata
 class DummyCfg:
@@ -54,11 +54,20 @@ def test_update_oid_image_paths(monkeypatch):
             self.updated = getattr(self, 'updated', [])
             self.updated.append(row[0])
     dummy_logger = MagicMock()
+    cfg = MagicMock()
+    cfg.get.side_effect = lambda key, default=None: {
+        "secured_storage.enabled": False,
+        "aws.s3_bucket": "bucket",
+        "aws.region": "region",
+        "aws.s3_bucket_folder": "folder",
+        "project.slug": "proj",
+    }.get(key, default)
+    cfg.resolve.side_effect = lambda value: value
     monkeypatch.setattr("arcpy.da.UpdateCursor", lambda oid_fc, fields: DummyCursor(rows))
     monkeypatch.setattr("os.path.basename", lambda p: p.split("/")[-1])
-    updated_count = update_oid_image_paths("dummy_fc", "bucket", "region", "folder", dummy_logger)
+    updated_count = update_oid_image_paths("dummy_fc", cfg, dummy_logger)
     assert updated_count == 2
-    dummy_logger.info.assert_called_with("Updated 2 image paths to AWS URLs.")
+    dummy_logger.info.assert_called_with("Updated 2 image paths to AWS URLs.", indent=2)
 
 # Test ensure_portal_folder (mock GIS)
 def test_ensure_portal_folder_creates(monkeypatch):
