@@ -8,14 +8,13 @@ A modular workflow built with ArcGIS Python Toolbox for processing and deploying
 Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes tools for OID creation, AWS publishing, and detailed reporting.
 
 > **❗ ArcGIS Pro Note:** When adding the Toolbox to ArcGIS Pro, you may see a warning icon (❗) upon loading. If this occurs, simply remove the Toolbox and add it again to resolve the issue.
+
 New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all required Python libraries in your ArcGIS Pro environment before running the main tools.
 
 *Tested using ArcGIS Pro 3.4.3 and 3.5.4.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 
 > ℹ️ The “Oriented Imagery” tools require **Standard or Advanced** licenses. All other functions are available with **Basic** or higher.
-
 > **⚠️ Unit Tests Note:** Many unit tests may currently be broken due to some bug fixes in this release.
-
 
 ---
 
@@ -43,15 +42,19 @@ New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all requ
 | Toolbox Structure      | Built as an ArcGIS `.pyt` Toolbox + modular tool wrappers & utilities       |
 | Config-Driven          | YAML-based config with expression resolution and field registries           |
 | AWS Integration        | Upload to S3 with TransferManager + Lambda schedule tracking                |
-| Resumable Transfers    | Upload interruption protection + log recovery                              |
+| Resumable Transfers    | Upload interruption protection + log recovery                               |
 | HTML & JSON Reporting  | Auto-generated step summaries and final status reports                      |
 | Image Metadata Support | Auto tag EXIF metadata + rename by GPS, time, reel, frame, etc.             |
+
+Secured storage status: publishing now passes virtual_cache_directory when secured_storage.enabled is true.
+End-to-end secured-storage serving on Enterprise 12.0 is still blocked by Esri Case #04187998.
+Legacy public-URL mode remains the supported path until the Esri issue is resolved.
 
 ---
 
 ## 📁 Repository Structure
 
-```
+```text
 rmi-360-workflow-pyt/
 ├── rmi_360_workflow.pyt                # ArcGIS Python Toolbox
 ├── rmi_360_env_checker.pyt             # ArcGIS Python Toolbox for environment checking
@@ -102,6 +105,7 @@ cp configs/config.sample.yaml configs/config.yaml
    - **Orchestrator**
 
 5. Use individual tools or run the full pipeline with `ProcessMosaic360Workflow`.
+
 ---
 
 ## 🎞 Mosaic Processor Usage Notes

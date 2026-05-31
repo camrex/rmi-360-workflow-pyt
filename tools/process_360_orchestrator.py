@@ -65,7 +65,7 @@
 #   - Ensure all Core Utils and config files are synchronized for consistent behavior.
 # =============================================================================
 
-from typing import Optional, Any, Callable, Dict, List
+from typing import Optional, Any, Callable, Dict, List, cast
 from pathlib import Path
 import arcpy
 import time
@@ -77,6 +77,8 @@ from utils.step_runner import run_steps
 from utils.build_step_funcs import build_step_funcs, get_step_order
 from utils.shared.gather_metrics import collect_oid_metrics, summarize_oid_metrics
 from utils.shared.folder_stats import folder_stats
+from utils.shared.aws_utils import validate_s3_bucket_access
+from utils.shared.oid_storage_paths import is_secured_storage_enabled, resolve_oid_target_bucket
 from utils.shared.report_data_builder import (
     initialize_report_data,
     save_report_json,
@@ -179,12 +181,14 @@ class Process360Workflow(object):
         "8) Filter Distance Spacing (optional)\n"
         "9) Update Linear and Custom Attributes (linear referencing optional)\n"
         "10) Rename Images\n"
-        "11) Update EXIF Metadata\n"
-        "12) Geocode Images (optional)\n"
-        "13) Create OID Footprints\n"
-        "14) Deploy Lambda Monitor (optional)\n"
-        "15) Copy to AWS (optional)\n"
-        "16) Generate OID Service (optional)"
+        "11) Geo-Areas Enrichment (optional)\n"
+        "12) Update EXIF Metadata\n"
+        "13) ExifTool Geocoding (optional)\n"
+        "14) Create OID Footprints\n"
+        "15) Prepare Delivery Subset (optional; config-driven)\n"
+        "16) Deploy Lambda Monitor (optional)\n"
+        "17) Copy to AWS (optional)\n"
+        "18) Generate OID Service (optional)"
     )
     canRunInBackground = False
 
@@ -200,12 +204,14 @@ class Process360Workflow(object):
         (8, "filter_distance", "Filter Distance Spacing"),
         (9, "update_linear_custom", "Update Linear and Custom Attributes"),
         (10, "rename_images", "Rename Images"),
-        (11, "update_metadata", "Update EXIF Metadata"),
-        (12, "geocode", "Geocode Images"),
-        (13, "build_footprints", "Build OID Footprints"),
-        (14, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
-        (15, "copy_to_aws", "Upload to AWS S3"),
-        (16, "generate_service", "Generate OID Service")
+        (11, "geoareas_enrichment", "Geo-Areas Enrichment"),
+        (12, "update_metadata", "Update EXIF Metadata"),
+        (13, "exiftool_geocoding", "ExifTool Geocoding"),
+        (14, "build_footprints", "Build OID Footprints"),
+        (15, "prepare_delivery_subset", "Prepare Delivery Subset"),
+        (16, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
+        (17, "copy_to_aws", "Upload to AWS S3"),
+        (18, "generate_service", "Generate OID Service")
     ]
 
     # Sort by numeric index and extract step names in the correct order
@@ -231,7 +237,10 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        config_file_param.filter.list = ["yaml", "yml"]
+        # ArcPy stubs type `filter` as optional; keep guard to avoid None-attribute
+        # errors in static analysis and rare UI initialization states.
+        if config_file_param.filter is not None:
+            config_file_param.filter.list = ["yaml", "yml"]
         params.append(config_file_param)
 
         # 1) Source Mode
@@ -242,7 +251,8 @@ class Process360Workflow(object):
             parameterType="Required",
             direction="Input",
         )
-        source_mode_param.filter.list = ["Local", "AWS"]
+        if source_mode_param.filter is not None:
+            source_mode_param.filter.list = ["Local", "AWS"]
         source_mode_param.value = "Local"
         params.append(source_mode_param)
 
@@ -305,7 +315,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        start_step_param.filter.list = ["--SELECT STEP--"] + step_labels
+        if start_step_param.filter is not None:
+            start_step_param.filter.list = ["--SELECT STEP--"] + step_labels
         start_step_param.value = "--SELECT STEP--"
         params.append(start_step_param)
 
@@ -365,7 +376,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        distance_filter_action_param.filter.list = ["flag", "remove"]
+        if distance_filter_action_param.filter is not None:
+            distance_filter_action_param.filter.list = ["flag", "remove"]
         distance_filter_action_param.value = "flag"
         params.append(distance_filter_action_param)
 
@@ -432,7 +444,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        centerline_param.filter.list = ["Polyline"]
+        if centerline_param.filter is not None:
+            centerline_param.filter.list = ["Polyline"]
         params.append(centerline_param)
 
         # 17) Route ID Field
@@ -443,8 +456,9 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        route_id_param.parameterDependencies = [centerline_param.name]
-        route_id_param.filter.list = ["Short", "Long", "Text"]
+        route_id_param.parameterDependencies = cast(Any, [centerline_param.name])
+        if route_id_param.filter is not None:
+            route_id_param.filter.list = ["Short", "Long", "Text"]
         params.append(route_id_param)
 
         # 18) Generate HTML Summary Report
@@ -510,7 +524,9 @@ class Process360Workflow(object):
 
         if project_key:
             project_key.enabled = is_aws
-            project_key.filter.list = []
+            # ArcPy may expose `filter` as None depending on parameter/UI state.
+            if project_key.filter is not None:
+                project_key.filter.list = []
 
         if staging_folder:
             staging_folder.enabled = True
@@ -532,13 +548,15 @@ class Process360Workflow(object):
         # 2) Populate AWS Project Key dropdown
         if is_aws and raw_s3_bucket and raw_s3_bucket.valueAsText and project_key:
             try:
-                project_key.filter.list = list_projects(raw_s3_bucket.valueAsText.strip())
+                if project_key.filter is not None:
+                    project_key.filter.list = list_projects(raw_s3_bucket.valueAsText.strip())
             except Exception:
                 pass
 
         # 3) Populate Reels multiselect
         if reels_param:
-            reels_param.filter.list = []
+            if reels_param.filter is not None:
+                reels_param.filter.list = []
             if not is_aws:
                 base = project_folder.valueAsText if project_folder else None
                 try:
@@ -550,17 +568,21 @@ class Process360Workflow(object):
                                 for d in self.os_mod.listdir(reels_root)
                                 if self.os_mod.path.isdir(self.os_mod.path.join(reels_root, d))
                             ]
-                            reels_param.filter.list = sorted(names)
+                            if reels_param.filter is not None:
+                                reels_param.filter.list = sorted(names)
                 except Exception:
-                    reels_param.filter.list = []
+                    if reels_param.filter is not None:
+                        reels_param.filter.list = []
             else:
                 try:
                     bucket = raw_s3_bucket.valueAsText.strip() if raw_s3_bucket and raw_s3_bucket.valueAsText else ""
                     proj = project_key.valueAsText.strip().strip("/") if project_key and project_key.valueAsText else ""
                     if bucket and proj:
-                        reels_param.filter.list = list_reels(bucket, proj)
+                        if reels_param.filter is not None:
+                            reels_param.filter.list = list_reels(bucket, proj)
                 except Exception:
-                    reels_param.filter.list = []
+                    if reels_param.filter is not None:
+                        reels_param.filter.list = []
 
         # 4) Start step → OID in/out enablement
         if start_step:
@@ -662,7 +684,6 @@ class Process360Workflow(object):
         oid_out = p.get("oid_fc_output")
 
         enable_linear_ref = p.get("enable_linear_ref")
-        enable_smooth_gps = p.get("enable_smooth_gps")
         centerline_param = p.get("centerline_fc")
         route_id_param = p.get("route_id_field")
 
@@ -695,10 +716,11 @@ class Process360Workflow(object):
         if project_folder and not project_folder.valueAsText:
             project_folder.setErrorMessage("⚠️ Please specify the Project Folder.")
         else:
-            project_folder.clearMessage()
+            if project_folder:
+                project_folder.clearMessage()
 
         # Local nicety: warn if <project>\reels missing
-        if project_folder and project_folder.valueAsText and (source_mode.valueAsText != "AWS"):
+        if project_folder and project_folder.valueAsText and not is_aws:
             try:
                 reels_root = self.os_mod.path.join(project_folder.valueAsText, "reels")
                 if not self.os_mod.path.isdir(reels_root):
@@ -732,7 +754,6 @@ class Process360Workflow(object):
 
         # 3) Centerline / Route ID messages
         linear_ref_enabled = bool(getattr(enable_linear_ref, "value", False))
-        smooth_gps_enabled = bool(getattr(enable_smooth_gps, "value", False))
 
         if centerline_param:
             centerline_param.clearMessage()
@@ -795,9 +816,14 @@ class Process360Workflow(object):
         generate_report_flag = bool(p.get("generate_report", True))
 
         # ----------- Load config, logger, paths -----------
+        project_folder_param = pmap.get("project_folder")
+        source_mode_param = pmap.get("source_mode")
+        raw_s3_bucket_param = pmap.get("raw_s3_bucket")
+        project_key_param = pmap.get("project_key")
+
         cfg = ConfigManager.from_file(
             path=p.get("config_file"),
-            project_base=(pmap.get("project_folder").valueAsText if pmap.get("project_folder") else None),
+            project_base=(project_folder_param.valueAsText if project_folder_param else None),
             messages=messages,
         )
         logger = cfg.get_logger(messages)
@@ -846,7 +872,7 @@ class Process360Workflow(object):
             logger.info(f"Skipping staging cleanup (starting from '{early_start_step}' - preserving existing reels)", indent=1)
 
         # ----------- Resolve reels locally based on Source Mode -----------
-        source_mode = (pmap.get("source_mode").valueAsText if pmap.get("source_mode") else "Local") or "Local"
+        source_mode = (source_mode_param.valueAsText if source_mode_param else "Local") or "Local"
         selected_reels = _parse_multi(pmap.get("reels_to_process"))
 
         if source_mode == "Local":
@@ -855,35 +881,43 @@ class Process360Workflow(object):
                 logger.error("Project Folder is required for Local mode.", indent=1)
                 return
 
-            project_reels = Path(project_folder) / "reels"
-            if not project_reels.is_dir():
+            project_folder_path = Path(project_folder).resolve()
+            project_reels = project_folder_path / "reels"
+            
+            # Skip reorganization only when source reels and destination reels are the exact same folder.
+            if project_reels.resolve() == reels_root.resolve():
+                logger.info("Using existing project folder structure (no reorganization needed)", indent=1)
+                # Reels are already in the right place - nothing to copy
+            elif not project_reels.is_dir():
                 logger.error(f"Local reels folder not found: {project_reels}", indent=1)
                 return
-
-            if selected_reels:
-                for r in selected_reels:
-                    src = project_reels / r
-                    dst = reels_root / r
-                    if not src.is_dir():
-                        logger.warning(f"Skipping missing reel folder: {src}", indent=1)
-                        continue
-                    self._symlink_or_copy(src, dst, logger=logger)
             else:
-                # No selection → include all subfolders in <project>\reels
-                for name in os.listdir(project_reels):
-                    src = project_reels / name
-                    if src.is_dir():
-                        dst = reels_root / name
+                # Need to symlink/copy reels to staging area
+                logger.info(f"Organizing reels from {project_folder} to {work_project_dir}", indent=1)
+                if selected_reels:
+                    for r in selected_reels:
+                        src = project_reels / r
+                        dst = reels_root / r
+                        if not src.is_dir():
+                            logger.warning(f"Skipping missing reel folder: {src}", indent=1)
+                            continue
                         self._symlink_or_copy(src, dst, logger=logger)
+                else:
+                    # No selection → include all subfolders in <project>\reels
+                    for name in os.listdir(project_reels):
+                        src = project_reels / name
+                        if src.is_dir():
+                            dst = reels_root / name
+                            self._symlink_or_copy(src, dst, logger=logger)
 
             # Downstream expects a local folder that CONTAINS reel folders
             p["input_reels_folder"] = str(reels_root)
 
         else:  # AWS
-            raw_s3_bucket = (pmap.get("raw_s3_bucket").valueAsText if pmap.get("raw_s3_bucket") else None) or cfg.get(
+            raw_s3_bucket = (raw_s3_bucket_param.valueAsText if raw_s3_bucket_param else None) or cfg.get(
                 "aws.s3_bucket_raw", cfg.get("aws.s3_bucket")
             )
-            project_key = (pmap.get("project_key").valueAsText if pmap.get("project_key") else None)
+            project_key = project_key_param.valueAsText if project_key_param else None
             if not raw_s3_bucket or not project_key:
                 logger.error("Raw S3 Bucket and Project Key are required for AWS mode.", indent=1)
                 return
@@ -920,6 +954,23 @@ class Process360Workflow(object):
         step_funcs = self.build_step_funcs_fn(p, cfg)
         step_order = self.get_step_order_fn(step_funcs)
 
+        # Resolve start step before preflight so we only validate AWS when copy step will run.
+        start_step = early_start_step if early_start_step else step_order[0]
+        if start_step not in step_order:
+            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", indent=1)
+            start_step = step_order[0]
+        start_index = step_order.index(start_step)
+
+        if p.get("enable_copy_to_aws", False):
+            copy_step_index = step_order.index("copy_to_aws") if "copy_to_aws" in step_order else None
+            if copy_step_index is not None and copy_step_index >= start_index:
+                logger.custom("Running AWS upload preflight checks...", indent=1, emoji="🧪")
+                secured_mode = is_secured_storage_enabled(cfg)
+                preflight_bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
+                validate_s3_bucket_access(cfg, bucket=preflight_bucket)
+            else:
+                logger.info("Skipping AWS upload preflight (copy_to_aws step not in this run).", indent=1)
+
         # Initialize or load report data
         report_data = self.load_report_json_if_exists_fn(cfg)
         if report_data is None:
@@ -933,15 +984,16 @@ class Process360Workflow(object):
         if not hasattr(self, "_step_name_to_label"):
             self._step_name_to_label = {name: label for _, name, label in self.STEP_FUNCTIONS}
 
-        # Use early resolved start_step or default to first step
-        start_step = early_start_step if early_start_step else step_order[0]
-        if start_step not in step_order:
-            logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", indent=1)
-            start_step = step_order[0]
-        start_index = step_order.index(start_step)
-
         wait_config = cfg.get("orchestrator", {})
-        self.run_steps_fn(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
+        step_results = self.run_steps_fn(step_funcs, step_order, start_index, p, report_data, cfg, wait_config=wait_config)
+
+        if report_data.get("cancelled"):
+            logger.custom("Workflow canceled by user. Skipping post-run metrics, report generation, and uploads.", indent=1, emoji="🛑")
+            return
+
+        if any(step.get("status") == "❌" for step in step_results):
+            logger.warning("Workflow stopped after a failed step. Skipping success summary and post-run uploads.", indent=1)
+            return
 
         # Post-run: OID path, metrics, reel count, folder stats
         try:
@@ -950,13 +1002,17 @@ class Process360Workflow(object):
             logger.warning(f"Could not describe OID FC yet: {e}", indent=1)
             report_data.setdefault("paths", {})["oid_gdb"] = "Unavailable"
 
-        try:
-            raw_metrics = self.collect_oid_metrics_fn(p["oid_fc"])
-            summary, reels = self.summarize_oid_metrics_fn(raw_metrics)
-            report_data["metrics"].update(summary)
-            report_data["reels"] = reels
-        except Exception as e:
-            logger.warning(f"Could not gather OID stats: {e}", indent=1)
+        oid_fc_value = p.get("oid_fc")
+        if isinstance(oid_fc_value, str) and oid_fc_value.strip():
+            try:
+                raw_metrics = self.collect_oid_metrics_fn(oid_fc_value)
+                summary, reels = self.summarize_oid_metrics_fn(raw_metrics)
+                report_data["metrics"].update(summary)
+                report_data["reels"] = reels
+            except Exception as e:
+                logger.warning(f"Could not gather OID stats: {e}", indent=1)
+        else:
+            logger.warning("Skipping OID stats: OID path is missing or invalid.", indent=1)
 
         # Count reel folders under the resolved local input path
         try:

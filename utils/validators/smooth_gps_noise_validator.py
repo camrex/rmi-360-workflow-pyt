@@ -18,14 +18,18 @@
 # Notes:                Used for validation of smoothing and outlier detection settings for GPS data.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     validate_keys_with_types
 )
 
-def validate(cfg: "ConfigManager") -> bool:
+if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
+
+def validate(cfg: "ConfigManager") -> bool:
     """
     Validates the 'gps_smoothing' section of the configuration for required keys and value types.
 
@@ -55,8 +59,15 @@ def validate(cfg: "ConfigManager") -> bool:
 
     error_count += validate_keys_with_types(cfg, gps, required_keys, "gps_smoothing", required=True)
 
+    optional_keys = {
+        "segment_break_distance_m": (int, float),
+        "segment_break_time_seconds": (int, float),
+    }
+
+    error_count += validate_keys_with_types(cfg, gps, optional_keys, "gps_smoothing", required=False)
+
     angle_bounds = gps.get("angle_bounds_deg")
-    if angle_bounds is None:
+    if angle_bounds is not None:
         if not (isinstance(angle_bounds, list) and len(angle_bounds) == 2):
             logger.error("gps_smoothing.angle_bounds_deg must be a list of two values",
                          error_type=ConfigValidationError)

@@ -119,14 +119,25 @@ def str_to_value(
 
     # Allow "int", "float", "str", etc. as strings
     _PRIMITIVE_MAP = {"int": int, "float": float, "str": str, "bool": bool}
-    if isinstance(value_type, str) and value_type.lower() in _PRIMITIVE_MAP:
-        value_type = _PRIMITIVE_MAP[value_type.lower()]
+    converter = value_type
+    if isinstance(converter, str):
+        mapped = _PRIMITIVE_MAP.get(converter.lower())
+        if mapped is None:
+            if logger:
+                logger.debug(f"Unsupported value_type '{converter}'", indent=1)
+            return None
+        converter = mapped
+
+    if not callable(converter):
+        if logger:
+            logger.debug(f"Unsupported non-callable value_type: {converter}", indent=1)
+        return None
 
     try:
-        return value_type(value)
+        return converter(value)
     except (ValueError, TypeError) as e:
         if logger:
-            logger.debug(f"Failed to convert '{value}' to {value_type}: {e}", indent=1)
+            logger.debug(f"Failed to convert '{value}' to {converter}: {e}", indent=1)
         return None
 
 
@@ -155,7 +166,13 @@ def backup_oid(
     datetime_mod = datetime_mod or datetime
     logger = logger or cfg.get_logger()
     try:
-        gdb_path = cfg.paths.backup_gdb
+        gdb_path_raw = cfg.paths.backup_gdb
+        if gdb_path_raw is None:
+            if logger:
+                logger.warning("OID backup skipped: cfg.paths.backup_gdb is not configured.", indent=1)
+            return
+
+        gdb_path = path_mod(gdb_path_raw)
         gdb_path.parent.mkdir(parents=True, exist_ok=True)
         if not gdb_path.exists():
             try:
@@ -163,7 +180,8 @@ def backup_oid(
             except arcpy_mod.ExecuteError as e:
                 # Check if error is due to GDB already existing
                 if "already exists" in str(e):
-                    logger.debug(f"GDB already exists (race condition): {gdb_path}")
+                    if logger:
+                        logger.debug(f"GDB already exists (race condition): {gdb_path}")
                 else:
                     raise
         oid_desc = arcpy_mod.Describe(oid_fc)
@@ -171,7 +189,9 @@ def backup_oid(
         timestamp = datetime_mod.now().strftime("%Y%m%d_%H%M")
         out_fc_name = f"{oid_name}_before_{step_key}_{timestamp}"
         out_fc_path = str(gdb_path / out_fc_name)
-        logger.custom(f"Backing up OID before step '{step_key}' → {out_fc_name}", indent=1, emoji="💾")
+        if logger:
+            logger.custom(f"Backing up OID before step '{step_key}' -> {out_fc_name}", indent=1, emoji="💾")
         arcpy_mod.management.Copy(oid_fc, out_fc_path)
     except Exception as e:
-        logger.warning(f"OID backup before step '{step_key}' failed: {e}", indent=1)
+        if logger:
+            logger.warning(f"OID backup before step '{step_key}' failed: {e}", indent=1)

@@ -76,19 +76,36 @@ def check_sufficient_disk_space(
     folder_size_func=None
 ) -> bool:
     """
-    Verify available disk space against the size of the dataset's configured "original" image folder.
-    
-    Determines the total size of the feature-class-linked original image directory, applies the configured safety buffer ratio, and compares the estimated required space to the drive's available free space. Supports dependency injection for the search cursor, disk-usage retrieval, and folder-size calculation to facilitate testing.
-    
+    Verify available disk space against the configured original image folder.
+
+    Determines the total size of the feature-class-linked original image directory,
+    applies the configured safety buffer ratio, and compares required space to the
+    drive's available free space.
+
     Parameters:
         oid_fc (str): Path to the Oriented Imagery Dataset feature class.
         cfg (ConfigManager): Configuration manager providing settings and logger.
-        cursor_factory (callable, optional): Factory that yields a search cursor over the feature class; used for testing.
-        disk_usage_func (callable, optional): Function to obtain disk usage for a path (e.g., shutil.disk_usage); used for testing.
-        folder_size_func (callable, optional): Function to compute folder size; used for testing.
-    
+        cursor_factory (callable, optional): Injectable search-cursor factory used
+            to read ImagePath values (primarily for testing).
+        disk_usage_func (callable, optional): Injectable function used to retrieve
+            disk usage (primarily for testing).
+        folder_size_func (callable, optional): Injectable function used to compute
+            folder size (primarily for testing).
+
     Returns:
-        True
+        bool: True when validation succeeds.
+
+    Raises:
+        ValueError: If required config/path-derived values are invalid (for example,
+            missing ImagePath values or missing configured original-folder token in
+            the image path).
+        RuntimeError: If available disk space is insufficient, or if disk/folder
+            size checks fail and a RuntimeError is raised by internal/propagated
+            checks.
+
+    Notes:
+        Exceptions from injected dependencies and internal checks are allowed to
+        propagate so callers can handle them.
     """
     logger = cfg.get_logger()
 
@@ -107,8 +124,9 @@ def check_sufficient_disk_space(
     with cursor_factory(oid_fc, ["ImagePath"]) as cursor:
         image_path = next((row[0] for row in cursor if row[0]), None)
 
-    if not image_path:
+    if not isinstance(image_path, str) or not image_path:
         logger.error(f"No valid ImagePath found in the OID feature class: {oid_fc}", error_type=ValueError, indent=1)
+        raise ValueError(f"No valid ImagePath found in the OID feature class: {oid_fc}")
 
     # Determine target folder from ImagePath
     target_dir = os.path.dirname(image_path)
@@ -118,10 +136,11 @@ def check_sufficient_disk_space(
 
     base_dir = find_base_dir(target_dir, original_folder)
 
-    if not base_dir:
+    if not isinstance(base_dir, str) or not base_dir:
         logger.error(
             f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}",
             error_type=ValueError, indent=1)
+        raise ValueError(f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}")
 
     if not os.path.exists(base_dir):
         logger.error(f"Base folder not found: {base_dir}", error_type=FileNotFoundError, indent=1)

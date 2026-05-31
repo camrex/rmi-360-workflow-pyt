@@ -58,8 +58,7 @@ class GenerateOIDService(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         # Oriented Imagery Dataset (OID)
@@ -70,7 +69,6 @@ class GenerateOIDService(object):
             parameterType="Required",
             direction="Input"
         )
-        oid_param.description = "Path to an existing OID feature class."
         params.append(oid_param)
 
         # Config file
@@ -81,7 +79,6 @@ class GenerateOIDService(object):
             parameterType="Optional",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         return params

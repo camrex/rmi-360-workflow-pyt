@@ -31,7 +31,7 @@ from __future__ import annotations
 import keyring
 from boto3.session import Session
 from botocore.exceptions import ClientError, NoCredentialsError
-from typing import Tuple, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
@@ -57,17 +57,19 @@ def get_aws_credentials(cfg: "ConfigManager") -> Tuple[str, str]:
     if use_keyring:
         access_key = keyring.get_password(service_name, "aws_access_key_id")
         secret_key = keyring.get_password(service_name, "aws_secret_access_key")
-        if not access_key or not secret_key:
+        if not isinstance(access_key, str) or not access_key.strip() or not isinstance(secret_key, str) or not secret_key.strip():
             logger.error(f"AWS credentials not found in keyring for service '{service_name}'.", indent=2,
                          error_type=RuntimeError)
+            raise RuntimeError(f"AWS credentials not found in keyring for service '{service_name}'.")
         logger.custom("Retrieved AWS credentials from keyring.", indent=2, emoji="🔑")
         return access_key, secret_key
     else:
         access_key = cfg.get("aws.access_key")
         secret_key = cfg.get("aws.secret_key")
-        if not access_key or not secret_key:
+        if not isinstance(access_key, str) or not access_key.strip() or not isinstance(secret_key, str) or not secret_key.strip():
             logger.error("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key "
                          "settings.", indent=2, error_type=RuntimeError)
+            raise RuntimeError("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key settings.")
         logger.custom("Retrieved AWS credentials from config.", indent=2, emoji="🔑")
         return access_key, secret_key
 
@@ -118,4 +120,24 @@ def get_boto3_session(cfg):
     else:
         access_key, secret_key = get_aws_credentials(cfg)
         return verify_aws_credentials(access_key, secret_key, region, logger)
+
+
+def validate_s3_bucket_access(cfg: "ConfigManager", bucket: Optional[str] = None) -> Session:
+    """Verify AWS auth and target S3 bucket access before starting upload-dependent work."""
+    logger = cfg.get_logger()
+    bucket = bucket or cfg.get("aws.s3_bucket")
+
+    if not bucket:
+        logger.error("AWS S3 bucket is not configured.", indent=2, error_type=RuntimeError)
+
+    try:
+        session = get_boto3_session(cfg)
+        logger.info(f"Verifying S3 bucket access: {bucket}", indent=1)
+        s3 = session.client("s3")
+        s3.head_bucket(Bucket=bucket)
+        logger.custom(f"S3 bucket access verified: {bucket}", indent=2, emoji="🪣")
+        return session
+    except (ClientError, NoCredentialsError, Exception) as e:
+        logger.error(f"AWS S3 preflight failed for bucket '{bucket}': {e}", indent=2, error_type=RuntimeError)
+        raise
 

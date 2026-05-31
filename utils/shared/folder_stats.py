@@ -35,11 +35,12 @@ from typing import List, Optional, Tuple
 def format_size(num_bytes: int) -> str:
     """Return a human-readable string for a file size (e.g., 1.5 GiB)."""
     # Using binary prefixes (like humanize.naturalsize(binary=True))
+    size = float(num_bytes)
     for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
-        if num_bytes < 1024.0:
-            return f"{num_bytes:.1f} {unit}"
-        num_bytes /= 1024.0
-    return f"{num_bytes:.1f} PiB"
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} PiB"
 
 
 def folder_stats(path: str, extensions: Optional[List[str]] = None) -> Tuple[int, str]:

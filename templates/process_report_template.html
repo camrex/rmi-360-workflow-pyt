@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mosaic 360 Report – {{ project.number }}</title>
   <style>
     body {
@@ -200,18 +201,20 @@
 <ul>
   <li><strong>AWS Bucket:</strong> {{ aws.bucket }}</li>
   <li><strong>Export Folder:</strong> {{ aws.folder }}</li>
-  {% if upload is defined %}
-    <li>
+  <li>
     <strong>Status:</strong>
-    {% if upload.status == "canceled" %}
-      <span class="status-warn">Upload was canceled before completion</span>
-    {% elif upload.status == "completed_after_cancel" %}
-      <span class="status-ok">Upload completed successfully after previous cancellation</span>
+    {% if upload is defined %}
+      {% if upload.status == "canceled" %}
+        <span class="status-warn">Upload was canceled before completion</span>
+      {% elif upload.status == "completed_after_cancel" %}
+        <span class="status-ok">Upload completed successfully after previous cancellation</span>
+      {% else %}
+        <span class="status-ok">Upload completed successfully</span>
+      {% endif %}
     {% else %}
-      <span class="status-ok">Upload completed successfully</span>
+      <span class="status-warn">Upload status unavailable</span>
     {% endif %}
-    </li>
-  {% endif %}
+  </li>
 </ul>
 
 <div class="footer">

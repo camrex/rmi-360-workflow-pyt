@@ -3,7 +3,6 @@
 
 This guide explains the utility functions and helpers that power nearly every tool in the Mosaic 360 Toolbox. These are mostly located in the `utils/` directory and are reused across tools, orchestrators, and validation scripts.
 
-
 ---
 
 ## 🧠 Expression Resolution
@@ -23,9 +22,11 @@ Supports chaining, functions, and date formatting.
 ## 🧾 CSV and EXIF Helpers
 
 ### `write_csv(path, rows, headers)`
+
 - Writes a list of dicts to a CSV file
 
 ### `build_exiftool_args_file()`
+
 - Used to create `.args` batch file for ExifTool
 - Automatically quoted and formatted for multiline execution
 

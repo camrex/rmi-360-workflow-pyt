@@ -23,13 +23,12 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 # Skip arcpy imports if ArcGIS not installed
-import builtins
 if 'arcpy' not in sys.modules:
     import types
-    sys.modules['arcpy'] = types.SimpleNamespace(
-        env=types.SimpleNamespace(workspace=None),
-        Exists=lambda *a, **k: False,
-    )
+    arcpy_stub = types.ModuleType("arcpy")
+    setattr(arcpy_stub, "env", types.SimpleNamespace(workspace=None))
+    setattr(arcpy_stub, "Exists", lambda *a, **k: False)
+    sys.modules['arcpy'] = arcpy_stub
 
 
 def main() -> int:
@@ -101,7 +100,7 @@ def main() -> int:
         if 'reels' in folder_types and not args.include_reels:
             print("[WARNING] Downloading reels. Normally orchestrator handles reel downloads.", file=sys.stderr)
 
-        print(f"[INFO] Downloading project files from S3")
+        print("[INFO] Downloading project files from S3")
         print(f"[INFO] Bucket: {bucket}")
         print(f"[INFO] Project Key: {args.project_key}")
         print(f"[INFO] Folder Types: {', '.join(folder_types)}")

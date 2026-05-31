@@ -65,8 +65,7 @@ class GenerateReportFromJSONTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         # Report JSON file
@@ -77,8 +76,8 @@ class GenerateReportFromJSONTool(object):
             parameterType="Required",
             direction="Input"
         )
-        json_param.filter.list = ["json"]
-        json_param.description = "Path to the saved report_data_<slug>.json file containing all report inputs."
+        if json_param.filter is not None:
+            json_param.filter.list = ["json"]
         params.append(json_param)
 
         # Config file (optional reattachment)
@@ -88,10 +87,6 @@ class GenerateReportFromJSONTool(object):
             datatype="DEFile",
             parameterType="Optional",
             direction="Input"
-        )
-        config_param.description = (
-            "Optional config.yaml file to reattach config context for paths, templates, and logos. "
-            "Used only if not already included in the report JSON."
         )
         params.append(config_param)
 

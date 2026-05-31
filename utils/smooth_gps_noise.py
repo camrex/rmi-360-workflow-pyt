@@ -67,6 +67,37 @@ def angle_between(p1, p2, p3):
     return abs(degrees(angle2 - angle1)) % 360
 
 
+def _time_gap_seconds(prev_ts, curr_ts) -> float:
+    if prev_ts is None or curr_ts is None:
+        return 0.0
+    try:
+        return max(0.0, (curr_ts - prev_ts).total_seconds())
+    except Exception:
+        return 0.0
+
+
+def split_reel_into_capture_segments(points: List[dict], cfg: ConfigManager) -> List[List[dict]]:
+    if not points:
+        return []
+
+    capture_spacing = cfg.get("gps_smoothing.capture_spacing_meters", 5.0)
+    distance_break = cfg.get("gps_smoothing.segment_break_distance_m", capture_spacing * 20)
+    time_break = cfg.get("gps_smoothing.segment_break_time_seconds", 120.0)
+
+    segments = [[points[0]]]
+    for point in points[1:]:
+        prev_point = segments[-1][-1]
+        step_distance = haversine(prev_point["x"], prev_point["y"], point["x"], point["y"])
+        time_gap = _time_gap_seconds(prev_point.get("ts"), point.get("ts"))
+
+        if step_distance > distance_break or time_gap > time_break:
+            segments.append([point])
+        else:
+            segments[-1].append(point)
+
+    return segments
+
+
 def process_gps_metrics(
         points: List[dict],
         cfg: ConfigManager,
@@ -113,7 +144,8 @@ def process_gps_metrics(
                 p["route_dist"] = 0
 
         global_counter[0] += 1
-        progressor.update(global_counter[0])
+        if progressor is not None:
+            progressor.update(global_counter[0])
 
     # Route distance smoothing
     for i in range(1, len(points) - 1):
@@ -121,7 +153,8 @@ def process_gps_metrics(
         avg = (prev["route_dist"] + nxt["route_dist"]) / 2
         curr["route_dev"] = abs(curr["route_dist"] - avg)
         global_counter[0] += 1
-        progressor.update(global_counter[0])
+        if progressor is not None:
+            progressor.update(global_counter[0])
 
 
 def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[str] = None) -> None:
@@ -171,6 +204,14 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
     for pts in points_by_reel.values():
         pts.sort(key=lambda p: p["ts"])
 
+    points_by_segment: Dict[str, List[dict]] = {}
+    for reel, pts in points_by_reel.items():
+        for segment_index, segment_pts in enumerate(split_reel_into_capture_segments(pts, cfg), start=1):
+            segment_key = f"{reel}__SEG{segment_index:03d}"
+            for point in segment_pts:
+                point["segment"] = segment_key
+            points_by_segment[segment_key] = segment_pts
+
     # Load centerline routes
     routes = []
     route_sr = None
@@ -182,68 +223,69 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
             route_sr = routes[0].spatialReference
 
     # Count total for progress tracking
-    total_points = sum(len(v) for v in points_by_reel.values()) * 2
+    total_points = sum(len(v) for v in points_by_segment.values()) * 2
     global_counter = [0]
 
     # Create a single progressor for all reels
     with cfg.get_progressor(total=total_points, label="Smoothing GPS") as progressor:
-        for reel, pts in points_by_reel.items():
-            process_gps_metrics(pts, cfg, routes, route_sr, reel, global_counter, total_points, logger, progressor)
+        for segment_key, pts in points_by_segment.items():
+            process_gps_metrics(pts, cfg, routes, route_sr, segment_key, global_counter, total_points, logger, progressor)
 
 
-    # Flag outliers
+    # Flag outliers within each reel independently
     outlier_oids = set()
     csv_rows = []
-    all_pts = [p for sub in points_by_reel.values() for p in sub]
+    csv_rows_by_oid = {}
 
+    for pts in points_by_segment.values():
+        for i, p in enumerate(pts):
+            # Initial exclusion: first point in a reel can never be flagged
+            if i == 0:
+                p["is_outlier"] = False
+                p["Reason_Count"] = 0
+            else:
+                reasons = {
+                    "Deviation": p["deviation"] > deviation_thresh,
+                    "Angle": not (angle_bounds[0] <= p["angle"] <= angle_bounds[1]),
+                    "Step": p["step"] < spacing - proximity_range or p["step"] > spacing + proximity_range,
+                    "RouteDev": p.get("route_dev", 0) > max_route_dev
+                }
+                count = sum(reasons.values())
+                p["is_outlier"] = count >= outlier_threshold
+                p["Reason_Count"] = count
+                p.update({f"Reason_{k}": v for k, v in reasons.items()})
 
-    for i, p in enumerate(all_pts):
-        # Initial exclusion: first point can never be flagged
-        if i == 0:
-            p["is_outlier"] = False
-        else:
-            reasons = {
-                "Deviation": p["deviation"] > deviation_thresh,
-                "Angle": not (angle_bounds[0] <= p["angle"] <= angle_bounds[1]),
-                "Step": p["step"] < spacing - proximity_range or p["step"] > spacing + proximity_range,
-                "RouteDev": p.get("route_dev", 0) > max_route_dev
-            }
-            count = sum(reasons.values())
-            p["is_outlier"] = count >= outlier_threshold
-            p["Reason_Count"] = count
-            p.update({f"Reason_{k}": v for k, v in reasons.items()})
+            if p["is_outlier"]:
+                outlier_oids.add(p["oid"])
 
-        if p["is_outlier"]:
-            outlier_oids.add(p["oid"])
+            # Append to CSV only if at least one reason is True
+            if p.get("Reason_Count", 0):
+                reasons_str = [k for k in ["Deviation", "Angle", "Step", "RouteDev"] if p.get(f"Reason_{k}")]
+                row = {
+                    "OID": p["oid"],
+                    "Deviation": round(p["deviation"], 3),
+                    "Angle": round(p["angle"], 2),
+                    "Step": round(p["step"], 3),
+                    "RouteDist": round(p["route_dist"], 3),
+                    "RouteDistDev": round(p.get("route_dev", 0), 3),
+                    "Reason_Deviation": p.get("Reason_Deviation", False),
+                    "Reason_Angle": p.get("Reason_Angle", False),
+                    "Reason_Step": p.get("Reason_Step", False),
+                    "Reason_RouteDev": p.get("Reason_RouteDev", False),
+                    "Reason_Count": p.get("Reason_Count", 0),
+                    "Is_Outlier": p["is_outlier"],
+                    "QCReason": ", ".join(reasons_str)
+                }
+                csv_rows.append(row)
+                csv_rows_by_oid[p["oid"]] = row
 
-        # Append to CSV only if at least one reason is True
-        if p.get("Reason_Count", 0):
-            reasons_str = [k for k in ["Deviation", "Angle", "Step", "RouteDev"] if p.get(f"Reason_{k}")]
-            csv_rows.append({
-                "OID": p["oid"],
-                "Deviation": round(p["deviation"], 3),
-                "Angle": round(p["angle"], 2),
-                "Step": round(p["step"], 3),
-                "RouteDist": round(p["route_dist"], 3),
-                "RouteDistDev": round(p.get("route_dev", 0), 3),
-                "Reason_Deviation": p.get("Reason_Deviation", False),
-                "Reason_Angle": p.get("Reason_Angle", False),
-                "Reason_Step": p.get("Reason_Step", False),
-                "Reason_RouteDev": p.get("Reason_RouteDev", False),
-                "Reason_Count": p.get("Reason_Count", 0),
-                "Is_Outlier": p["is_outlier"],
-                "QCReason": ", ".join(reasons_str)
-            })
-
-    # Propagate flags for sequences (surrounded by outliers)
-    for i in range(1, len(all_pts) - 1):
-        if not all_pts[i]["is_outlier"] and all_pts[i - 1]["is_outlier"] and all_pts[i + 1]["is_outlier"]:
-            all_pts[i]["is_outlier"] = True
-            outlier_oids.add(all_pts[i]["oid"])
-            for row in csv_rows:
-                if row["OID"] == all_pts[i]["oid"]:
-                    row["Is_Outlier"] = True
-                    break
+        # Propagate flags for sequences (surrounded by outliers) within the same reel only
+        for i in range(1, len(pts) - 1):
+            if not pts[i]["is_outlier"] and pts[i - 1]["is_outlier"] and pts[i + 1]["is_outlier"]:
+                pts[i]["is_outlier"] = True
+                outlier_oids.add(pts[i]["oid"])
+                if pts[i]["oid"] in csv_rows_by_oid:
+                    csv_rows_by_oid[pts[i]["oid"]]["Is_Outlier"] = True
 
     # Write CSV debug log
     if csv_rows:
@@ -273,5 +315,5 @@ def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[st
 
     logger.success(f"Detected and flagged {len(outlier_oids)} GPS outlier(s).", indent=1)
     logger.info(
-        f"Processed {sum(len(v) for v in points_by_reel.values())} GPS points across {len(points_by_reel)} reel(s).", indent=1)
+        f"Processed {sum(len(v) for v in points_by_segment.values())} GPS points across {len(points_by_segment)} capture segment(s) in {len(points_by_reel)} reel(s).", indent=1)
 

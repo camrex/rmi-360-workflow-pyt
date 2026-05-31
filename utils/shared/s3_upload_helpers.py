@@ -34,14 +34,14 @@ from typing import Set, Tuple, Optional
 
 try:
     import yaml
-except ImportError:
-    raise ImportError("PyYAML is required. Install with: pip install pyyaml")
+except ImportError as err:
+    raise ImportError("PyYAML is required. Install with: pip install pyyaml") from err
 
 try:
     import boto3
-    from botocore.exceptions import ClientError
-except ImportError:
-    raise ImportError("boto3 is required. Install with: pip install boto3")
+    from botocore.exceptions import ClientError, BotoCoreError
+except ImportError as err:
+    raise ImportError("boto3 is required. Install with: pip install boto3") from err
 
 
 def load_cfg(cfg_path: Path) -> dict:
@@ -88,7 +88,7 @@ def resolve_session(auth_mode: Optional[str], service_name: str = "rmi_s3"):
         try:
             import keyring
         except ImportError:
-            raise RuntimeError("auth_mode=keyring but 'keyring' is not installed. pip install keyring")
+            raise RuntimeError("auth_mode=keyring but \"keyring\" is not installed. pip install keyring") from None
 
         ak = keyring.get_password(service_name, "AWS_ACCESS_KEY_ID")
         sk = keyring.get_password(service_name, "AWS_SECRET_ACCESS_KEY")
@@ -197,7 +197,7 @@ def s3_object_matches_local(
         if code in ("404", "NoSuchKey", "NotFound"):
             return (False, "not_found")
         return (False, f"head_error:{code or 'unknown'}")
-    except Exception as e:
+    except BotoCoreError as e:
         return (False, f"head_exception:{type(e).__name__}")
 
     remote_size = head.get("ContentLength")
@@ -261,7 +261,7 @@ def s3_object_matches_local(
         if age_diff > 3600:  # 1 hour
             print(f"[WARNING] Large file size match but timestamps differ by {age_diff/3600:.1f} hours: {fpath.name}")
             print(f"[WARNING] Local: {local_mtime}, S3: {last_modified}")
-            print(f"[WARNING] Using size-only match - consider --force if concerned about integrity")
+            print("[WARNING] Using size-only match - consider --force if concerned about integrity")
 
     return (True, "size_match_large")
 

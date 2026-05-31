@@ -38,6 +38,7 @@
 # =============================================================================
 
 import arcpy
+from typing import Any, cast
 from utils.update_linear_and_custom import update_linear_and_custom
 from utils.manager.config_manager import ConfigManager
 
@@ -60,8 +61,7 @@ class UpdateLinearAndCustomTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         oid_param = arcpy.Parameter(
@@ -71,8 +71,8 @@ class UpdateLinearAndCustomTool(object):
             parameterType="Required",
             direction="Input"
         )
-        oid_param.filter.list = []
-        oid_param.description = "The Oriented Imagery Dataset feature class containing 360° image points."
+        if oid_param.filter is not None:
+            oid_param.filter.list = []
         params.append(oid_param)
 
         centerline_param = arcpy.Parameter(
@@ -82,8 +82,8 @@ class UpdateLinearAndCustomTool(object):
             parameterType="Required",
             direction="Input"
         )
-        centerline_param.filter.list = ["Polyline"]
-        centerline_param.description = "Centerline feature class with route calibration (M values)."
+        if centerline_param.filter is not None:
+            centerline_param.filter.list = ["Polyline"]
         params.append(centerline_param)
 
         route_id_param = arcpy.Parameter(
@@ -93,9 +93,9 @@ class UpdateLinearAndCustomTool(object):
             parameterType="Required",
             direction="Input"
         )
-        route_id_param.parameterDependencies = [centerline_param.name]
-        route_id_param.filter.list = ["Short", "Long", "Text"]
-        route_id_param.description = "Field in the centerline layer that uniquely identifies each route."
+        route_id_param.parameterDependencies = cast(Any, [centerline_param.name])
+        if route_id_param.filter is not None:
+            route_id_param.filter.list = ["Short", "Long", "Text"]
         params.append(route_id_param)
 
         enable_lr_param = arcpy.Parameter(
@@ -106,8 +106,7 @@ class UpdateLinearAndCustomTool(object):
             direction="Input"
         )
         enable_lr_param.value = True
-        enable_lr_param.description = ("If checked, calculates MP values (MP_Pre and MP_Num) using "
-                                       "UpdateLinearAndCustom.")
+        # Toggle linear referencing calculations when running UpdateLinearAndCustom.
         params.append(enable_lr_param)
 
         # Config file
@@ -118,7 +117,6 @@ class UpdateLinearAndCustomTool(object):
             parameterType="Required",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         return params

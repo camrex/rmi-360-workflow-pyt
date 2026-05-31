@@ -1,7 +1,8 @@
 # 🛠️ Tool: Smooth GPS Noise
 
 ## 🧑‍💻 Tool Name
-**Smooth GPS Noise**
+
+Smooth GPS Noise
 
 ---
 
@@ -15,9 +16,9 @@ Corrects GPS outliers and smooths the location data for images in an Oriented Im
 
 | Parameter            | Required | Description                                      |
 |----------------------|----------|--------------------------------------------------|
-| OID Feature Class    | ✅       | Input OID containing GPS data                     |
-| Config File          | ✅       | Path to `config.yaml` with smoothing options      |
-| Project Folder       | ✅       | Project root for resolving outputs                |
+| OID Feature Class    | ✅       | Input OID containing GPS data                    |
+| Config File          | ✅       | Path to `config.yaml` with smoothing options     |
+| Project Folder       | ✅       | Project root for resolving outputs               |
 
 ---
 
@@ -109,6 +110,7 @@ gps_smoothing:
 ```
 
 Optional debug CSV path:
+
 ```yaml
 logs.gps_smooth_debug: "debuglog_outliers.csv"
 ```
@@ -140,7 +142,7 @@ correct_gps_outliers(
 ## 📤 Outputs
 
 | Output | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `QCFlag` (TEXT) | Added/updated for all flagged outliers (`"GPS_OUTLIER"`) |
 | Geometry (XY) | Adjusted for flagged points (unless `Flag Only` is enabled) |
 | `CameraOrientation` | Recomputed for corrected points |
@@ -151,10 +153,12 @@ correct_gps_outliers(
 ## ✅ Validation
 
 Validated in `validate_config.py` under:
+
 - `validate_tool_smooth_gps_noise`
 - `validate_tool_correct_gps_outliers`
 
 Checks:
+
 - Required keys in `gps_smoothing`
 - Type validation (int/float/list)
 - Ensures `angle_bounds_deg` is a 2-element list

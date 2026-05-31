@@ -1,6 +1,6 @@
 # 🛠️ AWS Setup Guide for RMI 360 Imaging Workflow Python Toolbox
 
-This guide documents how to configure AWS credentials, roles, and permissions securely required to support the following 
+This guide documents how to configure AWS credentials, roles, and permissions securely required to support the following
 RMI 360 Imaging Workflow Python Toolbox scripts:
 
 - `copy_to_aws.py`
@@ -11,11 +11,14 @@ RMI 360 Imaging Workflow Python Toolbox scripts:
 ---
 
 ## ✅ IAM User Setup (for Local Scripts)
+
 Create a dedicated IAM user (e.g., `project-deployer`) with:
+
 - **Programmatic access only**
 - An access key stored in **keyring** under a unique service name (e.g., `aws_s3`)
 
 ### Required IAM Policy (Custom)
+
 Attach a policy like this to the user:
 
 ```json
@@ -73,11 +76,14 @@ Attach a policy like this to the user:
   ]
 }
 ```
+>
 > - Update `<YOUR-AWS-ACCOUNT-ID>` with your actual AWS account number.
 > - Update `<YOUR-BUCKET-NAME>` with your actual AWS bucket name.
 
 ### Script Configuration
+
 In `config.yaml`, include:
+
 ```yaml
 aws:
   region: <YOUR-AWS-REGION>
@@ -91,9 +97,11 @@ aws:
 ## ✅ Lambda Execution Role Setup
 
 ### Lambda Role: `LambdaProgressMonitorRole`
+
 Attach these policies to the role used **by the Lambda functions**:
 
 #### 1. **AWSLambdaBasicExecutionRole** *(for logging)*
+
 ```json
 {
   "Effect": "Allow",
@@ -107,6 +115,7 @@ Attach these policies to the role used **by the Lambda functions**:
 ```
 
 #### 2. **LambdaUploadMonitorAccess** *(custom policy)*
+
 ```json
 {
   "Version": "2012-10-17",
@@ -138,6 +147,7 @@ Attach these policies to the role used **by the Lambda functions**:
   ]
 }
 ```
+>
 > - Update `<YOUR-BUCKET-NAME>` with your actual AWS bucket name.
 > - Update `<YOUR-AWS-REGION>` with your actual AWS region.
 > - Update `<YOUR-AWS-ACCOUNT-ID>` with your actual AWS account number.
@@ -147,6 +157,7 @@ Attach these policies to the role used **by the Lambda functions**:
 ## ✅ Lambda Scripts Overview
 
 ### `lambda_progress_monitor.py`
+
 - Monitors progress of image upload.
 - Generates `status/status.html` and updates `progress_<slug>.json`.
 - Invokes `DisableUploadMonitorRule` if stalled or complete.
@@ -157,6 +168,7 @@ Attach these policies to the role used **by the Lambda functions**:
   - `events:DisableRule`
 
 ### `disable_rule.py`
+
 - Simple Lambda to disable a named CloudWatch Events rule.
 - Requires:
   - `events:DisableRule`
@@ -166,27 +178,34 @@ Enable static website hosting on the bucket and configure the index document.
 ---
 
 ## 🗝️ Secure Credential Storage
+
 Use Python's `keyring` library to securely store and retrieve access keys:
 
 ```bash
 keyring set aws-deployer AWS_ACCESS_KEY_ID
 keyring set aws-deployer AWS_SECRET_ACCESS_KEY
 ```
+
 Or programmatically:
+
 ```python
 keyring.set_password("aws_s3", "AWS_ACCESS_KEY_ID", "<YOUR_AWS_ACCESS_KEY>")
 keyring.set_password("aws_s3", "AWS_SECRET_ACCESS_KEY", "<YOUR_AWS_SECRET_KEY>")
 ```
+
 You may also use the `SetAWSKeyringCredentialsTool` (ArcGIS Python Toolbox) to securely store credentials via UI:
+
 - Label: **Set AWS Keyring Credentials**
-- Category: **Setup** 
-- Prompts for Access Key ID and Secret Access Key 
+- Category: **Setup**
+- Prompts for Access Key ID and Secret Access Key
 - Stores credentials in the service name defined in config (default: `aws_s3` or user-defined)
 
 ---
 
 ## 🧪 Testing
+
 After setup:
+
 - Run `deploy_lambda_monitor.py` to create Lambdas, CloudWatch rule, and upload initial progress JSON.
 - Run `copy_to_aws.py` to upload images.
 - Monitor progress at: `https://<bucket>.s3.amazonaws.com/status/status.html`
@@ -194,8 +213,9 @@ After setup:
 ---
 
 ## ✅ Recap: Key Components
-| Component                    | Who Uses It             | Access Level           |
-|-----------------------------|--------------------------|-------------------------|
-| IAM User: project-deployer  | Scripts (local)          | Full S3 + deploy perms  |
-| LambdaProgressMonitorRole   | Lambda functions         | S3 read/write, logs     |
-| Keyring Service: aws-deployer | Scripts                | AWS credentials source  |
+
+| Component                     | Who Uses It             | Access Level           |
+| ----------------------------- |------------------------ |----------------------- |
+| IAM User: project-deployer    | Scripts (local)         | Full S3 + deploy perms |
+| LambdaProgressMonitorRole     | Lambda functions        | S3 read/write, logs    |
+| Keyring Service: aws-deployer | Scripts                 | AWS credentials source |

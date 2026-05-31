@@ -3,12 +3,14 @@
 ## Date: October 30, 2025
 
 ## Overview
+
 Updated the RMI 360 Workflow to support a new standardized folder structure on EC2 instances and expanded S3 bucket organization to include config and gis_data folders.
 
 ## New Folder Structure
 
 ### EC2 Instance
-```
+
+```text
 D:/Process360_Data/projects/{project_key}/
 ├── reels/          # Raw 360 video reels
 ├── config/         # Project-specific config files (NEW)
@@ -23,7 +25,8 @@ D:/Process360_Data/projects/{project_key}/
 ```
 
 ### S3 Bucket (rmi-360-raw)
-```
+
+```text
 s3://rmi-360-raw/{project_key}/
 ├── reels/          # Raw video uploads (existing)
 ├── config/         # Configuration files (NEW)
@@ -33,7 +36,9 @@ s3://rmi-360-raw/{project_key}/
 ## Files Modified
 
 ### 1. tools/process_360_orchestrator.py
+
 **Changes:**
+
 - Changed from `scratch/{slug}` to `projects/{slug}` structure
 - Updated `scratch_dir` variable to `project_dir`
 - Updated path references in comments
@@ -42,13 +47,16 @@ s3://rmi-360-raw/{project_key}/
 **Lines modified:** ~765-782, ~832, ~837
 
 ### 2. utils/s3_utils.py
+
 **New functionality:**
+
 - Added `stage_project_files()` function to download config/gis_data from S3
 - Added support for multiple folder types (config, gis_data)
 - Added Dict import for type hints
 - Updated `__all__` exports
 
 **New function signature:**
+
 ```python
 def stage_project_files(
     bucket: str,
@@ -61,20 +69,26 @@ def stage_project_files(
 ```
 
 ### 3. scripts/upload_helpers.py
+
 **New constants:**
+
 - `CONFIG_EXTS = {".yaml", ".yml", ".json", ".txt"}`
 - `GIS_DATA_EXTS = {".shp", ".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx", ".xml", ".geojson", ".json", ".kml", ".kmz", ".gdb", ".gpkg"}`
 
 **New function:**
+
 - `upload_project_files()` - Generic upload function for config and gis_data
 
 ### 4. scripts/upload_project_files.py (NEW FILE)
+
 **Purpose:**
+
 - Command-line script to upload config or gis_data files to S3
 - Supports dry-run mode
 - CSV logging with resume capability
 
 **Usage:**
+
 ```bash
 python scripts/upload_project_files.py \
   --config config.yaml \
@@ -85,21 +99,27 @@ python scripts/upload_project_files.py \
 ```
 
 ### 5. configs/config.sample.yaml
+
 **Changes:**
+
 - Updated `runtime.local_root` documentation
 - Changed default from placeholder to `D:/Process360_Data`
 - Added detailed comments explaining folder structure
 - Added S3 structure documentation
 
 ### 6. AWS_SETUP.md
+
 **Changes:**
+
 - Updated Step 8 (Smoke test) with new folder structure
 - Added EC2 and S3 directory structure diagrams
 - Updated testing steps to reflect new paths
 - Added reference to FOLDER_STRUCTURE_UPDATE.md
 
 ### 7. FOLDER_STRUCTURE_UPDATE.md (NEW FILE)
+
 **Purpose:**
+
 - Comprehensive documentation of the new folder structure
 - Migration guide for existing projects
 - Usage examples for new upload/download functionality
@@ -108,16 +128,19 @@ python scripts/upload_project_files.py \
 ## Key Features
 
 ### 1. Unified Project Directory
+
 - All project files in one location: `D:/Process360_Data/projects/{project_key}/`
 - Persistent storage (no longer in temporary "scratch" directory)
 - Better organization and easier maintenance
 
 ### 2. Config and GIS Data Support
+
 - Upload config files to S3 for cloud-based project management
 - Upload GIS reference data to S3
 - Download (stage) config and GIS data from S3 to EC2
 
 ### 3. Upload Scripts
+
 ```bash
 # Upload reels (existing)
 python scripts/upload_raw_reels.py --config config.yaml --folder reels/ --prefix RMI25320/reels/
@@ -130,6 +153,7 @@ python scripts/upload_project_files.py --config config.yaml --folder gis_data/ -
 ```
 
 ### 4. Download Support
+
 ```python
 from utils.s3_utils import stage_project_files
 
@@ -171,12 +195,14 @@ Before deploying to production:
 ### For Existing EC2 Instances
 
 1. Update `config.yaml`:
+
    ```yaml
    runtime:
      local_root: "D:/Process360_Data"
    ```
 
 2. Move existing data (if any):
+
    ```powershell
    # If old data exists in scratch location
    Move-Item "D:/old_location/scratch/RMI25320" "D:/Process360_Data/projects/RMI25320"

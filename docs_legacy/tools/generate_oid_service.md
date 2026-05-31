@@ -1,97 +1,78 @@
-# 🛠️ Tool: Generate OID Service
+# Tool: Generate OID Service
 
-## 🧑‍💻 Tool Name
-**Generate OID Service**
+## Tool Name
 
----
+Generate OID Service
 
-## 📝 Purpose
+## Purpose
 
-Publishes an Oriented Imagery Dataset (OID) as a web service, enabling access in ArcGIS Pro, web apps, and other clients. Automates configuration, registration, and deployment to ArcGIS Enterprise or Online, including setting permissions and logging.
+Publishes an Oriented Imagery Dataset using ArcGIS Pro's oriented imagery service tool.
 
----
+Before publish, the tool copies the input OID and rewrites `ImagePath` based on delivery mode:
 
-## 🧰 Parameters
+- Legacy mode (`secured_storage.enabled: false`): public S3 URL
+- Secured mode (`secured_storage.enabled: true`): `$virtualCacheDirectory:<key>`
 
-| Parameter            | Required | Description                                      |
-|----------------------|----------|--------------------------------------------------|
-| OID Feature Class    | ✅       | Input OID to publish                             |
-| Config File          | ✅       | Path to `config.yaml` with service settings       |
-| Project Folder       | ✅       | Project root for resolving outputs                |
+Object keys are generated using the same shared helper used by `copy_to_aws`, preventing drift between uploaded keys and ImagePath values.
 
----
-
-## 🗂️ Scripts & Components
-
-| Script                                  | Role/Responsibility                |
-|-----------------------------------------|------------------------------------|
-| `tools/generate_oid_service_tool.py`    | ArcGIS Toolbox wrapper             |
-| `utils/generate_oid_service.py`         | Core publishing logic              |
-| `utils/manager/config_manager.py`       | Loads and validates configuration  |
-
----
-
-## ⚙️ Behavior / Logic
-
-1. Loads service parameters from config.
-2. Registers OID with ArcGIS Enterprise/Online.
-3. Publishes as a web service.
-4. Sets sharing and access permissions.
-5. Logs results and errors.
-
----
-
-## 🗃️ Inputs
+## Inputs
 
 - OID feature class
-- Project YAML config with service settings
+- Config values from `portal`, `aws`, and optional `secured_storage`
 
----
+## Outputs
 
-## 📤 Output
+- Duplicated OID feature class with rewritten `ImagePath`
+- Published portal service item
 
-| Output | Description |
-|--------|-------------|
-| OID Feature Class | Copied and updated with public AWS URLs |
-| Portal Item | Hosted oriented imagery item published using ArcGIS Pro credentials |
-| Sharing | Controlled via `portal.share_with` (`PRIVATE`, `ORGANIZATION`, or `PUBLIC`) |
+## Runtime Behavior
 
----
+1. Validates config (`generate_oid_service` validator).
+2. Resolves delivery mode (`legacy` or `secured`).
+3. Copies input OID to an `_aws` variant.
+4. Rewrites `ImagePath` in copied OID:
+   - Legacy: `https://<bucket>.s3.<region>.amazonaws.com/<object_key>`
+   - Secured: `$virtualCacheDirectory:<object_key>`
+5. Publishes via `arcpy.oi.GenerateServiceFromOrientedImageryDataset` with configured portal options.
 
-## 🗝️ Configuration / Notes
-
-From `config.yaml`:
+## Configuration
 
 ```yaml
-generate_oid_service:
-  portal_url: "https://myportal.domain.com/portal"
-  service_name: "project_oid_service"
-  sharing: "public"
-  folder: "OID Services"
+portal:
+  project_folder: "config.project.number"
+  share_with: "PRIVATE"
+  add_footprint: "FOOTPRINT"
   portal_tags:
     - "config.project.number"
     - "Oriented Imagery"
-  summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
+  summary: "'Oriented Imagery for ' + config.project.number"
+
+aws:
+  s3_bucket: "<YOUR_S3_BUCKET_NAME>"
+  region: "<YOUR_AWS_S3_REGION>"
+  s3_bucket_folder: "config.project.slug"
+
+secured_storage:
+  enabled: false
+  cloud_store_name: "<CLOUD_STORE_NAME>"
+  s3_bucket: "<YOUR_SECURED_S3_BUCKET_NAME>"
+  region: "<YOUR_AWS_S3_REGION>"
+  s3_bucket_folder: "config.project.slug"
 ```
 
----
+## Validation
 
+Validator: `utils/validators/generate_oid_service_validator.py`
 
+Checks include:
 
-## ✅ Validation
+- Portal config structure (`project_folder`, tags, summary)
+- AWS folder expression resolves
+- If secured mode is enabled, validates secured storage bucket/region/folder settings
 
-Validation is performed by `validate_tool_generate_oid_service()` in `utils/validators`:
+## Notes
 
-- Checks:
-  - `portal.project_folder`, `portal.share_with`, and `portal_tags` are defined
-  - `aws.s3_bucket`, `region`, and `s3_bucket_folder` resolve correctly
-  - Optional fields like `summary` are validated and resolved from config
-
----
-
-## 📝 Notes
-
-- This tool does **not upload images** – images must already be uploaded via `Copy to AWS`
-- Publishing requires being signed in to ArcGIS Online or Enterprise Portal in ArcGIS Pro
-- The duplicated OID (e.g., `OID_AWS`) is stored in the same GDB as the original
-- Safe to re-run: existing hosted services will be replaced if the name matches
+- This tool does not upload images. Run Copy to AWS first.
+- Secured mode requires matching cloud store setup in ArcGIS Enterprise publish workflow.
+- In secured mode, publish now passes `virtual_cache_directory` from `secured_storage.cloud_store_name`.
+- ArcGIS Enterprise 12.0 secured-storage serving remains blocked by Esri Case #04187998.

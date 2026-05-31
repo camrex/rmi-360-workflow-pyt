@@ -17,14 +17,18 @@
 # Notes:                Used for validation of group index fields in OID creation and updates.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.validators.common_validators import (
     validate_type,
     validate_field_block
 )
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the 'grp_idx_fields' section of the configuration for group index assignment.
 

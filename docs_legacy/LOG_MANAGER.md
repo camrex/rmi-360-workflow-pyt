@@ -15,6 +15,7 @@
 `LogManager` provides structured, multi-format logging for command-line workflows, ArcGIS Pro tools, and orchestration scripts.
 
 It supports:
+
 - Multi-level logging (`info`, `debug`, `warning`, `error`)
 - Context metadata (e.g., `tool`, `reel`, `duration`)
 - HTML logs with collapsible steps and toggleable timestamps
@@ -81,6 +82,7 @@ log.export_all("mylog")  # exports all 3
 ## 📦 Context Metadata
 
 Every log call can accept a `context={}` dictionary, which:
+
 - Appends key-value info to `.txt`/`.html`
 - Is structured in `.json`
 
@@ -111,7 +113,7 @@ log.info("Exporting", context={"bucket": "prod-bucket", "file_count": 24})
 
 ## 🔁 Dependencies
 
-```
+```text
 - Internal: `utils/manager/path_manager.py`
 - External: `html`, `json`, `contextlib`, `time`, `datetime`
 ```

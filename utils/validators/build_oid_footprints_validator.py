@@ -17,7 +17,7 @@
 # Notes:                Used for validation of spatial reference and transformation settings in OID tools.
 # =============================================================================
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
@@ -25,9 +25,11 @@ from utils.validators.common_validators import (
     try_resolve_config_expression
 )
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     # ✅ Ensure spatial_ref exists and is a dictionary
     """
     Validates the configuration for the OID footprint building tool.

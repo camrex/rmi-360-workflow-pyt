@@ -73,8 +73,7 @@ class AddImagesToOIDTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for this Mosaic 360 imagery project; imagery and logs are organized under this folder.
         params.append(project_param)
 
         # Oriented Imagery Dataset (OID)
@@ -85,7 +84,7 @@ class AddImagesToOIDTool(object):
             parameterType="Required",
             direction="Input"
         )
-        oid_param.description = "Path to an existing OID feature class created using the schema template."
+        # Path to an existing OID feature class created using the schema template.
         params.append(oid_param)
 
         # Adjust Z (optional toggle)
@@ -97,10 +96,7 @@ class AddImagesToOIDTool(object):
             direction="Input"
         )
         adjust_z_param.value = True  # default to True, since typically needed
-        adjust_z_param.description = (
-            "Whether to apply a vertical offset (Z) to GPS elevation using the formula defined in config.yaml. "
-            "Disable if Mosaic Processor has already applied Z correction."
-        )
+        # Apply vertical offset to GPS elevation using config formula unless already corrected upstream.
         params.append(adjust_z_param)
 
         # Config file
@@ -111,7 +107,7 @@ class AddImagesToOIDTool(object):
             parameterType="Optional",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
+        # Optional config.yaml file with project-specific settings.
         params.append(config_param)
 
         return params

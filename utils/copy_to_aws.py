@@ -37,16 +37,22 @@ import threading
 import multiprocessing
 from datetime import datetime, timezone
 from typing import Optional, Any
-from boto3.session import Session
 from boto3.s3.transfer import create_transfer_manager, TransferConfig
 from botocore.config import Config
+from botocore.exceptions import ClientError, NoCredentialsError
 from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.aws_utils import get_boto3_session
+from utils.shared.oid_storage_paths import (
+    is_secured_storage_enabled,
+    build_oid_object_key,
+    resolve_oid_key_prefix,
+    resolve_oid_target_bucket,
+)
 
 
-def collect_upload_tasks(local_dir, include_extensions, bucket_folder):
+def collect_upload_tasks(local_dir, include_extensions, cfg: ConfigManager, secured_mode: bool = False):
     """
     Recursively collects all files with given extensions and returns (local_path, s3_key) tuples.
     """
@@ -56,9 +62,51 @@ def collect_upload_tasks(local_dir, include_extensions, bucket_folder):
             continue
         if file_path.suffix.lower() not in include_extensions:
             continue
-        rel_key = file_path.relative_to(local_dir).as_posix()
-        s3_key = f"{bucket_folder}/{rel_key}".lstrip("/")
+        # Use a single OID key builder so upload keys and ImagePath targets stay aligned.
+        s3_key = build_oid_object_key(cfg, file_path.name, secured_mode=secured_mode)
         tasks.append((str(file_path), s3_key))
+    return tasks
+
+
+def collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg: ConfigManager, secured_mode: bool = False, logger=None):
+    """Collect upload tasks from a manifest CSV with local_path or filename columns."""
+    manifest_path = Path(manifest_path)
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Delivery subset manifest not found: {manifest_path}")
+
+    tasks = []
+    seen = set()
+    with open(manifest_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            local_path = row.get("local_path") or row.get("image_path")
+            filename = row.get("filename")
+
+            if local_path:
+                local_file = Path(local_path)
+            elif filename:
+                local_file = Path(cfg.paths.renamed) / filename
+            else:
+                if logger:
+                    logger.warning(f"Skipping manifest row with no local_path or filename: {row}", indent=2)
+                continue
+
+            if not local_file.is_file():
+                if logger:
+                    logger.warning(f"Skipping manifest row for missing file: {local_file} (row={row})", indent=2)
+                continue
+            if local_file.suffix.lower() not in include_extensions:
+                if logger:
+                    logger.warning(f"Skipping manifest row for unsupported extension: {local_file} (row={row})", indent=2)
+                continue
+
+            s3_key = build_oid_object_key(cfg, local_file.name, secured_mode=secured_mode)
+            dedupe_key = (str(local_file), s3_key)
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            tasks.append((str(local_file), s3_key))
+
     return tasks
 
 def parse_uploaded_keys_from_log(log_file, logger):
@@ -118,10 +166,45 @@ def should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
         return True
     return False
 
+
+def verify_s3_target_access(s3_client, bucket: str, bucket_folder: str, logger) -> None:
+    """Verify that the target bucket is reachable before queueing uploads."""
+    try:
+        logger.info(f"Verifying S3 bucket access: s3://{bucket}/{bucket_folder}", indent=1)
+        s3_client.head_bucket(Bucket=bucket)
+        logger.custom("S3 bucket access verified.", indent=2, emoji="🪣")
+    except (ClientError, NoCredentialsError, Exception) as exc:
+        logger.error(f"Unable to access target S3 bucket '{bucket}': {exc}", indent=2)
+        raise
+
+
+def resolve_s3_client(session, bucket: str, use_accel: bool, logger):
+    """Create an S3 client, falling back when Transfer Acceleration is not enabled on the bucket."""
+    base_client = session.client("s3")
+
+    if not use_accel:
+        logger.info("S3 Transfer Acceleration endpoint disabled", indent=2)
+        return base_client, False
+
+    try:
+        accel_status = base_client.get_bucket_accelerate_configuration(Bucket=bucket).get("Status")
+    except (ClientError, NoCredentialsError, Exception) as exc:
+        logger.warning(f"Could not verify S3 Transfer Acceleration for bucket '{bucket}': {exc}. Falling back to standard endpoint.", indent=2)
+        return base_client, False
+
+    if accel_status == "Enabled":
+        logger.custom("Using S3 Transfer Acceleration endpoint", indent=2, emoji="🚀")
+        s3_cfg = Config(s3={"use_accelerate_endpoint": True})
+        return session.client("s3", config=s3_cfg), True
+
+    logger.warning(f"S3 Transfer Acceleration is not enabled for bucket '{bucket}'. Falling back to standard endpoint.", indent=2)
+    return base_client, False
+
 def copy_to_aws(
         cfg: ConfigManager,
         report_data: Optional[dict] = None,
         local_dir: Optional[str] = None,
+    manifest_path: Optional[str] = None,
         skip_existing: Optional[bool] = None,
         messages: Optional[Any] = None
 ):
@@ -149,9 +232,9 @@ def copy_to_aws(
                 "needed.", indent=1, emoji="⚠️")
 
     # AWS Setup
-    bucket = cfg.get("aws.s3_bucket")
-    region = cfg.get("aws.region", "us-east-2")
-    bucket_folder = cfg.resolve(cfg.get("aws.s3_bucket_folder"))
+    secured_mode = is_secured_storage_enabled(cfg)
+    bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
+    bucket_folder = resolve_oid_key_prefix(cfg, secured_mode=secured_mode)
     batch_size = cfg.get("aws.upload_batch_size", 25)
     max_workers_raw = cfg.get("aws.max_workers", 8)
     retries = cfg.get("aws.retries", 3)
@@ -159,8 +242,10 @@ def copy_to_aws(
 
     include_extensions = [".jpg", ".jpeg"]
     if local_dir is None:
-        local_dir = cfg.paths.renamed
-    local_dir = Path(local_dir)
+        local_dir_str = str(cfg.paths.renamed)
+    else:
+        local_dir_str = local_dir
+    local_dir_path = Path(local_dir_str)
 
     if skip_existing is None:
         skip_existing = cfg.get("aws.skip_existing", True)
@@ -172,6 +257,7 @@ def copy_to_aws(
     summary_file = cfg.paths.get_log_file_path("aws_upload_summary", cfg)
 
     logger.info("Preparing AWS Upload...", indent=1)
+    logger.info(f"Delivery mode: {'secured virtual cache' if secured_mode else 'legacy public URL'}", indent=2)
 
     # Concurrency resolution
     cpu_count = multiprocessing.cpu_count() or 4
@@ -192,7 +278,11 @@ def copy_to_aws(
         logger.warning(f"Invalid max_workers value: {max_workers_raw}. Using default {cpu_count}.", indent=2)
 
     # COLLECT ALL TASKS
-    all_tasks = collect_upload_tasks(local_dir, include_extensions, bucket_folder)
+    if manifest_path:
+        logger.info(f"Using delivery subset manifest: {manifest_path}", indent=2)
+        all_tasks = collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg, secured_mode=secured_mode, logger=logger)
+    else:
+        all_tasks = collect_upload_tasks(local_dir_path, include_extensions, cfg, secured_mode=secured_mode)
     if not all_tasks:
         logger.warning("No matching files found to upload.", indent=2)
         return {}
@@ -201,17 +291,39 @@ def copy_to_aws(
     try:
         logger.info("Retrieving AWS credentials...", indent=1)
         session = get_boto3_session(cfg)
-    except Exception:
-        # Error already logged; handle accordingly
-        return
+    except Exception as e:
+        # Error already logged upstream; return a consistent error payload.
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": str(e),
+        }
 
-    s3_cfg = Config(s3={"use_accelerate_endpoint": True}) if use_accel else None
-    s3 = session.client("s3", config=s3_cfg) if s3_cfg else session.client("s3")
+    s3, using_acceleration = resolve_s3_client(session, bucket, use_accel, logger)
 
-    if use_accel:
-        logger.custom("Using S3 Transfer Acceleration endpoint", indent=2, emoji="🚀")
-    else:
-        logger.info("S3 Transfer Acceleration endpoint disabled", indent=2)
+    try:
+        verify_s3_target_access(s3, bucket, bucket_folder, logger)
+    except Exception as ex:
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": f"Unable to access target S3 bucket '{bucket}': {ex}",
+        }
+
+    if using_acceleration:
+        logger.custom("Uploads will use the accelerated endpoint.", indent=2, emoji="🚀")
 
     logger.info("Starting AWS Upload...", indent=1)
     # Create TransferManager with custom configuration
@@ -254,7 +366,7 @@ def copy_to_aws(
         }
 
     start_time = time.time()
-    completed = {"count": 0}
+    completed = {"processed": 0, "uploaded": 0, "failed": 0}
     lock = threading.Lock()
     cancel_event = threading.Event()
 
@@ -287,7 +399,11 @@ def copy_to_aws(
         timestamp_str = datetime.now(timezone.utc).isoformat()
 
         with lock:
-            completed["count"] += 1
+            completed["processed"] += 1
+            if status == "uploaded":
+                completed["uploaded"] += 1
+            elif status == "error":
+                completed["failed"] += 1
             log_rows.append((timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration))
             with open(log_file, "a", newline="", encoding="utf-8") as csv_file:
                 csv_writer = csv.writer(csv_file)
@@ -317,7 +433,7 @@ def copy_to_aws(
                     logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
 
                 if cancel_event.is_set():
-                    progressor.update(completed["count"], "🛑 Upload canceled — finishing current batch.")
+                    progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
                     if report_data is not None:
                         upload_status = "canceled" if cancel_event.is_set() else "completed"
                         current_status = report_data.setdefault("upload", {}).get("status")
@@ -331,14 +447,19 @@ def copy_to_aws(
                     break
 
                 with lock:
-                    current = completed["count"]
+                    current = completed["processed"]
+                    uploaded = completed["uploaded"]
+                    failed = completed["failed"]
 
                 if current > last:
                     elapsed = time.time() - start_time
                     eta = (elapsed / current) * (total - current) if current > 0 else 0
                     eta_min, eta_sec = divmod(int(eta), 60)
                     eta_hr, eta_min = divmod(eta_min, 60)
-                    label = f"Uploading {current}/{total} images... ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
+                    label = (
+                        f"Processing {current}/{total} images... "
+                        f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
+                    )
                     progressor.update(current, label)
                     logger.custom(label, indent=3, emoji="☁️")
                     last = current
@@ -350,6 +471,8 @@ def copy_to_aws(
     write_summary_file(summary_file, summary_stats)
 
     logger.success(f"Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.", indent=1)
+    if summary_stats['failed'] and not summary_stats['uploaded']:
+        logger.warning("No files were uploaded successfully. Check AWS credentials, bucket name, region, and IAM permissions.", indent=1)
     logger.custom(f"Log written to: {log_file}", indent=1, emoji="📄")
     logger.custom(f"Upload summary written to: {summary_file}", indent=1, emoji="📊")
 

@@ -3,6 +3,7 @@
 ## Overview
 
 The RMI 360 Workflow previously had two separate upload scripts with overlapping functionality:
+
 - `upload_raw_reels_standalone.py` - Comprehensive reel upload with advanced resume features
 - `upload_project_files.py` - Multi-type artifact upload with timestamp support
 
@@ -13,29 +14,35 @@ These have been **consolidated into a single unified script** that combines the 
 ### Key Features
 
 ✅ **All folder types in one script**
+
 - reels, config, gis_data, logs, report
 
 ✅ **Robust resume mechanism**
+
 - S3 HEAD checks with MD5 verification for small files
 - Size-based matching for large/multipart uploads
 - CSV logging as backup
 
 ✅ **Flexible selection**
+
 - `--include` for specific folder types
 - `--exclude` to skip certain types
 - `--folder-type` for single-folder uploads
 
 ✅ **Timestamp support**
+
 - `--timestamp` for auto-generated timestamps
 - `--custom-timestamp` for specific versions
 - Optional (no flag = direct to folder)
 
 ✅ **Live monitoring**
+
 - `--status-json` for heartbeat status file
 - `--status-interval` configurable
 - Real-time progress tracking
 
 ✅ **Production-ready**
+
 - Graceful interrupt handling (Ctrl+C)
 - Dry-run mode
 - Force re-upload option
@@ -46,6 +53,7 @@ These have been **consolidated into a single unified script** that combines the 
 ### Old Approach
 
 **Upload reels:**
+
 ```bash
 python scripts/upload_raw_reels_standalone.py \
   --config config.yaml \
@@ -54,6 +62,7 @@ python scripts/upload_raw_reels_standalone.py \
 ```
 
 **Upload config:**
+
 ```bash
 python scripts/upload_project_files.py \
   --config config.yaml \
@@ -65,6 +74,7 @@ python scripts/upload_project_files.py \
 ### New Unified Approach
 
 **Upload reels:**
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -74,6 +84,7 @@ python scripts/upload_to_s3.py \
 ```
 
 **Upload config:**
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -84,6 +95,7 @@ python scripts/upload_to_s3.py \
 ```
 
 **Upload everything in one command:**
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -103,6 +115,7 @@ The orchestrator handles reel downloads based on the specific reels selected for
 ### Usage
 
 **Default behavior (excludes reels):**
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -111,6 +124,7 @@ python scripts/download_project_files.py \
 ```
 
 **Explicitly include reels (if needed):**
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -187,6 +201,7 @@ python scripts/upload_to_s3.py \
 ### Old Scripts
 
 **upload_raw_reels_standalone.py:**
+
 - ✅ S3 HEAD checks
 - ✅ MD5 verification (small files)
 - ✅ Size matching (large files)
@@ -195,6 +210,7 @@ python scripts/upload_to_s3.py \
 - ❌ Reels only
 
 **upload_project_files.py:**
+
 - ❌ No S3 HEAD checks (CSV only)
 - ❌ No MD5 verification
 - ✅ CSV logging
@@ -204,6 +220,7 @@ python scripts/upload_to_s3.py \
 ### New Unified Script
 
 **upload_to_s3.py:**
+
 - ✅ S3 HEAD checks
 - ✅ MD5 verification (small files)
 - ✅ Size matching (large files)
@@ -218,6 +235,7 @@ python scripts/upload_to_s3.py \
 The unified script works seamlessly with the orchestrator's automatic artifact backup:
 
 **config.yaml:**
+
 ```yaml
 orchestrator:
   upload_artifacts_to_s3: true
@@ -243,6 +261,7 @@ The orchestrator uses `utils/shared/backup_to_s3.py` which internally calls `upl
 ### Upload Scripts
 
 ❌ **Old:**
+
 ```bash
 # Different scripts for different purposes
 upload_raw_reels_standalone.py --prefix RMI25320/reels/
@@ -250,6 +269,7 @@ upload_project_files.py --folder-type config --timestamp
 ```
 
 ✅ **New:**
+
 ```bash
 # Single script with consistent interface
 upload_to_s3.py --folder-type reels --project-key RMI25320
@@ -259,12 +279,14 @@ upload_to_s3.py --folder-type config --project-key RMI25320 --timestamp
 ### Download Scripts
 
 ❌ **Old:**
+
 ```bash
 # Downloaded everything by default (including reels)
 download_project_files.py --folder-types config gis_data
 ```
 
 ✅ **New:**
+
 ```bash
 # Excludes reels by default (orchestrator handles reels)
 download_project_files.py  # Downloads: config, gis_data

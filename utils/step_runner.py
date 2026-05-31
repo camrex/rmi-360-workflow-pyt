@@ -77,6 +77,35 @@ def run_steps(
         ensure_report_steps(report)
         report["steps"].append(result)
 
+    def is_cancelled() -> bool:
+        messages = getattr(logger, "messages", None)
+        if not messages:
+            return False
+
+        for attr in ("isCanceled", "isCancelled"):
+            check = getattr(messages, attr, None)
+            if callable(check):
+                try:
+                    if check():
+                        return True
+                except Exception:
+                    return False
+        return False
+
+    def mark_workflow_cancelled(note: str) -> Dict[str, Any]:
+        logger.custom(note, indent=0, emoji="🛑")
+        report_data["cancelled"] = True
+        step_result = {
+            "name": "Workflow Cancelled",
+            "status": "🛑",
+            "time": "—",
+            "notes": note
+        }
+        append_step_result(report_data, step_result)
+        save_report_json(report_data, cfg)
+        results.append(step_result)
+        return step_result
+
     def should_skip_step(stp: Dict[str, Any], params: Dict[str, Any]) -> Optional[str]:
         skip_fn = stp.get("skip")
         if skip_fn:
@@ -110,27 +139,18 @@ def run_steps(
                 time.sleep(wait_seconds)
 
     def perform_cache_clearing(stp_key: str, oid_fc: Optional[str]):
-        """Clear ArcGIS caches after steps that modify feature classes to prevent stale data issues"""
+        """Clear the cached workspace connection after steps that modify the OID,
+        so the next step reads current data rather than a stale connection."""
         cache_clear_steps = ["smooth_gps_noise", "correct_gps_outliers"]
-        
+
         if stp_key in cache_clear_steps and oid_fc:
             try:
                 import arcpy
-                logger.info(f"🔄 Clearing ArcGIS caches after {stp_key} step...", indent=1)
-                
-                # Clear feature class caches
-                arcpy.ClearWorkspaceCache_management(arcpy.Describe(oid_fc).path)
-                
-                # Refresh workspace connections  
-                arcpy.RefreshCatalog(arcpy.Describe(oid_fc).path)
-                
-                # Force geometry index rebuild on next access
-                arcpy.management.RebuildIndexes(arcpy.Describe(oid_fc).path, "NO_SYSTEM")
-                
-                logger.info("✅ Cache clearing completed", indent=1)
-                
+                logger.info(f"🔄 Clearing workspace cache after {stp_key} step...", indent=1)
+                arcpy.management.ClearWorkspaceCache(arcpy.Describe(oid_fc).path)
+                logger.info("✅ Workspace cache cleared", indent=1)
             except Exception as e:
-                logger.warning(f"Cache clearing failed (non-critical): {e}", indent=1)
+                logger.warning(f"Workspace cache clear failed (non-critical): {e}", indent=1)
 
     def execute_step(lbl: str, function, rpt_data: Dict[str, Any], step_key=None):
         stp_start = datetime.now(timezone.utc)
@@ -148,6 +168,10 @@ def run_steps(
         return stts, note, stp_start, stp_end, elpsd
 
     for step_key in step_order[start_index:]:
+        if is_cancelled():
+            mark_workflow_cancelled("Workflow canceled by user before next step.")
+            break
+
         if step_key not in step_funcs:
             logger.error(f"Step '{step_key}' not found in step_funcs dictionary", error_type=KeyError, indent=0)
             break
@@ -189,6 +213,9 @@ def run_steps(
         append_step_result(report_data, step_result)
         save_report_json(report_data, cfg)
         results.append(step_result)
+        if is_cancelled():
+            mark_workflow_cancelled(f"Workflow canceled by user after step '{label}'.")
+            break
         if status == "❌":
             break
     return results

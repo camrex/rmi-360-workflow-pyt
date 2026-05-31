@@ -29,7 +29,7 @@
 
 import arcpy
 from collections import defaultdict
-from typing import Tuple, Dict, Any, List
+from typing import Dict, Any
 
 
 def collect_oid_metrics(
@@ -68,11 +68,25 @@ def collect_oid_metrics(
                     result["reel_data"][reel]["frames"].append(int(frame))
                     if acq:
                         result["reel_data"][reel]["dates"].append(acq)
+    except arcpy.ExecuteError as e:
+        if logger:
+            logger.error(f"Failed to collect OID metrics (ArcPy cursor error): {e}")
+        else:
+            print(f"Failed to collect OID metrics (ArcPy cursor error): {e}")
+        # Return empty metrics on error
+        return {"mp_values": [], "acq_dates": [], "reel_data": {}}
+    except (OSError, IOError) as e:
+        if logger:
+            logger.error(f"Failed to collect OID metrics (filesystem error): {e}")
+        else:
+            print(f"Failed to collect OID metrics (filesystem error): {e}")
+        # Return empty metrics on error
+        return {"mp_values": [], "acq_dates": [], "reel_data": {}}
     except Exception as e:
         if logger:
-            logger.error(f"Failed to collect OID metrics: {e}")
+            logger.error(f"Failed to collect OID metrics (unexpected error): {e}")
         else:
-            print(f"Failed to collect OID metrics: {e}")
+            print(f"Failed to collect OID metrics (unexpected error): {e}")
         # Return empty metrics on error
         return {"mp_values": [], "acq_dates": [], "reel_data": {}}
     return result

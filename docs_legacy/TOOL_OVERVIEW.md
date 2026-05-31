@@ -26,10 +26,12 @@ Every step is driven by `config.yaml` and supported by reusable utility scripts.
 ## 📂 Tool Categories
 
 ### 🛠 Setup Tools
+
 - `SetAWSKeyringCredentialsTool`: Store AWS keys securely using keyring
 - `CreateOIDTemplateTool`: Generate a reusable OID schema template
 
 ### ⚙️ Individual Tools
+
 These tools represent the core pipeline steps and can be run independently:
 
 - `RunMosaicProcessorTool`: Call the Mosaic CLI for rendering + GPX integration
@@ -44,9 +46,11 @@ These tools represent the core pipeline steps and can be run independently:
 - `GenerateOIDServiceTool`: Publish a hosted OID using updated AWS image paths
 
 ### 📈 Reporting Tools
+
 - `GenerateReportFromJSONTool`: Convert saved report JSON to full HTML/PDF report
 
 ### 🚀 Orchestrator
+
 - `Process360Workflow`: End-to-end runner with full config control, per-step execution, optional backups, wait points, and metrics logging.
 
 ---
@@ -72,4 +76,3 @@ This orchestrator tool simplifies full workflow automation while remaining flexi
 - [Tool Guides](./TOOL_GUIDES.md)
 - [Configuration Guide](./CONFIG_GUIDE.md)
 - [Shared Utilities](./UTILITIES.md)
-

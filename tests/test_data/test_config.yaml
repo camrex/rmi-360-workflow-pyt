@@ -390,6 +390,98 @@ gps_smoothing:
   outlier_reason_threshold: 2
 
 # ------------------------------------------------------------------------------
+# 🚚 DELIVERY SUBSET (Pre-AWS OID/Image Selection)
+# ------------------------------------------------------------------------------
+# Builds a publish/delivery subset from the master OID right before cloud delivery
+# steps (Upload to AWS and service publication).
+#
+# Why this exists:
+#   - Keep local master OID/images at full density (for QA and future analytics)
+#   - Deliver a practical subset OID/image set to AWS and hosted services
+#
+# High-level behavior:
+#   1) Optional spacing selector chooses candidates by index stride
+#      (with optional distance validation/correction)
+#   2) Optional MP range selector restricts rows by milepost windows
+#   3) If both selectors are enabled, final selection is the INTERSECTION
+#      (rows must pass both)
+#
+# Selector details:
+#   spacing_selector
+#     - mode=auto_stride: stride = round(target_spacing / source_capture_spacing)
+#     - mode=fixed_stride: uses stride_override directly
+#     - validate_distance=true: checks selected spacing against tolerance_percent
+#       and applies local correction_strategy when needed
+#
+#   mp_range_selector
+#     - Supports multiple MP_Pre windows in one run
+#     - Each entry in ranges is inclusive on [min, max]
+#     - Example combined selection:
+#         M 1.0-2.0 and N 5.0-6.0
+#
+# Output strategies:
+#   output.strategy=manifest
+#     - Preferred default; files remain in place
+#     - Downstream steps consume selected filenames from manifest
+#
+#   output.strategy=subset_folder
+#     - Materializes selected images in a dedicated folder
+#     - Useful for compatibility with folder-only downstream tooling
+#
+# Failure policy:
+#   on_validation_failure=warn_and_continue
+#     - Keep best candidate and continue; write warning details to logs/manifest
+#   on_validation_failure=error
+#     - Stop the step on unresolved spacing validation/correction
+# ------------------------------------------------------------------------------
+delivery_subset:
+  enabled: false
+
+  # Source capture profile and target delivery spacing (meters)
+  source_capture_spacing_meters: 1.0
+  target_spacing_meters: 5.0
+
+  # Runtime sanity-check of source capture spacing from OID geometry.
+  # Computes median spacing from consecutive points per reel (no cross-reel segments),
+  # then compares observed median against source_capture_spacing_meters.
+  capture_spacing_validation:
+    max_deviation_percent: 25.0         # Warn/error when observed vs configured exceeds this percent
+    min_reels_with_estimate: 1          # Minimum reels with valid geometry needed to evaluate
+
+  spacing_selector:
+    enabled: true
+
+    # Primary index selection strategy
+    mode: "auto_stride"                 # Options: "auto_stride", "fixed_stride"
+    stride_override: null                # Integer stride used only when mode="fixed_stride"
+    group_by_reel: true                  # Restart index counting per reel
+
+    # Distance QA and local correction controls
+    validate_distance: true              # Validate selected spacing with lat/long distance
+    tolerance_percent: 10.0              # Accept spacing in target +/- tolerance_percent
+    max_local_adjustments_per_pick: 2    # Local adjustment attempts per selected pair
+    correction_strategy: "nearest_candidate"  # Options: "nearest_candidate", "forward_only"
+
+  mp_range_selector:
+    enabled: false
+
+    # Multiple ranges can be combined in one delivery OID.
+    # Each range is inclusive on milepost values and tied to one MP_Pre.
+    # Examples:
+    #   - { mp_pre: "M", min: 1.0, max: 2.0 }
+    #   - { mp_pre: "N", min: 5.0, max: 6.0 }
+    ranges: []
+
+  # Output artifact consumed by downstream delivery steps
+  output:
+    strategy: "manifest"               # Options: "manifest", "subset_folder"
+    manifest_filename: "delivery_subset_manifest.csv"
+    subset_folder_name: "delivery_subset"
+
+  # Behavior when spacing validation/correction cannot confirm target spacing
+  on_validation_failure: "warn_and_continue"  # Options: "warn_and_continue", "error"
+
+# ------------------------------------------------------------------------------
 # 🖼️ IMAGE OUTPUT
 # ------------------------------------------------------------------------------
 #

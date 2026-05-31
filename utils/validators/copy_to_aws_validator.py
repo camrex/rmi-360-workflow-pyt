@@ -17,15 +17,20 @@
 # Notes:                Used for validation of AWS credentials and S3 upload settings.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     try_resolve_config_expression,
     validate_keys_with_types
 )
+from utils.validators.secured_storage_validator import validate_secured_storage_deployment
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the AWS configuration section for the copy-to-AWS tool.
 
@@ -110,5 +115,30 @@ def validate(cfg: "ConfigManager") -> bool:
     folder_expr = aws.get("s3_bucket_folder")
     if not try_resolve_config_expression(folder_expr, "aws.s3_bucket_folder", cfg, expected_type=str):
         error_count += 1
+
+    secured = cfg.get("secured_storage", {})
+    if secured:
+        if not isinstance(secured, dict):
+            logger.error("secured_storage must be a mapping.", error_type=ConfigValidationError)
+            error_count += 1
+        else:
+            if "enabled" in secured and not isinstance(secured.get("enabled"), bool):
+                logger.error("secured_storage.enabled must be a boolean", error_type=ConfigValidationError)
+                error_count += 1
+
+            if secured.get("enabled", False):
+                for key in ("s3_bucket", "region", "s3_bucket_folder"):
+                    if key not in secured or not isinstance(secured.get(key), str) or not str(secured.get(key)).strip():
+                        logger.error(f"secured_storage.{key} must be set when secured_storage.enabled is true", error_type=ConfigValidationError)
+                        error_count += 1
+                secured_folder_expr = secured.get("s3_bucket_folder")
+                if isinstance(secured_folder_expr, str):
+                    if not try_resolve_config_expression(secured_folder_expr, "secured_storage.s3_bucket_folder", cfg, expected_type=str):
+                        error_count += 1
+                else:
+                    error_count += 1
+
+                if error_count == 0 and not validate_secured_storage_deployment(cfg):
+                    error_count += 1
 
     return error_count == 0

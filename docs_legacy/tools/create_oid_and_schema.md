@@ -1,7 +1,8 @@
 # 🛠️ Tools: Create OID Schema Template & Create Oriented Imagery Dataset
 
 ## 🧑‍💻 Tool Names
-**CreateOIDTemplateTool** & **CreateOrientedImageryDatasetTool**
+
+CreateOIDTemplateTool & CreateOrientedImageryDatasetTool
 
 ---
 
@@ -16,7 +17,7 @@ Defines and instantiates the schema for an Oriented Imagery Dataset (OID) used i
 ### Create OID Schema Template
 
 | Parameter      | Required | Description                                                |
-|---------------|----------|------------------------------------------------------------|
+|----------------|----------|------------------------------------------------------------|
 | Config File    | ✅       | Path to `config.yaml` with schema structure                |
 | Project Folder | ✅       | Root folder for the project (for logs, assets)             |
 
@@ -25,8 +26,8 @@ Defines and instantiates the schema for an Oriented Imagery Dataset (OID) used i
 | Parameter                   | Required | Description                                             |
 |-----------------------------|----------|---------------------------------------------------------|
 | Output OID Feature Class    | ✅       | Output feature class to create                          |
-| Spatial Reference           | ⬜️      | Optional custom spatial reference                       |
-| Config File                 | ⬜️      | Optional path to config with schema and project settings|
+| Spatial Reference           | ⬜️       | Optional custom spatial reference                       |
+| Config File                 | ⬜️       | Optional path to config with schema and project settings|
 | Project Folder              | ✅       | Root for project outputs                                |
 
 ---
@@ -46,12 +47,14 @@ Defines and instantiates the schema for an Oriented Imagery Dataset (OID) used i
 ## ⚙️ Behavior / Logic
 
 **Schema Template Creation:**
+
 1. Loads field definitions from ESRI registry YAML and config (`mosaic_fields`, `grp_idx_fields`, `linear_ref_fields`, `custom_fields`).
 2. Builds a geodatabase table as a reusable schema template.
 3. Backs up existing templates with timestamp.
 4. Validates schema and field definitions.
 
 **OID Feature Class Creation:**
+
 1. Validates schema template and spatial reference (from config or parameter).
 2. Creates new OID feature class in specified geodatabase.
 3. Applies all field definitions and spatial reference.
@@ -82,11 +85,12 @@ oid_schema_template:
   template:
     gdb_path: "templates/templates.gdb"
     template_name: "oid_schema_template"
-field_registry: "esri_oid_fields_registry.yaml"
-mosaic_fields: [...]
-grp_idx_fields: [...]
-linear_ref_fields: [...]
-custom_fields: [...]
+  esri_default:
+    field_registry: "esri_oid_fields_registry.yaml"
+  mosaic_fields: [...]
+  grp_idx_fields: [...]
+  linear_ref_fields: [...]
+  custom_fields: [...]
 ```
 
 - Spatial reference (horizontal/vertical) can be set in config or as a parameter.
@@ -116,6 +120,7 @@ custom_fields: [...]
 ## 📌 Purpose
 
 These tools support the structured generation of OID datasets with project-specific fields, such as:
+
 - Standard OID attributes (`CameraHeight`, `AcquisitionDate`, etc.)
 - Mosaic-specific fields like `Reel`, `Frame`
 - Linear referencing fields like `MP_Pre`, `MP_Num`
@@ -127,13 +132,13 @@ They ensure compatibility with downstream tools like `Add Images to OID`, `Updat
 
 ## 🛠 Create OID Schema Template
 
-### ✔️ Parameters
+### ✔️ Parameters (Create Oriented Imagery Dataset)
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Config File` | ✅ | Path to `config.yaml` with schema structure |
+| Parameter     | Required | Description                                     |
+| ------------- | -------- | ----------------------------------------------- |
+| `Config File` | ✅       | Path to `config.yaml` with schema structure     |
 
-### ⚙️ Output
+### ⚙️ Output (Create Oriented Imagery Dataset)
 
 - A template table in the GDB defined at:  
   `config.oid_schema_template.template.gdb_path`
@@ -145,6 +150,7 @@ They ensure compatibility with downstream tools like `Add Images to OID`, `Updat
   `templates/templates.gdb/oid_schema_template`
 
 ### 🔍 Key Logic (in `build_oid_schema.py`)
+
 - Loads field definitions from:
   - ESRI registry YAML (`field_registry`)
   - `mosaic_fields`, `grp_idx_fields`, `linear_ref_fields`, `custom_fields` in config
@@ -152,8 +158,10 @@ They ensure compatibility with downstream tools like `Add Images to OID`, `Updat
 - Backs up any existing template with a timestamp
 - Creates GDB if missing
 
-### ✅ Validation
+### ✅ Validation (Create Oriented Imagery Dataset)
+
 Validation is performed by `validate_tool_build_oid_schema()` in `utils/validators`:
+
 - Checks required config keys (`field_registry`, `template_name`, etc.)
 - Validates all field definitions
 - Ensures no duplicates
@@ -164,20 +172,22 @@ Validation is performed by `validate_tool_build_oid_schema()` in `utils/validato
 
 ### ✔️ Parameters
 
-| Parameter | Required | Description |
-|----------|----------|-------------|
-| `Output Oriented Imagery Dataset` | ✅ | Path to new feature class (e.g., `my.gdb/MyOID`) |
-| `Spatial Reference` | ⬜️ | Overrides default GCS/VCS from config |
-| `Config File` | ✅ | Path to `config.yaml` |
-| `Project Folder` | ⬜️ | Optional override for `project_folder` context |
+| Parameter                          | Required | Description                                           |
+| ---------------------------------- | -------- | ----------------------------------------------------- |
+| `Output Oriented Imagery Dataset`  | ✅       | Path to new feature class (e.g., `my.gdb/MyOID`)      |
+| `Spatial Reference`                | ⬜️       | Overrides default GCS/VCS from config                 |
+| `Config File`                      | ✅       | Path to `config.yaml`                                 |
+| `Project Folder`                   | ⬜️       | Optional override for `project_folder` context        |
 
 ### ⚙️ Output
+
 - Feature class with all OID fields, Z-values enabled
 - Created using:  
   `arcpy.oi.CreateOrientedImageryDataset(...)`
 - Uses online terrain service for elevation
 
 ### 🔍 Key Logic (in `create_oid_feature_class.py`)
+
 - Loads config, resolves paths
 - Resolves spatial reference:
   - Defaults to GCS 4326 (horizontal) + VCS 5703 (ellipsoidal height)
@@ -185,7 +195,9 @@ Validation is performed by `validate_tool_build_oid_schema()` in `utils/validato
 - Creates the feature class from template
 
 ### ✅ Validation
+
 Validation is performed by `validate_tool_create_oriented_imagery_dataset()` in `utils/validators`:
+
 - Confirms `spatial_ref.gcs_horizontal_wkid` and `vcs_vertical_wkid` are defined and resolvable
 - Optionally resolves `pcs_horizontal_wkid` if used in other tools (like footprints)
 
@@ -203,19 +215,18 @@ oid_schema_template:
     field_registry: "../configs/esri_oid_fields_registry.yaml"
     standard: true
     not_applicable: false
-
-mosaic_fields:
-  mosaic_reel: ...
-  mosaic_frame: ...
-
-linear_ref_fields:
-  route_identifier: ...
-  route_measure: ...
-
-custom_fields:
-  custom1:
-    name: "RR"
-    expression: "config.project.rr_mark"
+  mosaic_fields:
+    mosaic_reel: ...
+    mosaic_frame: ...
+  grp_idx_fields:
+    group_index: ...
+  linear_ref_fields:
+    route_identifier: ...
+    route_measure: ...
+  custom_fields:
+    custom1:
+      name: "RR"
+      expression: "config.project.rr_mark"
 ```
 
 ---
@@ -239,6 +250,7 @@ create_oriented_imagery_dataset(
 ---
 
 ## 📝 Notes
+
 - Schema templates are versionable and reusable
 - Run the schema creation tool **once per config change**
 - OID creation step is mandatory before using `Add Images to OID`

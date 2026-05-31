@@ -17,11 +17,16 @@
 # Notes:                Ensures all required EXIF tags and tool paths are set for downstream processing.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     try_resolve_config_expression
 )
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 def validate(cfg: "ConfigManager") -> bool:
     """
@@ -61,7 +66,10 @@ def validate(cfg: "ConfigManager") -> bool:
             full_name = f"{prefix}.{tag_name}"
             if isinstance(expr, (str, int, float)):
                 try:
-                    resolved_value = try_resolve_config_expression(expr, full_name, cfg)
+                    if isinstance(expr, str):
+                        resolved_value = try_resolve_config_expression(expr, full_name, cfg)
+                    else:
+                        resolved_value = expr
                     _ = str(resolved_value)
                 except Exception as e:
                     logger.error(f"{full_name}: failed to resolve or stringify value: {e}", error_type=ConfigValidationError)

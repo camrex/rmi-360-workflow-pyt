@@ -1,7 +1,8 @@
 # 🛠️ Tool: Build OID Footprints
 
 ## 🧑‍💻 Tool Name
-**08 – Build OID Footprints**
+
+08 – Build OID Footprints
 
 ---
 
@@ -13,21 +14,21 @@ Generates buffer-style multipoint footprints for each image in an Oriented Image
 
 ## 🧰 Parameters
 
-| Parameter                   | Required | Description                                                         |
-|-----------------------------|----------|---------------------------------------------------------------------|
-| Project Folder              | ✅       | Root folder for the project; used for resolving logs and asset paths |
-| Oriented Imagery Dataset    | ✅       | Input OID feature class                                             |
-| Config File                 | ⬜️      | Optional path to `config.yaml` for spatial reference/transformation  |
+| Parameter                | Required | Description                                                          |
+| ------------------------ | -------- | -------------------------------------------------------------------- |
+| Project Folder           | ✅       | Root folder for the project; used for resolving logs and asset paths |
+| Oriented Imagery Dataset | ✅       | Input OID feature class                                              |
+| Config File              | ⬜️       | Optional path to `config.yaml` for spatial reference/transformation  |
 
 ---
 
 ## 🗂️ Scripts & Components
 
-| Script                                   | Role/Responsibility                                            |
-|------------------------------------------|---------------------------------------------------------------|
-| `tools/build_oid_footprints_tool.py`     | ArcGIS Toolbox wrapper, parameter handling                     |
-| `utils/build_oid_footprints.py`          | Core logic using ArcPy's BuildOrientedImageryFootprint         |
-| `utils/manager/config_manager.py`        | Loads and validates configuration                             |
+| Script                               | Role/Responsibility                                    |
+| ------------------------------------ | ------------------------------------------------------ |
+| `tools/build_oid_footprints_tool.py` | ArcGIS Toolbox wrapper, parameter handling             |
+| `utils/build_oid_footprints.py`      | Core logic using ArcPy's BuildOrientedImageryFootprint |
+| `utils/manager/config_manager.py`    | Loads and validates configuration                      |
 
 ---
 
@@ -87,10 +88,10 @@ spatial_ref:
 
 ## 📤 Output
 
-| Output | Description |
-|--------|-------------|
-| `OID_Footprint` | Feature class in same location as OID, using buffer footprint geometry |
-| `arcpy.AddMessage` logs | Logged to ArcGIS Pro Messages tab or CLI output |
+| Output                  | Description                                                              |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `OID_Footprint`         | Feature class in same location as OID, using buffer footprint geometry   |
+| `arcpy.AddMessage` logs | Logged to ArcGIS Pro Messages tab or CLI output                          |
 
 ---
 

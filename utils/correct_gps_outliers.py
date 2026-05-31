@@ -34,6 +34,7 @@ import arcpy
 from typing import List, Dict, Set, Tuple
 
 from utils.manager.config_manager import ConfigManager
+from utils.smooth_gps_noise import split_reel_into_capture_segments
 
 
 def interpolate_gps_outliers(
@@ -84,6 +85,42 @@ def interpolate_gps_outliers(
             corrected_oids.add(rows[idx]["oid"])
     return rows, corrected_oids
 
+
+def interpolate_gps_outliers_by_reel(
+    rows: List[Dict],
+    default_h_wkid: int,
+    default_v_wkid: int,
+    logger=None
+) -> Tuple[List[Dict], Set[int]]:
+    """Apply GPS outlier interpolation independently within each reel sequence."""
+    corrected_oids = set()
+    rows_by_reel = {}
+
+    for row in rows:
+        reel = row.get("reel") or "__UNREEL__"
+        rows_by_reel.setdefault(reel, []).append(row)
+
+    ordered_rows = []
+    for reel_rows in rows_by_reel.values():
+        reel_rows.sort(key=lambda row: (row.get("ts") is None, row.get("ts"), row.get("seq", 0)))
+        segment_cfg = reel_rows[0].get("cfg") if reel_rows else None
+        if segment_cfg:
+            reel_segments = split_reel_into_capture_segments(reel_rows, segment_cfg)
+        else:
+            reel_segments = [reel_rows]
+
+        for segment_rows in reel_segments:
+            updated_rows, reel_corrected = interpolate_gps_outliers(
+                segment_rows,
+                default_h_wkid=default_h_wkid,
+                default_v_wkid=default_v_wkid,
+                logger=logger
+            )
+            ordered_rows.extend(updated_rows)
+            corrected_oids.update(reel_corrected)
+
+    return ordered_rows, corrected_oids
+
 def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
     """
     Identifies and corrects GPS outlier points in a feature class by interpolating their positions.
@@ -105,12 +142,25 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
     default_v_wkid = cfg.get("spatial_ref.vcs_vertical_wkid", 5703)
 
     # Load relevant data into memory
+    available_fields = {f.name for f in arcpy.ListFields(oid_fc)}
     fields = ["OID@", "QCFlag", "SHAPE@XY", "CameraOrientation", "CameraHeading",
               "CameraPitch", "CameraRoll", "Z", "X", "Y"]
+    has_acquisition_date = "AcquisitionDate" in available_fields
+    has_reel = "Reel" in available_fields
+    if has_acquisition_date:
+        fields.append("AcquisitionDate")
+    if has_reel:
+        fields.append("Reel")
 
     rows = []
     with arcpy.da.SearchCursor(oid_fc, fields) as cursor:
-        for row in cursor:
+        for seq, row in enumerate(cursor):
+            idx = 10
+            ts = row[idx] if has_acquisition_date else None
+            if has_acquisition_date:
+                idx += 1
+            reel = row[idx] if has_reel else None
+
             rows.append({
                 "oid": row[0],
                 "qcflag": row[1],
@@ -122,10 +172,14 @@ def correct_gps_outliers(cfg: ConfigManager, oid_fc: str) -> None:
                 "z": row[7],
                 "x": row[8],
                 "y": row[9],
+                "ts": ts,
+                "reel": reel or "__UNREEL__",
+                "seq": seq,
+                "cfg": cfg,
             })
 
     # Interpolate and correct outliers using pure logic helper
-    rows, corrected_oids = interpolate_gps_outliers(
+    rows, corrected_oids = interpolate_gps_outliers_by_reel(
         rows,
         default_h_wkid=default_h_wkid,
         default_v_wkid=default_v_wkid,

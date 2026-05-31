@@ -1,7 +1,8 @@
 # 🛠️ Tool: Add Images to Oriented Imagery Dataset (OID)
 
 ## 🧑‍💻 Tool Name
-**03 – Add Images to OID**
+
+03 – Add Images to OID
 
 ---
 
@@ -17,7 +18,7 @@ Adds rendered and renamed images to an existing Oriented Imagery Dataset (OID) u
 |-----------------------------|----------|---------------------------------------------------------------------|
 | Project Folder              | ✅       | Folder for the current Mosaic 360 project (used to resolve paths)   |
 | Oriented Imagery Dataset    | ✅       | Target OID feature class (must exist and use schema)                |
-| Adjust Z (Apply Offset)     | ⬜️      | Toggles camera height/Z offset correction using values in config    |
+| Adjust Z (Apply Offset)     | ⬜️       | Toggles camera height/Z offset correction using values in config    |
 | Config File                 | ✅       | Full path to `config.yaml`                                          |
 
 ---
@@ -29,7 +30,7 @@ Adds rendered and renamed images to an existing Oriented Imagery Dataset (OID) u
 | `tools/add_images_to_oid_tool.py`   | ArcGIS Toolbox wrapper, parameter handling                          |
 | `utils/add_images_to_oid_fc.py`     | Adds images to OID, schema validation                               |
 | `utils/assign_group_index.py`       | Assigns group index based on `AcquisitionDate`                      |
-| `utils/calculate_oid_attributes.py` | Computes and populates Z, SRS, CameraHeight, Reel, Frame, Orientation |
+| `utils/calculate_oid_attributes.py` | Computes & populates Z, SRS, CameraHeight, Reel, Frame, Orientation |
 | `utils/manager/config_manager.py`   | Loads and validates configuration                                   |
 
 ---
@@ -70,7 +71,7 @@ Adds rendered and renamed images to an existing Oriented Imagery Dataset (OID) u
 
 - Camera offset and orientation settings are drawn from `config.yaml`:
 
-```
+```python
 from utils.add_images_to_oid_fc import add_images_to_oid
 from utils.assign_group_index import assign_group_index
 from utils.calculate_oid_attributes import enrich_oid_attributes
@@ -100,11 +101,13 @@ enrich_oid_attributes("D:/GIS/RMI25100.gdb/OID", config_file="D:/Projects/RMI251
 ## ✅ Validation
 
 From `validate_config.py`, the following validators are used:
+
 - `validate_tool_add_images_to_oid`
 - `validate_tool_assign_group_index`
 - `validate_tool_calculate_oid_attributes`
 
 These validate:
+
 - Required fields in registry (e.g., `CameraPitch`, `CameraOrientation`)
 - Properly configured `grp_idx_fields`, `mosaic_fields`, `linear_ref_fields`
 - Resolvable WKIDs, Z offsets, and default values

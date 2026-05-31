@@ -16,12 +16,16 @@
 # Notes:                Used for validation of mosaic processor settings and executable paths.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.validators.common_validators import validate_type
 from utils.shared.rmi_exceptions import ConfigValidationError
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the Mosaic Processor tool.
 

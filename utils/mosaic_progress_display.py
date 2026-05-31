@@ -25,7 +25,6 @@ import argparse
 import json
 import time
 import os
-import sys
 from pathlib import Path
 
 
@@ -76,7 +75,7 @@ def display_status(status):
     reels_complete = totals.get("reels_completed", 0)
     reels_total = totals.get("reels_total", 0)
 
-    print(f"\n📊 OVERALL PROGRESS")
+    print("\n📊 OVERALL PROGRESS")
     print(f"   {format_progress_bar(overall_percent)}")
     print(f"   Frames: {generated:,} / {expected:,}")
     print(f"   Reels:  {reels_complete} / {reels_total} complete")
@@ -99,12 +98,12 @@ def display_status(status):
         if elapsed != "Unknown":
             print(f"   ⏱ Elapsed: {elapsed} (calculating rate...)")
         else:
-            print(f"   ▶ Processing started...")
+            print("   ▶ Processing started...")
 
     # Per-reel breakdown
     reels = status.get("reels", {})
     if reels:
-        print(f"\n🎞 REEL PROGRESS")
+        print("\n🎞 REEL PROGRESS")
         print(f"{'Reel':<15} {'Progress':<45} {'Frames':<15} {'Status'}")
         print("-" * 85)
 
@@ -194,7 +193,7 @@ def main():
                     clear_screen()
                     print("🎬 MOSAIC PROCESSOR - REAL-TIME PROGRESS")
                     print("=" * 60)
-                    print(f"\n⏳ Waiting for processing to start...")
+                    print("\n⏳ Waiting for processing to start...")
                     print(f"   Elapsed: {elapsed:.0f}s / {max_wait_time}s")
                     print(f"\n📁 Looking for: {status_file}")
                     print("\n💡 This window will show progress automatically once")

@@ -30,7 +30,8 @@
 __all__ = ["update_linear_and_custom"]
 
 import arcpy
-from typing import Optional
+from datetime import datetime
+from typing import Optional, List, Dict, Any, Tuple
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
@@ -53,15 +54,14 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
         # Get target spatial reference
         route_sr = arcpy.Describe(centerline_fc).spatialReference
 
-        # Add a join field that combines Reel and Frame for unique identification BEFORE projecting
-        arcpy.management.AddField(oid_fc, "JOIN_KEY", "TEXT", field_length=20, field_alias="Reel_Frame Join Key")
+        # Ensure JOIN_KEY exists and is populated with a guaranteed-unique key per feature.
+        existing_fields = {f.name for f in arcpy.ListFields(oid_fc)}
+        if "JOIN_KEY" not in existing_fields:
+            arcpy.management.AddField(oid_fc, "JOIN_KEY", "TEXT", field_length=40, field_alias="OID Join Key")
 
-        # Populate the join key field with "Reel_Frame" format
-        with arcpy.da.UpdateCursor(oid_fc, ["Reel", "Frame", "JOIN_KEY"]) as cursor:
+        with arcpy.da.UpdateCursor(oid_fc, ["OID@", "JOIN_KEY"]) as cursor:
             for row in cursor:
-                reel = row[0] if row[0] else "UNKNOWN"
-                frame = row[1] if row[1] else "UNKNOWN"
-                row[2] = f"{reel}_{frame}"
+                row[1] = f"OID_{row[0]}"
                 cursor.updateRow(row)
 
         # Project OID feature class with the JOIN_KEY field included
@@ -100,7 +100,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
             input_count = int(arcpy.GetCount_management(projected_oid_fc)[0])
             orig_count = int(arcpy.GetCount_management(oid_fc)[0])
             desc = arcpy.Describe(oid_fc)
-            logger.debug(f"📍 Linear referencing input diagnostics:", indent=2)
+            logger.debug("📍 Linear referencing input diagnostics:", indent=2)
             logger.debug(f"   • Original features: {orig_count}", indent=3)
             logger.debug(f"   • Projected features: {input_count}", indent=3)
             logger.debug(f"   • Has spatial index: {desc.hasSpatialIndex}", indent=3)
@@ -118,7 +118,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                         sample_distances.append(f"JOIN_KEY {join_key}: {round(min_dist, 2)}m from route")
 
             if sample_distances:
-                logger.debug(f"   • Sample distances to route:", indent=3)
+                logger.debug("   • Sample distances to route:", indent=3)
                 for dist_info in sample_distances:
                     logger.debug(f"     - {dist_info}", indent=4)
 
@@ -129,8 +129,8 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
             radius_or_tolerance=tolerance,
             out_table=oid_table,
             out_event_properties=f"{route_id_field} POINT MP",
-            route_locations="FIRST",
-            distance_field="NO_DISTANCE",
+            route_locations="ALL",
+            distance_field="DISTANCE",
             in_fields="FIELDS"  # Include all fields from input features
         )
 
@@ -139,14 +139,20 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
             output_count = int(arcpy.GetCount_management(oid_table)[0])
             logger.debug(f"📍 LocateFeaturesAlongRoutes produced {output_count} records", indent=2)
 
-        # Parse result table into a dict using JOIN_KEY, then map back to OBJECTIDs
+        # Parse result table into a dict using JOIN_KEY, selecting the nearest event when
+        # multiple routes are returned for a point.
         join_key_to_loc = {}
         total_located = 0
         invalid_mp_values = []
         sample_values = []  # For debugging - collect sample of MP values
         null_mp_join_keys = []   # Track join keys that got NULL MP values from LocateFeaturesAlongRoutes
-        with arcpy.da.SearchCursor(oid_table, [route_id_field, "MP", "JOIN_KEY"]) as cursor:
-            for route_id_val, mp, join_key in cursor:
+        with arcpy.da.SearchCursor(oid_table, [route_id_field, "MP", "JOIN_KEY", "DISTANCE"]) as cursor:
+            for route_id_val, mp, join_key, distance_val in cursor:
+                try:
+                    distance_abs = abs(float(distance_val)) if distance_val is not None else float("inf")
+                except (TypeError, ValueError):
+                    distance_abs = float("inf")
+
                 # Track NULL MP values from LocateFeaturesAlongRoutes
                 if mp is None:
                     null_mp_join_keys.append(join_key)
@@ -167,31 +173,65 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                             if not (cleaned_mp == cleaned_mp and abs(cleaned_mp) != float('inf')):  # NaN check
                                 cleaned_mp = None
                                 invalid_mp_values.append(f"JOIN_KEY {join_key}: NaN/Inf value")
-                        except (ValueError, TypeError) as e:
+                        except (ValueError, TypeError):
                             invalid_mp_values.append(f"JOIN_KEY {join_key}: '{mp}' ({type(mp).__name__})")
                             cleaned_mp = None
 
-                join_key_to_loc[join_key] = {"route_id": route_id_val, "mp_value": cleaned_mp}
-                if cleaned_mp is not None:
-                    total_located += 1
+                candidate = {
+                    "route_id": route_id_val,
+                    "mp_value": cleaned_mp,
+                    "distance": distance_abs,
+                }
+
+                existing = join_key_to_loc.get(join_key)
+                if existing is None or candidate["distance"] < existing["distance"]:
+                    join_key_to_loc[join_key] = candidate
 
                 # Collect sample for debugging (first 5 records)
                 if len(sample_values) < 5:
-                    sample_values.append(f"JOIN_KEY {join_key}: {repr(mp)} -> {cleaned_mp}")
+                    sample_values.append(
+                        f"JOIN_KEY {join_key}: route={route_id_val}, mp={repr(mp)} -> {cleaned_mp}, dist={distance_abs:.2f}"
+                    )
+
+        total_located = sum(1 for v in join_key_to_loc.values() if v.get("mp_value") is not None)
 
         # Now map the join_key results back to OBJECTIDs
         oid_to_loc = {}
         with arcpy.da.SearchCursor(oid_fc, ["OBJECTID", "JOIN_KEY"]) as cursor:
             for oid, join_key in cursor:
                 if join_key in join_key_to_loc:
-                    oid_to_loc[oid] = join_key_to_loc[join_key]
+                    oid_to_loc[oid] = {
+                        "route_id": join_key_to_loc[join_key].get("route_id"),
+                        "mp_value": join_key_to_loc[join_key].get("mp_value"),
+                    }
+
+        # Summarize selected route distribution to make multi-route behavior easy to verify.
+        route_assignment_counts = {}
+        null_route_count = 0
+        for loc in oid_to_loc.values():
+            route_id_val = loc.get("route_id")
+            if route_id_val is None or str(route_id_val).strip() == "":
+                null_route_count += 1
+                continue
+            route_key = str(route_id_val)
+            route_assignment_counts[route_key] = route_assignment_counts.get(route_key, 0) + 1
+
+        if logger:
+            logger.debug("📍 Route assignment distribution (nearest-event selection):", indent=2)
+            if route_assignment_counts:
+                for route_key in sorted(route_assignment_counts):
+                    logger.debug(f"  • {route_key}: {route_assignment_counts[route_key]} image(s)", indent=3)
+            else:
+                logger.debug("  • No route assignments were produced.", indent=3)
+            if null_route_count:
+                logger.debug(f"  • NULL/blank route assignments: {null_route_count}", indent=3)
 
         if logger:
             logger.info(f"📏 Linear referencing results: {total_located}/{len(oid_to_loc)} images located along route", indent=2)
 
             # Show sample of MP values for debugging
             if sample_values:
-                logger.debug(f"Sample MP values from locate operation:", indent=2)
+                logger.debug("Sample MP values from locate operation:", indent=2)
                 for sample in sample_values:
                     logger.debug(f"  • {sample}", indent=3)
 
@@ -205,7 +245,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                     logger.warning(f"  Sample NULL MP join keys: {sample_nulls} (and {len(null_mp_join_keys)-5} more)", indent=3)
 
                 # Check distances for NULL join keys to see if they're within tolerance
-                logger.debug(f"Investigating NULL join key distances to route:", indent=3)
+                logger.debug("Investigating NULL join key distances to route:", indent=3)
                 routes = [row[0] for row in arcpy.da.SearchCursor(centerline_fc, ["SHAPE@"])]
                 null_distances = []
                 if null_mp_join_keys[:5]:  # Only if we have NULL join keys to investigate
@@ -233,9 +273,6 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
     except Exception as e:
         logger.warning(f"Linear referencing failed: {e}", indent=1)
         return {}
-
-
-from typing import List, Dict, Any, Tuple
 
 def compute_linear_and_custom_updates(
     cfg: ConfigManager,
@@ -401,4 +438,144 @@ def update_linear_and_custom(
         logger.debug(f"Updated OIDs: {sorted(updated_oids)}", indent=2)
     if failed_oids:
         logger.warning(f"Failed OIDs: {sorted(failed_oids)}", indent=2)
+
+    assign_sequence_order(cfg, oid_fc_path, enable_linear_ref, logger)
+
+
+def _parse_datetime_sort_key(value):
+    if value is None:
+        return (1, datetime.max)
+    if isinstance(value, datetime):
+        return (0, value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return (1, datetime.max)
+        try:
+            return (0, datetime.fromisoformat(text.replace("Z", "+00:00")))
+        except ValueError:
+            return (1, datetime.max)
+    return (1, datetime.max)
+
+
+def _resolve_prefix_rank(prefix: str, ordered_prefixes: list[str]) -> tuple[int, str]:
+    normalized = (prefix or "").strip()
+    if normalized in ordered_prefixes:
+        return (ordered_prefixes.index(normalized), normalized)
+    return (len(ordered_prefixes), normalized)
+
+
+def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_ref: bool, logger) -> None:
+    """Populate SequenceOrder when enabled by config.
+
+    SequenceOrder remains null when disabled. Ordering behavior:
+      - LR enabled: grouped by MP_Pre, sorted by MP_Num within group.
+      - LR disabled: sorted by AcquisitionDate only.
+    """
+    sequence_cfg = cfg.get("sequence_order", {})
+    if not sequence_cfg.get("enabled", False):
+        logger.info("SequenceOrder population disabled by config; leaving values as-is.", indent=1)
+        return
+
+    sequence_field = cfg.get("sequence_order.field_name", "SequenceOrder")
+    available_fields = {f.name for f in arcpy.ListFields(oid_fc_path)}
+    if sequence_field not in available_fields:
+        logger.warning(f"{sequence_field} field not present; skipping SequenceOrder population.", indent=1)
+        return
+
+    acquisition_field = cfg.get("sequence_order.acquisition_datetime_field", "AcquisitionDate")
+    prefix_field = cfg.get("sequence_order.lr_prefix_field", cfg.get("oid_schema_template.linear_ref_fields.route_identifier.name", "MP_Pre"))
+    mile_field = cfg.get("sequence_order.lr_mile_field", cfg.get("oid_schema_template.linear_ref_fields.route_measure.name", "MP_Num"))
+    ordered_prefixes = cfg.get("sequence_order.prefix_order", []) or []
+    descending_prefixes = set(cfg.get("sequence_order.descending_prefixes", []) or [])
+    null_milepost_position = (cfg.get("sequence_order.null_milepost_position", "end") or "end").lower()
+
+    use_lr_ordering = bool(enable_linear_ref and prefix_field in available_fields and mile_field in available_fields)
+    if enable_linear_ref and not use_lr_ordering:
+        logger.warning(
+            f"SequenceOrder LR ordering requested, but required fields are missing ({prefix_field}, {mile_field}). Falling back to acquisition datetime ordering.",
+            indent=1,
+        )
+
+    search_fields = ["OID@", acquisition_field]
+    if use_lr_ordering:
+        search_fields.extend([prefix_field, mile_field])
+
+    rows = []
+    with arcpy.da.SearchCursor(oid_fc_path, search_fields) as cursor:
+        for row in cursor:
+            entry = {
+                "oid": row[0],
+                "acq": row[1],
+                "prefix": "",
+                "mile": None,
+            }
+            if use_lr_ordering:
+                entry["prefix"] = "" if row[2] is None else str(row[2]).strip()
+                entry["mile"] = row[3]
+            rows.append(entry)
+
+    if not rows:
+        logger.warning("No rows found for SequenceOrder assignment.", indent=1)
+        return
+
+    if use_lr_ordering:
+        null_mile_count = sum(1 for r in rows if r["mile"] is None)
+        if null_mile_count:
+            logger.warning(
+                f"Found {null_mile_count} row(s) with null milepost while assigning SequenceOrder. Rows will be placed deterministically by configured null position.",
+                indent=1,
+            )
+
+        # lr_sort_key rule: NULL mileposts map to +/-infinity from
+        # null_milepost_position, and descending_prefixes only negates finite
+        # mile_sort values. For descending prefixes, NULL mileposts still remain
+        # at the configured null_milepost_position (they are not inverted).
+        def lr_sort_key(item):
+            prefix = item["prefix"]
+            prefix_rank = _resolve_prefix_rank(prefix, ordered_prefixes)
+            desc = prefix in descending_prefixes
+            mile = item["mile"]
+
+            if mile is None:
+                null_rank = 1 if null_milepost_position == "end" else -1
+                mile_sort = float("inf") if null_milepost_position == "end" else float("-inf")
+            else:
+                null_rank = 0
+                try:
+                    mile_sort = float(mile)
+                except (TypeError, ValueError):
+                    null_rank = 1 if null_milepost_position == "end" else -1
+                    mile_sort = float("inf") if null_milepost_position == "end" else float("-inf")
+
+            if desc and mile_sort not in (float("inf"), float("-inf")):
+                mile_sort = -mile_sort
+
+            return (
+                prefix_rank,
+                null_rank,
+                mile_sort,
+                _parse_datetime_sort_key(item["acq"]),
+                item["oid"],
+            )
+
+        ordered_rows = sorted(rows, key=lr_sort_key)
+    else:
+        ordered_rows = sorted(rows, key=lambda item: (_parse_datetime_sort_key(item["acq"]), item["oid"]))
+
+    sequence_by_oid = {entry["oid"]: i for i, entry in enumerate(ordered_rows, start=1)}
+
+    updated = 0
+    with arcpy.da.UpdateCursor(oid_fc_path, ["OID@", sequence_field]) as cursor:
+        for oid, existing in cursor:
+            desired = sequence_by_oid.get(oid)
+            if desired is None or existing == desired:
+                continue
+            cursor.updateRow([oid, desired])
+            updated += 1
+
+    logger.success(
+        f"Assigned {sequence_field} for {updated} row(s) using {'LR-aware' if use_lr_ordering else 'acquisition datetime'} ordering.",
+        indent=1,
+    )
 

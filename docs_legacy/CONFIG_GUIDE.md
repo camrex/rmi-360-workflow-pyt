@@ -8,6 +8,7 @@ This guide explains how to structure and validate the `config.yaml` file, which 
 ## 📄 What is `config.yaml`?
 
 This is the central configuration file used by all tools in the RMI 360 Imaging Workflow Python Toolbox. It defines:
+
 - Project information
 - File and folder paths
 - Filename formatting rules
@@ -34,6 +35,7 @@ project:
 ```
 
 ### Top-Level Keys (commonly used)
+
 - `project` — metadata about the current survey
 - `camera_offset` — Z and camera height configuration
 - `image_output` — controls folder structure and filename logic
@@ -59,6 +61,7 @@ filename_settings:
 ```
 
 ### Supported Modifiers
+
 - `strip("-")`
 - `float(n)`
 - `upper`, `lower`
@@ -119,6 +122,7 @@ python -m utils.validate_config --file configs/config.yaml
 ```
 
 Validates:
+
 - YAML structure and schema version
 - Expressions
 - Field naming
@@ -129,6 +133,7 @@ Validates:
 ## 🧪 Testing with `prepare_config()`
 
 Each tool internally uses `prepare_config()` to:
+
 - Load and resolve the config
 - Set `__project_root__`
 - Resolve expressions

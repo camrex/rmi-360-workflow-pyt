@@ -1,7 +1,8 @@
 # 🏷 Tool: Rename and Tag Images
 
 ## 🧰 Tool Name
-## 05 – Rename and Tag Images
+
+05 – Rename and Tag Images
 
 ---
 
@@ -15,9 +16,9 @@ Standardizes image filenames and applies metadata tags to images in preparation 
 
 | Parameter         | Required | Description                                         |
 |-------------------|----------|-----------------------------------------------------|
-| Input Folder      | ✅       | Folder containing images to rename/tag               |
-| Config File       | ✅       | Path to `config.yaml` with naming/tagging rules      |
-| Project Folder    | ✅       | Project root for resolving outputs                   |
+| Input Folder      | ✅       | Folder containing images to rename/tag              |
+| Config File       | ✅       | Path to `config.yaml` with naming/tagging rules     |
+| Project Folder    | ✅       | Project root for resolving outputs                  |
 
 ---
 
@@ -169,7 +170,7 @@ XPKeywords:
 ## 📤 Outputs
 
 | Output | Description |
-|--------|-------------|
+| ------ | ----------- |
 | Renamed Image Files | Saved to `/panos/final/` (or as defined in config) |
 | Updated OID Fields | `ImagePath`, `Name` |
 | EXIF/XMP Metadata | Embedded into each image using ExifTool |
@@ -184,6 +185,7 @@ Validated via:
 - `validate_tool_apply_exif_metadata()` for metadata tags and ExifTool path
 
 Checks include:
+
 - Filename placeholders match parts
 - Expressions resolve to strings
 - Required EXIF tags exist

@@ -26,17 +26,20 @@
 from __future__ import annotations
 from pathlib import Path
 import concurrent.futures as cf
-from typing import Iterable, List, Optional, Tuple, Dict
+import logging
+from typing import List, Optional, Tuple, Dict
 import boto3
-import os
+from botocore.exceptions import ClientError, BotoCoreError
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
-    "normalize_prefix",
     "list_projects",
     "list_reels",
+    "normalize_prefix",
+    "stage_project_files",  # NEW: stage config/gis_data files
     "stage_reels",          # NEW (preferred)
     "stage_reels_prefix",   # legacy shim -> calls stage_reels
-    "stage_project_files",  # NEW: stage config/gis_data files
 ]
 
 def normalize_prefix(prefix: str) -> str:
@@ -47,6 +50,15 @@ def normalize_prefix(prefix: str) -> str:
 
 def _client():
     return boto3.client("s3")
+
+
+def _extract_reel_name(dst: Path, local_project_dir: Path) -> str:
+    """Extract reel name from destination path using normalized relative path."""
+    rel_path = str(dst.relative_to(local_project_dir)).replace("\\", "/")
+    if rel_path.startswith("reels/"):
+        path_parts = rel_path.split("/")
+        return path_parts[1] if len(path_parts) > 1 else "unknown"
+    return "unknown"
 
 def list_projects(bucket: str, s3=None) -> List[str]:
     s3 = s3 or _client()
@@ -156,7 +168,9 @@ def stage_reels(
                     filtered.append((key, dst, size, etag))
                 # Optionally: add a fast MD5 check only when ETag looks like single-part (32 hex)
                 # else: assume size match is sufficient
-            except Exception:
+            except (ClientError, BotoCoreError, OSError, KeyError, ValueError) as e:
+                if logger:
+                    logger.debug(f"Size/check fallback for {key} -> {dst}: {e}", indent=3)
                 filtered.append((key, dst, size, etag))
 
     def _dl(k: str, p: Path):
@@ -166,19 +180,14 @@ def stage_reels(
     # Group ALL files by reel for progress tracking (before filtering)
     all_files_by_reel = {}
     for key, dst, size, etag in to_get:
-        # Extract reel name from path: reels/{reel_name}/...
-        rel_path = str(dst.relative_to(local_project_dir)).replace("\\", "/")  # Normalize Windows paths
-        if rel_path.startswith("reels/"):
-            path_parts = rel_path.split("/")
-            reel_name = path_parts[1] if len(path_parts) > 1 else "unknown"
-            if reel_name not in all_files_by_reel:
-                all_files_by_reel[reel_name] = []
-            all_files_by_reel[reel_name].append((key, dst, size, etag))
+        reel_name = _extract_reel_name(dst, local_project_dir)
+        if reel_name not in all_files_by_reel:
+            all_files_by_reel[reel_name] = []
+        all_files_by_reel[reel_name].append((key, dst, size, etag))
 
     # Log staging start if logger provided (show total reel count)
     if logger and to_get:
         total_reels = len(all_files_by_reel)
-        total_files = len(to_get)
         files_to_download = len(filtered)
         logger.info(f"📦 Staging {files_to_download} files across {total_reels} reel(s)...", indent=2)
 
@@ -186,14 +195,10 @@ def stage_reels(
         # Group filtered files by reel for download progress tracking
         files_by_reel = {}
         for key, dst, size, etag in filtered:
-            # Extract reel name from path: reels/{reel_name}/...
-            rel_path = str(dst.relative_to(local_project_dir)).replace("\\", "/")  # Normalize Windows paths
-            if rel_path.startswith("reels/"):
-                path_parts = rel_path.split("/")
-                reel_name = path_parts[1] if len(path_parts) > 1 else "unknown"
-                if reel_name not in files_by_reel:
-                    files_by_reel[reel_name] = []
-                files_by_reel[reel_name].append((key, dst, size, etag))
+            reel_name = _extract_reel_name(dst, local_project_dir)
+            if reel_name not in files_by_reel:
+                files_by_reel[reel_name] = []
+            files_by_reel[reel_name].append((key, dst, size, etag))
         
         # Download files by reel and track progress
         completed_reels = 0
@@ -324,8 +329,11 @@ def stage_project_files(
                 try:
                     if dst.stat().st_size != size:
                         filtered.append((key, dst, size, etag))
-                except Exception:
+                except (ClientError, BotoCoreError, OSError, KeyError, ValueError):
                     filtered.append((key, dst, size, etag))
+                except Exception:
+                    logger.exception("Unexpected skip-if-exists check failure for key=%s dst=%s", key, dst)
+                    raise
 
         # Download files
         def _dl(k: str, p: Path):

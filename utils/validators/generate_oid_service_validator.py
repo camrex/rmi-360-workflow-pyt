@@ -18,16 +18,21 @@
 # Notes:                Used for validation of portal and AWS configuration for OID service deployment.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     try_resolve_config_expression,
     validate_config_section
 )
+from utils.validators.secured_storage_validator import validate_secured_storage_deployment
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the OID service generation tool.
 
@@ -70,5 +75,24 @@ def validate(cfg: "ConfigManager") -> bool:
     if not try_resolve_config_expression(aws.get("s3_bucket_folder"), "aws.s3_bucket_folder", cfg,
                                          expected_type=str):
         error_count += 1
+
+    secured = cfg.get("secured_storage", {})
+    if secured:
+        if not validate_type(secured, "secured_storage", dict, cfg):
+            error_count += 1
+        else:
+            if "enabled" in secured and not validate_type(secured.get("enabled"), "secured_storage.enabled", bool, cfg):
+                error_count += 1
+
+            if secured.get("enabled", False):
+                for key in ("s3_bucket", "region", "s3_bucket_folder", "cloud_store_name"):
+                    if not validate_type(secured.get(key), f"secured_storage.{key}", str, cfg):
+                        error_count += 1
+                if not try_resolve_config_expression(secured.get("s3_bucket_folder"), "secured_storage.s3_bucket_folder", cfg,
+                                                     expected_type=str):
+                    error_count += 1
+
+                if error_count == 0 and not validate_secured_storage_deployment(cfg):
+                    error_count += 1
 
     return error_count == 0

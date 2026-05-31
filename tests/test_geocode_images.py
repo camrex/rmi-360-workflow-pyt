@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 from utils.geocode_images import get_exiftool_cmd, build_geocode_args_and_log
+from utils.validators import geocode_images_validator
 
 def test_get_exiftool_cmd_default():
     cfg = MagicMock()
@@ -30,3 +31,37 @@ def test_build_geocode_args_and_log(tmp_path):
     assert any("Geocoded OID 123" in log_entry for log_entry in logs)
     # Should warn for missing.jpg
     logger.warning.assert_called_with(f"Image path does not exist: {tmp_path/ 'missing.jpg'}")
+
+
+def test_geocode_validator_accepts_geoareas_without_exiftool(monkeypatch):
+    cfg = MagicMock()
+    cfg.get.side_effect = lambda k, d=None: {"geocoding.method": "geo_areas"}.get(k, d)
+    cfg.get_logger.return_value = MagicMock()
+    cfg.paths = MagicMock()
+    cfg.paths.check_exiftool_available.side_effect = AssertionError("ExifTool should not be checked for geo_areas")
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("file checks should not run for geo_areas")
+
+    monkeypatch.setattr(geocode_images_validator, "check_file_exists", fail_if_called)
+
+    assert geocode_images_validator.validate(cfg) is True
+
+
+def test_geocode_validator_accepts_exiftool_with_geolocation500(monkeypatch):
+    cfg = MagicMock()
+    cfg.get.side_effect = lambda k, d=None: {
+        "geocoding.method": "exiftool",
+        "geocoding.exiftool_geodb": "geolocation500"
+    }.get(k, d)
+    cfg.get_logger.return_value = MagicMock()
+    cfg.paths = MagicMock()
+    cfg.paths.geoloc500_config_path = MagicMock()
+    cfg.paths.geocustom_config_path = MagicMock()
+    cfg.paths.exiftool_exe = "exiftool"
+    cfg.paths.check_exiftool_available.return_value = True
+    cfg.paths.geoloc500_config_path.resolve.return_value = "/tmp/geo500.cfg"
+
+    monkeypatch.setattr(geocode_images_validator, "check_file_exists", lambda *args, **kwargs: True)
+
+    assert geocode_images_validator.validate(cfg) is True

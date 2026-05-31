@@ -5,6 +5,7 @@ This directory contains the monitoring system for Mosaic Processor progress trac
 ## 🔧 Core System Files (Required)
 
 ### `utils/mosaic_processor_monitor.py`
+
 - **Core monitoring engine** that tracks frame generation
 - Reads `frame_times.csv` files to determine expected frames
 - Monitors output directories for generated JPEG files
@@ -12,6 +13,7 @@ This directory contains the monitoring system for Mosaic Processor progress trac
 - **Required** - This is the heart of the monitoring system
 
 ### `utils/mosaic_progress_display.py`
+
 - **Internal progress display** that runs in separate CLI window
 - Launched automatically by `utils/mosaic_processor.py`
 - Shows real-time progress bars and frame counts
@@ -39,9 +41,9 @@ None required - monitoring is fully integrated and automatic.
 
 ## 📁 File Summary
 
-| File | Purpose | Required | User Interaction |
-|------|---------|----------|------------------|
-| `utils/mosaic_processor_monitor.py` | Core monitoring logic | ✅ Required | None - automatic |
-| `utils/mosaic_progress_display.py` | Auto progress window | ✅ Required | None - automatic |
+| File                                   | Purpose                | Required         | User Interaction   |
+|----------------------------------------|------------------------|------------------|--------------------|
+| `utils/mosaic_processor_monitor.py`    | Core monitoring logic  | ✅ Required      | None - automatic   |
+| `utils/mosaic_progress_display.py`     | Auto progress window   | ✅ Required      | None - automatic   |
 
 The system is designed to be **completely automatic** - users simply run Mosaic Processor from ArcGIS Pro and get real-time progress monitoring without any manual steps or additional scripts.

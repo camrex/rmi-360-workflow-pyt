@@ -1,110 +1,82 @@
-# 🛤 Tool: Update Linear Referencing and Custom Attributes
+# Tool: Update Linear and Custom Attributes
 
-## 🧰 Tool Name
-**06 – Update Linear and Custom Attributes**
+## Tool Name
 
----
+06 - Update Linear and Custom Attributes
 
-## 🧭 Purpose
+## Purpose
 
-This tool updates Oriented Imagery Dataset (OID) features by:
+Updates OID rows with:
 
-1. **Locating each image along a route centerline** using M-values (milepost data)
-2. **Populating linear referencing fields** (e.g., `MP_Pre`, `MP_Num`)
-3. **Populating custom project-specific attributes** (e.g., `RR`, `ClientCode`, `MP_Label`) based on expressions in `config.yaml`
+- Linear referencing fields (for example `MP_Pre`, `MP_Num`) when LR is enabled
+- Custom expression-driven fields from config
+- Optional `SequenceOrder` population when enabled
 
-This step ensures imagery records are **milepost-referenced and metadata-enriched**, allowing consistent filenames, metadata tags, and service attributes.
+## Inputs
 
----
+- OID feature class
+- Optional centerline feature class and route ID field
+- Workflow LR toggle (`enable_linear_ref`)
+- Config blocks:
+  - `oid_schema_template.linear_ref_fields`
+  - `oid_schema_template.custom_fields`
+  - `sequence_order` (optional)
 
-## 🧰 Parameters
+## Outputs
 
-| Parameter            | Required | Description                                      |
-|----------------------|----------|--------------------------------------------------|
-| OID Feature Class    | ✅       | Input OID to update                              |
-| Config File          | ✅       | Path to `config.yaml` with field rules           |
-| Project Folder       | ✅       | Project root for resolving outputs               |
+- Updated OID attributes for linear/custom fields
+- Optional populated `SequenceOrder`
 
----
+## Runtime Behavior
 
-## 🗂️ Scripts & Components
+1. Validates config (`update_linear_and_custom` validator).
+2. If LR is enabled and centerline inputs are present, runs locate-along-route and maps route and MP values by OID.
+3. Applies linear field updates and custom expression updates.
+4. Applies optional SequenceOrder assignment if `sequence_order.enabled` is true.
 
-| Script                                  | Role/Responsibility                |
-|-----------------------------------------|------------------------------------|
-| `tools/update_linear_and_custom_tool.py`| ArcGIS Toolbox wrapper             |
-| `utils/update_linear_and_custom.py`     | Core update logic                  |
-| `utils/manager/config_manager.py`       | Loads and validates configuration  |
+## SequenceOrder Logic
 
----
+SequenceOrder is optional and config-gated.
 
-## ⚙️ Behavior / Logic
+When enabled:
 
-1. Loads field calculation rules from config.
-2. Calculates linear referencing fields (e.g., MP_Pre, MP_Num, Offset).
-3. Applies custom project-specific field logic.
-4. Updates OID attributes.
-5. Logs changes and errors.
+- If LR is enabled and LR fields exist, ordering uses grouped `MP_Pre` and `MP_Num`.
+- Otherwise ordering falls back to `AcquisitionDate`.
+- Ties are resolved deterministically by OID.
 
-    alias: "MP Label"
-    expression: "field.MP_Pre + '-' + field.MP_Num.float(3)"
+Decision controls:
+
+- `sequence_order.prefix_order`: explicit ordering for prefix groups
+- `sequence_order.descending_prefixes`: prefixes that sort MP descending
+- `sequence_order.null_milepost_position`: where null MP rows go (`start` or `end`)
+
+## Configuration
+
+```yaml
+sequence_order:
+  enabled: false
+  field_name: "SequenceOrder"
+  acquisition_datetime_field: "AcquisitionDate"
+  lr_prefix_field: "MP_Pre"
+  lr_mile_field: "MP_Num"
+  prefix_order: []
+  descending_prefixes: []
+  null_milepost_position: "end"
 ```
 
----
+## Validation
 
-## ⚙️ How It Works
+Validator: `utils/validators/update_linear_and_custom_validator.py`
 
-```text
-1. Load field definitions from config.yaml
-2. (If enabled) Locate each point along the centerline using LocateFeaturesAlongRoutes
-3. Update `MP_Pre` and `MP_Num` based on route ID and M-value
-4. Evaluate expressions to update each custom field
-5. Report results to ArcGIS Pro using arcpy.AddMessage
-```
+Checks include:
 
----
+- `linear_ref_fields` and `custom_fields` schema blocks
+- Field block structure and types
+- Optional `sequence_order` structure and value types
+- `sequence_order.null_milepost_position` in (`start`, `end`)
 
-## 📤 Outputs
+## Notes
 
-- **Linear Reference Fields**:
-  - `MP_Pre` → Prefix/line identifier
-  - `MP_Num` → Milepost decimal
-- **Custom Fields**:
-  - Populated using expressions (e.g., `RR`, `MP_Label`, `Client`)
-
----
-
-## 🧪 Python Usage
-
-```python
-from utils.update_linear_and_custom import update_linear_and_custom
-
-update_linear_and_custom(
-    oid_fc="C:/GIS/ProjectOID.gdb/OID",
-    centerline_fc="C:/GIS/Centerline.gdb/Routes",
-    route_id_field="RouteID",
-    enable_linear_ref=True,
-    config_file="config.yaml"
-)
-```
-
----
-
-## ✅ Validation
-
-Validation logic ensures:
-
-- `linear_ref_fields` and `custom_fields` are properly structured
-- Types are compatible (`TEXT`, `DOUBLE`, etc.)
-- Field names are unique
-- Required expressions resolve correctly via `resolve_expression()`
-
-Validators: `validate_tool_update_linear_and_custom()` in `validate_config.py`
-
----
-
-## 📝 Notes
-
-- Must be run **after geometry and attributes have been added to OID**
-- If `enable_linear_ref` is unchecked, only custom fields will be updated
-- Expressions can reference `config.project.*` or any other part of the config
-- You can define as many custom fields as needed for metadata, tagging, or filenames
+- If SequenceOrder is disabled, field values are left as-is (typically null).
+- If LR is enabled but MP fields are unavailable at runtime, SequenceOrder falls back to datetime ordering.
+- Null MP rows are not dropped; they are placed deterministically and logged.
