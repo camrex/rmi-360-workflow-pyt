@@ -28,7 +28,7 @@
 #   - Uses ExifTool’s -execute mode for efficient batch tagging
 # =============================================================================
 
-___all___ = ["geocode_images"]
+__all__ = ["geocode_images"]
 
 import os
 import subprocess

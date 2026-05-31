@@ -416,7 +416,7 @@ class PathManager:
 
         try:
             result = subprocess.run(
-                [exe_path] + test_args, 
+                [exe_path, *test_args], 
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.PIPE, 
                 text=True,

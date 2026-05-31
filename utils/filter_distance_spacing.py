@@ -331,7 +331,7 @@ def filter_distance_spacing(
         # Flag problematic images
         with cfg.get_progressor(total=len(all_oids_to_process), label="Flagging spacing issues") as progressor:
             with arcpy.da.UpdateCursor(oid_fc, ["OID@", "QCFlag"]) as cursor:
-                for oid, flag in cursor:
+                for oid, _ in cursor:
                     if oid in all_oids_to_process:
                         cursor.updateRow((oid, "SPACING_TOO_CLOSE"))
                         progressor.update(1)
@@ -355,7 +355,7 @@ def filter_distance_spacing(
         failed_moves = 0
 
         with arcpy.da.SearchCursor(oid_fc, ["ImagePath", "Name", "Reel"], where_clause) as cursor:
-            for image_path, image_name, reel in cursor:
+            for image_path, _, reel in cursor:
                 if image_path and Path(image_path).exists():
                     src_file = Path(image_path)
                     try:
@@ -469,8 +469,8 @@ def filter_distance_spacing(
             try:
                 desc_after = arcpy.Describe(oid_fc)
                 logger.debug(f"✓ Spatial index status after rebuild: {desc_after.hasSpatialIndex}", indent=2)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Could not verify spatial index status for {oid_fc}: {e}", indent=2)
 
         except Exception as e:
             logger.warning(f"Failed to refresh workspace cache/indexes: {e}", indent=1)

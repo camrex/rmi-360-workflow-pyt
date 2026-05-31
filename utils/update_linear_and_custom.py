@@ -527,6 +527,10 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
                 indent=1,
             )
 
+        # lr_sort_key rule: NULL mileposts map to +/-infinity from
+        # null_milepost_position, and descending_prefixes only negates finite
+        # mile_sort values. For descending prefixes, NULL mileposts still remain
+        # at the configured null_milepost_position (they are not inverted).
         def lr_sort_key(item):
             prefix = item["prefix"]
             prefix_rank = _resolve_prefix_rank(prefix, ordered_prefixes)

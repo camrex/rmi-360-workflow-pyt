@@ -92,7 +92,7 @@ class CreateOrientedImageryDatasetTool(object):
             displayName="Project Folder",
             name="project_folder",
             datatype="DEFolder",
-            parameterType="Optional",
+            parameterType="Required",
             direction="Input"
         )
         params.append(project_param)

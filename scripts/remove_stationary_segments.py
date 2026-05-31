@@ -18,6 +18,7 @@ except ImportError:
     warnings.warn(
         "defusedxml is unavailable; falling back to xml.etree.ElementTree",
         RuntimeWarning,
+        stacklevel=2,
     )
     import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
@@ -174,14 +175,14 @@ def main() -> int:
     )
     parser.add_argument(
         "--video-creation-time",
-        default="2025-03-23T15:38:26+00:00",
-        help="Video file creation timestamp (ISO format)"
+        required=True,
+        help="Required video file creation timestamp (ISO format)"
     )
     parser.add_argument(
         "--timeshift-seconds",
         type=float,
-        default=18231890.0,
-        help="Timeshift between GPX and video in seconds"
+        default=0.0,
+        help="Timeshift between GPX and video in seconds (default: 0.0 for no shift)"
     )
     
     args = parser.parse_args()

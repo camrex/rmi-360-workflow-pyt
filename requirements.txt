@@ -1,5 +1,6 @@
 # Requirements compatible with ArcGIS Pro 3.4.0+ base Python environment
 # Versions are intentionally left unpinned to align with Esri's bundled packages
+# For bundled-environment vulnerability guidance (including Pillow/OSV notes), see SECURITY.md
 
 pyyaml          # YAML parsing (used for config files)
 boto3           # AWS SDK for Python

@@ -109,13 +109,13 @@ if str(REPO_ROOT) not in sys.path:
 # Third-party deps: boto3, pyyaml
 if importlib.util.find_spec("yaml") is None:
     print("PyYAML is required. Install with: pip install pyyaml", file=sys.stderr)
-    raise
+    raise ImportError("PyYAML is required: pip install pyyaml")
 
 try:
     from boto3.s3.transfer import S3Transfer
-except ImportError:
+except ImportError as exc:
     print("boto3 is required. Install with: pip install boto3", file=sys.stderr)
-    raise
+    raise ImportError("boto3 is required: pip install boto3") from exc
 
 # File extension definitions by folder type
 FOLDER_TYPE_EXTENSIONS = {

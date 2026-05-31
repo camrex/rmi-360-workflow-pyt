@@ -85,11 +85,12 @@ oid_schema_template:
   template:
     gdb_path: "templates/templates.gdb"
     template_name: "oid_schema_template"
-field_registry: "esri_oid_fields_registry.yaml"
-mosaic_fields: [...]
-grp_idx_fields: [...]
-linear_ref_fields: [...]
-custom_fields: [...]
+  esri_default:
+    field_registry: "esri_oid_fields_registry.yaml"
+  mosaic_fields: [...]
+  grp_idx_fields: [...]
+  linear_ref_fields: [...]
+  custom_fields: [...]
 ```
 
 - Spatial reference (horizontal/vertical) can be set in config or as a parameter.
@@ -214,19 +215,18 @@ oid_schema_template:
     field_registry: "../configs/esri_oid_fields_registry.yaml"
     standard: true
     not_applicable: false
-
-mosaic_fields:
-  mosaic_reel: ...
-  mosaic_frame: ...
-
-linear_ref_fields:
-  route_identifier: ...
-  route_measure: ...
-
-custom_fields:
-  custom1:
-    name: "RR"
-    expression: "config.project.rr_mark"
+  mosaic_fields:
+    mosaic_reel: ...
+    mosaic_frame: ...
+  grp_idx_fields:
+    group_index: ...
+  linear_ref_fields:
+    route_identifier: ...
+    route_measure: ...
+  custom_fields:
+    custom1:
+      name: "RR"
+      expression: "config.project.rr_mark"
 ```
 
 ---

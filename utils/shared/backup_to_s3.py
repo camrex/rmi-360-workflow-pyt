@@ -64,7 +64,7 @@ def _collect_files(folder: Path, allow_exts: set) -> List[Path]:
     if not folder.exists():
         return files
 
-    for root, dirs, filenames in os.walk(str(folder)):
+    for root, _dirs, filenames in os.walk(str(folder)):
         for name in filenames:
             ext = os.path.splitext(name)[1].lower()
             if ext in allow_exts or not allow_exts:

@@ -8,6 +8,33 @@ All notable changes to this project will be documented in this file.
 
 ## [v1.3.3] - 2026-05-30 - Secured Storage and Sequence Ordering
 
+### Feature Highlights
+
+#### Geo-Areas Enrichment Workflow
+
+- Added geo-areas enrichment workflow support to populate place/county/state context from configured feature classes or services.
+- Added FeatureServer layer-resolution handling and geo-areas gating logic so enrichment only runs when configured.
+
+#### Delivery Subset Preparation
+
+- Added delivery-subset preparation flow to emit delivery-specific OID outputs and manifest artifacts.
+- Wired delivery-subset outputs into downstream upload and service-generation steps.
+
+#### Secured Storage Support
+
+- Added secured-storage configuration support for virtual cache ImagePath generation and publishing integration.
+- Preserved legacy public-URL mode as the documented interim fallback path.
+
+#### GPS Segment Processing
+
+- Added GPS segment processing utilities/workflow support for movement-aware segment handling and related prep steps.
+- Updated related script/CLI behavior to use safer defaults and explicit required inputs where offsets are sensitive.
+
+#### Sequence Ordering
+
+- Added optional SequenceOrder population with linear-referencing-aware ordering controls.
+- Added validation for sequence-order settings in config parsing and runtime checks.
+
 ### Added
 
 - Added shared OID storage path helpers to centralize object key and ImagePath generation.

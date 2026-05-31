@@ -24,14 +24,25 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 
+# Project calibration offset from a known GPX-to-video alignment run.
+# Units: seconds (~211 days). Used by --use-calibration as a quick fallback.
+CALIBRATION_OFFSET_SECONDS = 18231890.0
+
+
 def get_video_creation_time(video_file: str) -> datetime:
     """Extract creation time from video metadata using ffprobe."""
+    file_path = Path(video_file).resolve()
+    if not file_path.exists():
+        raise ValueError(f"Video path does not exist: {video_file}")
+    if not file_path.is_file():
+        raise ValueError(f"Video path is not a file: {video_file}")
+
     cmd = [
         'ffprobe',
         '-v', 'quiet',
         '-print_format', 'json',
         '-show_format',
-        video_file
+        str(file_path)
     ]
     
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -59,10 +70,8 @@ def get_video_creation_time(video_file: str) -> datetime:
             pass
     
     # Fallback to file creation time
-    from pathlib import Path
     import platform
     
-    file_path = Path(video_file)
     if platform.system() == 'Windows':
         # Windows: use file creation time
         ctime = file_path.stat().st_ctime
@@ -239,8 +248,8 @@ def main():
         
         offset = args.offset_seconds
         if args.use_calibration:
-            # Use pre-calculated offset from calibration
-            offset = 18231890.0
+            # Use project calibration offset (seconds) from known alignment run.
+            offset = CALIBRATION_OFFSET_SECONDS
             print(f"\nUsing calibration offset: {offset:.1f} seconds")
         
         # Determine output filename

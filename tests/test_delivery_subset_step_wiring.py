@@ -3,6 +3,7 @@ import pathlib
 import sys
 import types
 from pathlib import Path
+from typing import Any
 
 
 _MISSING = object()
@@ -31,6 +32,10 @@ _STUBBED_MODULE_NAMES = [
 ]
 
 
+def noop(*args, **kwargs):
+    pass
+
+
 def _install_stub_module(module_name, **attrs):
     mod = types.ModuleType(module_name)
     for key, value in attrs.items():
@@ -47,7 +52,6 @@ def _stubbed_build_step_funcs_module():
         _install_stub_module("arcpy")
 
         # Build minimal stubs for all modules imported by build_step_funcs.
-        noop = lambda *args, **kwargs: None
 
         _install_stub_module("utils")
         _install_stub_module("utils.mosaic_processor", run_mosaic_processor=noop)
@@ -73,16 +77,19 @@ def _stubbed_build_step_funcs_module():
         repo_root = pathlib.Path(__file__).resolve().parents[1]
         module_path = repo_root / "utils" / "build_step_funcs.py"
         spec = importlib.util.spec_from_file_location("build_step_funcs_under_test", module_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"Unable to load module spec for {module_path}")
         module = importlib.util.module_from_spec(spec)
-        assert spec is not None and spec.loader is not None
         spec.loader.exec_module(module)
         return module
     finally:
         for name, prior in snapshots.items():
             if prior is _MISSING:
                 sys.modules.pop(name, None)
-            else:
+            elif isinstance(prior, types.ModuleType):
                 sys.modules[name] = prior
+            else:
+                sys.modules.pop(name, None)
 
 
 class DummyCfg:
@@ -98,10 +105,10 @@ class DummyCfg:
 
 
 def test_delivery_subset_outputs_feed_upload_and_service_steps():
-    mod = _stubbed_build_step_funcs_module()
+    mod: Any = _stubbed_build_step_funcs_module()
     cfg = DummyCfg()
 
-    calls = {"copy": None, "service": None}
+    calls: dict[str, Any] = {"copy": None, "service": None}
 
     def fake_prepare(cfg, oid_fc, params):
         params["delivery_manifest_path"] = "manifest.csv"
@@ -179,10 +186,10 @@ def test_delivery_subset_skip_when_not_enabled():
 
 
 def test_subset_folder_strategy_routes_upload_to_delivery_local_dir():
-    mod = _stubbed_build_step_funcs_module()
+    mod: Any = _stubbed_build_step_funcs_module()
     cfg = DummyCfg()
 
-    calls = {"copy": None}
+    calls: dict[str, Any] = {"copy": None}
 
     def fake_prepare(cfg, oid_fc, params):
         params["delivery_manifest_path"] = "delivery_subset_manifest.csv"
@@ -221,10 +228,10 @@ def test_subset_folder_strategy_routes_upload_to_delivery_local_dir():
 
 
 def test_manifest_only_strategy_falls_back_to_renamed_dir_for_upload():
-    mod = _stubbed_build_step_funcs_module()
+    mod: Any = _stubbed_build_step_funcs_module()
     cfg = DummyCfg()
 
-    calls = {"copy": None}
+    calls: dict[str, Any] = {"copy": None}
 
     def fake_prepare(cfg, oid_fc, params):
         params["delivery_manifest_path"] = "delivery_subset_manifest.csv"
@@ -262,10 +269,10 @@ def test_manifest_only_strategy_falls_back_to_renamed_dir_for_upload():
 
 
 def test_generate_service_falls_back_to_source_oid_when_delivery_oid_missing():
-    mod = _stubbed_build_step_funcs_module()
+    mod: Any = _stubbed_build_step_funcs_module()
     cfg = DummyCfg()
 
-    calls = {"service": None}
+    calls: dict[str, Any] = {"service": None}
 
     def fake_prepare(cfg, oid_fc, params):
         params["delivery_manifest_path"] = "delivery_subset_manifest.csv"

@@ -237,6 +237,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
+        # ArcPy stubs type `filter` as optional; keep guard to avoid None-attribute
+        # errors in static analysis and rare UI initialization states.
         if config_file_param.filter is not None:
             config_file_param.filter.list = ["yaml", "yml"]
         params.append(config_file_param)
@@ -522,6 +524,7 @@ class Process360Workflow(object):
 
         if project_key:
             project_key.enabled = is_aws
+            # ArcPy may expose `filter` as None depending on parameter/UI state.
             if project_key.filter is not None:
                 project_key.filter.list = []
 

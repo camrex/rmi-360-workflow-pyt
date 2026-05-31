@@ -73,7 +73,7 @@ def validate_expression_block(block: dict, keys: list[str], cfg: ConfigManager,
     Returns:
         bool: True if validation passed, False otherwise.
     """
-    logger =cfg.get_logger()
+    logger = cfg.get_logger()
     error_count = 0
 
     for key in keys:
@@ -112,7 +112,7 @@ def check_required_keys(d, keys, context, cfg: ConfigManager):
     Returns:
         bool: True if validation passed, False otherwise.
     """
-    logger =cfg.get_logger()
+    logger = cfg.get_logger()
 
     for key in keys:
         if key not in d:

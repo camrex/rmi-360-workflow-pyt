@@ -141,7 +141,7 @@ class CopyToAwsTool:
                 logger.info("Deploying AWS upload monitor...")
                 deploy_lambda_monitor(cfg=cfg)
             except Exception as e:
-                logger.error(f"Failed to deploy AWS Monitor: {str(e)}", error_type=RuntimeError)
+                logger.error(f"Failed to deploy AWS Monitor: {e!s}", error_type=RuntimeError)
                 raise
 
         try:
@@ -153,7 +153,7 @@ class CopyToAwsTool:
                 messages=messages
             )
         except Exception as e:
-            logger.error(f"Upload failed: {str(e)}", error_type=RuntimeError)
+            logger.error(f"Upload failed: {e!s}", error_type=RuntimeError)
             raise
 
         for msg in all_messages:

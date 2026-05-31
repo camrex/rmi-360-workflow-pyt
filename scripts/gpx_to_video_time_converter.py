@@ -56,6 +56,52 @@ def calculate_offset():
     return gpx_ref - video_ref_actual
 
 
+def validate_calibration() -> None:
+    """Validate calibration constants and fail fast on placeholder values."""
+    issues = []
+    current_year = datetime.now(tz=VIDEO_FILE_CREATION.tzinfo).year
+
+    if VIDEO_FILE_CREATION.year <= 1971:
+        issues.append(
+            "VIDEO_FILE_CREATION looks like a placeholder epoch-era date; set it to your video's real creation time."
+        )
+    if VIDEO_FILE_CREATION.year > current_year + 1:
+        issues.append(
+            "VIDEO_FILE_CREATION is far in the future; verify the value for your recording."
+        )
+
+    try:
+        gpx_ref = parse_gpx_timestamp(GPX_CALIBRATION_TIMESTAMP)
+    except (ValueError, TypeError) as exc:
+        issues.append(
+            f"GPX_CALIBRATION_TIMESTAMP is not a valid ISO timestamp: {exc}"
+        )
+    else:
+        if gpx_ref.year != VIDEO_FILE_CREATION.year:
+            issues.append(
+                "GPX_CALIBRATION_TIMESTAMP year does not match VIDEO_FILE_CREATION year; verify both calibration anchors."
+            )
+
+    if VIDEO_CALIBRATION_OFFSET_SECONDS <= 0:
+        issues.append(
+            "VIDEO_CALIBRATION_OFFSET_SECONDS must be positive and represent seconds into the video."
+        )
+    if VIDEO_CALIBRATION_OFFSET_SECONDS == 160:
+        print(
+            "WARNING: VIDEO_CALIBRATION_OFFSET_SECONDS is still the example default (160). "
+            "Replace it with your measured calibration point for production use.",
+            file=sys.stderr,
+        )
+
+    if issues:
+        details = "\n - ".join(issues)
+        raise ValueError(
+            "Calibration constants must be customized before use. Update "
+            "VIDEO_FILE_CREATION, GPX_CALIBRATION_TIMESTAMP, and VIDEO_CALIBRATION_OFFSET_SECONDS."
+            f"\n - {details}"
+        )
+
+
 def gpx_to_video_position(gpx_timestamp_str, offset):
     """Convert GPX timestamp to video file position in seconds."""
     gpx_time = parse_gpx_timestamp(gpx_timestamp_str)
@@ -110,6 +156,8 @@ def main():
     )
     
     args = parser.parse_args()
+
+    validate_calibration()
     
     # Calculate offset
     offset = calculate_offset()

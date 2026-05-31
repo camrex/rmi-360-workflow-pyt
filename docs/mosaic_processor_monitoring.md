@@ -17,6 +17,7 @@ The Mosaic Processor now includes real-time progress monitoring capabilities tha
 ## Features
 
 ### Automatic Integration
+
 - The monitoring starts automatically when `run_mosaic_processor` is called
 - **Separate CLI window opens automatically** showing real-time progress
 - Runs in a background thread without blocking ArcGIS Pro
@@ -24,15 +25,18 @@ The Mosaic Processor now includes real-time progress monitoring capabilities tha
 - **No user intervention required** - completely hands-off operation
 
 ### Progress Metrics
+
 - **Per-reel progress**: Expected vs generated frame counts for each reel
 - **Overall progress**: Total frames and completion percentage across all reels
 - **Completion detection**: Automatically detects when all reels are finished
 - **Real-time updates**: Status updates every 5 seconds during processing
 
 ### Status File Output
+
 The monitor writes progress to: `<project_folder>/logs/mosaic_processor_progress.json`
 
 Example status file content:
+
 ```json
 {
   "timestamp": 1698768000.123,
@@ -72,6 +76,7 @@ When you run the Mosaic Processor from ArcGIS Pro:
 4. **Non-blocking**: ArcGIS Pro interface remains responsive
 
 The progress window displays:
+
 - Real-time progress bars for each reel
 - Current frame counts (generated/expected)
 - Overall completion percentage
@@ -104,6 +109,7 @@ This allows integration with external monitoring systems if needed, but is not r
 ## Integration Examples
 
 ### PowerShell Monitoring Script
+
 ```powershell
 # Monitor progress and display notifications
 $statusFile = "D:\project\logs\mosaic_processor_progress.json"
@@ -124,6 +130,7 @@ while ($true) {
 ```
 
 ### Python Integration
+
 ```python
 import json
 from pathlib import Path
@@ -162,6 +169,7 @@ The monitoring system is automatically configured through the existing ConfigMan
 ## Logging
 
 The monitor logs key events to the main application logger:
+
 - Monitor startup/shutdown
 - Reel discovery and expected frame counts
 - Progress milestones (every 1% change)
@@ -171,6 +179,7 @@ The monitor logs key events to the main application logger:
 ## Error Handling
 
 The monitor is designed to be robust:
+
 - Continues monitoring if individual files can't be read
 - Handles missing `frame_times.csv` files gracefully
 - Logs warnings for problematic reels but continues with others

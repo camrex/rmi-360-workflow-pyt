@@ -30,7 +30,7 @@
 from collections import namedtuple
 import json
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import urlopen
 
 import arcpy
@@ -90,7 +90,7 @@ def skip_if_geoareas_not_needed(params, cfg):
         return f"Skipped (method={method})"
     
     from utils.geoareas_exif_integration import should_use_geoareas
-    if not should_use_geoareas(cfg._config):
+    if not should_use_geoareas(cfg.raw):
         return "Skipped (geo-areas not configured)"
     
     return None
@@ -146,6 +146,11 @@ def _resolve_feature_service_layer(url: str, layer_role: str, logger) -> str:
     if "/FeatureServer/" in raw_url:
         return raw_url
     if not raw_url.lower().endswith("/featureserver"):
+        return raw_url
+
+    parsed_raw = urlparse(raw_url)
+    if parsed_raw.scheme.lower() not in {"http", "https"}:
+        logger.warning(f"Skipping FeatureServer metadata lookup for non-http(s) URL: {raw_url}", indent=1)
         return raw_url
 
     metadata_url = f"{raw_url}?{urlencode({'f': 'pjson'})}"

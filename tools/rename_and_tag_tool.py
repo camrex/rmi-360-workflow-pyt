@@ -109,7 +109,7 @@ class RenameAndTagImagesTool(object):
         This method renames image files and updates their EXIF/XMP metadata according to rules defined in a
         configuration file. It logs progress and results throughout the process.
         """
-        project_folder = parameters[0].valueAsTest
+        project_folder = parameters[0].valueAsText
         oid_fc = parameters[1].valueAsText
         delete_originals = bool(parameters[2].value)
         config_file = parameters[3].valueAsText
