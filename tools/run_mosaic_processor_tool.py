@@ -70,8 +70,7 @@ class RunMosaicProcessorTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         # Input folder for raw reel files
@@ -82,7 +81,6 @@ class RunMosaicProcessorTool(object):
             parameterType="Required",
             direction="Input"
         )
-        input_param.description = "Folder containing the raw video reels captured by the Mosaic 360 camera."
         params.append(input_param)
 
         # Config file
@@ -93,7 +91,6 @@ class RunMosaicProcessorTool(object):
             parameterType="Optional",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         # Optional start frame
@@ -104,7 +101,6 @@ class RunMosaicProcessorTool(object):
             parameterType="Optional",
             direction="Input"
         )
-        start_param.description = "Start frame number for partial rendering. Leave blank to start from the beginning."
         params.append(start_param)
 
         # Optional end frame
@@ -115,7 +111,6 @@ class RunMosaicProcessorTool(object):
             parameterType="Optional",
             direction="Input"
         )
-        end_param.description = "End frame number for partial rendering. Leave blank to render through the last frame."
         params.append(end_param)
 
         return params

@@ -40,13 +40,11 @@
 # =============================================================================
 
 import arcpy
-import os
 import csv
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from utils.geocode_geoareas import geocode_geoareas
-from utils.manager.config_manager import ConfigManager
 
 
 class GeocodeGeoAreasTool:
@@ -68,8 +66,7 @@ class GeocodeGeoAreasTool:
             parameterType="Required",
             direction="Input"
         )
-        photos_param.description = ("Point feature class containing corridor photos with milepost data. "
-                                   "Will be enriched with place/county/state information.")
+        # Point feature class to enrich with place, county, and state context.
         params.append(photos_param)
 
         # Places Feature Class
@@ -80,8 +77,7 @@ class GeocodeGeoAreasTool:
             parameterType="Required",
             direction="Input"
         )
-        places_param.description = ("Polygon feature class containing place boundaries. "
-                                   "Recommend using Esri Living Atlas data cached locally.")
+        # Place boundaries for enrichment; local Living Atlas copies are recommended.
         params.append(places_param)
 
         # Counties Feature Class
@@ -92,8 +88,7 @@ class GeocodeGeoAreasTool:
             parameterType="Required",
             direction="Input"
         )
-        counties_param.description = ("Polygon feature class containing county boundaries. "
-                                     "Recommend using Esri Living Atlas data cached locally.")
+        # County boundaries for enrichment; local Living Atlas copies are recommended.
         params.append(counties_param)
 
         # Milepost Field
@@ -105,7 +100,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         mile_field_param.value = "milepost"
-        mile_field_param.description = "Field containing milepost values for context calculation."
         params.append(mile_field_param)
 
         # Route ID Field
@@ -116,7 +110,6 @@ class GeocodeGeoAreasTool:
             parameterType="Optional",
             direction="Input"
         )
-        route_field_param.description = "Optional field identifying different routes (leave blank for single route)."
         params.append(route_field_param)
 
         # Processing Mode
@@ -127,17 +120,17 @@ class GeocodeGeoAreasTool:
             parameterType="Required",
             direction="Input"
         )
-        mode_param.filter.type = "ValueList"
-        mode_param.filter.list = [
-            "CONTAINMENT_ONLY",
-            "CONTAINMENT+MILEPOST_CONTEXT", 
-            "CONTAINMENT+MILEPOST+GAP_BRIDGE",
-            "CONTAINMENT+RANGES_BUILD_APPLY",
-            "FULL"
-        ]
+        if mode_param.filter is not None:
+            mode_param.filter.type = "ValueList"
+            mode_param.filter.list = [
+                "CONTAINMENT_ONLY",
+                "CONTAINMENT+MILEPOST_CONTEXT", 
+                "CONTAINMENT+MILEPOST+GAP_BRIDGE",
+                "CONTAINMENT+RANGES_BUILD_APPLY",
+                "FULL"
+            ]
         mode_param.value = "CONTAINMENT+RANGES_BUILD_APPLY"
-        mode_param.description = ("Processing level: CONTAINMENT+RANGES_BUILD_APPLY is recommended (most efficient), "
-                                 "FULL includes all steps but with redundant milepost enrichment.")
+        # FULL runs every step; RANGES_BUILD_APPLY is typically the most efficient default.
         params.append(mode_param)
 
         # Max Gap Miles
@@ -149,7 +142,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         max_gap_param.value = 1.0
-        max_gap_param.description = "Maximum gap distance (miles) for bridging between same-place anchors."
         params.append(max_gap_param)
 
         # Break Gap Miles  
@@ -161,7 +153,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         break_gap_param.value = 0.5
-        break_gap_param.description = "Gap distance (miles) that breaks range continuity."
         params.append(break_gap_param)
 
         # Min Points Per Range
@@ -173,7 +164,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         min_points_param.value = 2
-        min_points_param.description = "Minimum number of points required for a valid place range."
         params.append(min_points_param)
 
         # Promote Nearest
@@ -185,7 +175,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         promote_param.value = False
-        promote_param.description = "Promote nearest place to actual place if within max distance threshold."
         params.append(promote_param)
 
         # Max Nearest Miles
@@ -197,7 +186,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         max_nearest_param.value = 2.0
-        max_nearest_param.description = "Maximum distance (miles) for promoting nearest place to actual place."
         params.append(max_nearest_param)
 
         # Write Report CSV
@@ -209,7 +197,6 @@ class GeocodeGeoAreasTool:
             direction="Input"
         )
         report_param.value = True
-        report_param.description = "Generate QA report CSV with enrichment statistics."
         params.append(report_param)
 
         # Report CSV Path
@@ -220,8 +207,8 @@ class GeocodeGeoAreasTool:
             parameterType="Optional",
             direction="Input"
         )
-        report_path_param.description = "Custom path for QA report CSV (optional, defaults to project logs folder)."
-        report_path_param.filter.list = ["csv"]
+        if report_path_param.filter is not None:
+            report_path_param.filter.list = ["csv"]
         params.append(report_path_param)
 
         return params
@@ -252,7 +239,7 @@ class GeocodeGeoAreasTool:
                         f"Field '{mile_field}' not found in photos feature class. "
                         "Milepost-based enrichment will be skipped."
                     )
-            except:
+            except Exception:
                 pass
         
         # Validate route field if specified
@@ -265,7 +252,7 @@ class GeocodeGeoAreasTool:
                         f"Field '{route_field}' not found in photos feature class. "
                         "All photos will be treated as single route."
                     )
-            except:
+            except Exception:
                 pass
 
         return

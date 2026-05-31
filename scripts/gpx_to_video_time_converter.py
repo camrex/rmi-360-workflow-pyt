@@ -117,7 +117,7 @@ def main():
     print("=" * 70)
     print("GPX to Video Time Converter")
     print("=" * 70)
-    print(f"\nCalibration:")
+    print("\nCalibration:")
     print(f"  Video file creation: {VIDEO_FILE_CREATION.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Video calibration point: {format_timestamp(VIDEO_CALIBRATION_OFFSET_SECONDS)} ({VIDEO_CALIBRATION_OFFSET_SECONDS}s)")
     print(f"  GPX calibration point: {GPX_CALIBRATION_TIMESTAMP}")
@@ -130,9 +130,9 @@ def main():
     print(f"               → Video position {format_timestamp(test_position)}")
     print(f"               → Expected: {format_timestamp(VIDEO_CALIBRATION_OFFSET_SECONDS)}")
     if abs(test_position - VIDEO_CALIBRATION_OFFSET_SECONDS) < 1:
-        print(f"               ✓ Calibration verified!")
+        print("               ✓ Calibration verified!")
     else:
-        print(f"               ✗ Calibration error!")
+        print("               ✗ Calibration error!")
     
     # ========================================================================
     # MODE 1: ArcGIS Pro Video Multiplexer Timeshift
@@ -158,20 +158,20 @@ def main():
             writer.writerow([0, timeshift_seconds])
         
         print(f"\n✓ Created timeshift file: {args.output_csv}")
-        print(f"\n" + "=" * 70)
+        print("\n" + "=" * 70)
         print("HOW TO USE IN ARCGIS PRO:")
         print("=" * 70)
-        print(f"\n1. Open ArcGIS Pro")
-        print(f"2. Analysis tab → Tools → Search for 'Video Multiplexer'")
-        print(f"3. Set parameters:")
+        print("\n1. Open ArcGIS Pro")
+        print("2. Analysis tab → Tools → Search for 'Video Multiplexer'")
+        print("3. Set parameters:")
         print(f"   - Input Video File: {args.video_file}")
-        print(f"   - Metadata File: your_gps_track.gpx")
-        print(f"   - Output Video File: output_geospatial_video.ts")
+        print("   - Metadata File: your_gps_track.gpx")
+        print("   - Output Video File: output_geospatial_video.ts")
         print(f"   - Timeshift File: {args.output_csv}")
-        print(f"4. Run the tool")
-        print(f"5. Add the output .ts file to your map")
-        print(f"6. Use Select by Location to find video segment matching panoramas")
-        print(f"\nThe timeshift file tells Video Multiplexer to adjust GPX timestamps")
+        print("4. Run the tool")
+        print("5. Add the output .ts file to your map")
+        print("6. Use Select by Location to find video segment matching panoramas")
+        print("\nThe timeshift file tells Video Multiplexer to adjust GPX timestamps")
         print(f"by {timeshift_seconds:.1f} seconds to match the video timeline.")
         
         return
@@ -214,7 +214,7 @@ def main():
         print(f'\nffmpeg -i "{args.video_file}" ^')
         print(f'    -ss {start_time} ^')
         print(f'    -to {end_time} ^')
-        print(f'    -c copy ^')
+        print('    -c copy ^')
         print(f'    "{args.output_file}"')
         
         # Frame extraction command
@@ -222,12 +222,12 @@ def main():
         print("FRAME EXTRACTION COMMAND (after video extraction)")
         print("=" * 70)
         print(f'\nffmpeg -i "{args.output_file}" ^')
-        print(f'    -vf "select=\'not(mod(n,10))\'" ^')
-        print(f'    -vsync vfr ^')
-        print(f'    -q:v 2 ^')
-        print(f'    "gopro_frames/frame_%04d.jpg"')
-        print(f"\nNote: Extracting every 10th frame (adjust based on walking speed)")
-        print(f"      At 30fps, this gives ~0.5m spacing for normal walking")
+        print('    -vf "select=\'not(mod(n,10))\'" ^')
+        print('    -vsync vfr ^')
+        print('    -q:v 2 ^')
+        print('    "gopro_frames/frame_%04d.jpg"')
+        print("\nNote: Extracting every 10th frame (adjust based on walking speed)")
+        print("      At 30fps, this gives ~0.5m spacing for normal walking")
         
     except Exception as e:
         print(f"\n✗ Error: {e}", file=sys.stderr)

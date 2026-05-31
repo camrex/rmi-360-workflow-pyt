@@ -57,17 +57,19 @@ def get_aws_credentials(cfg: "ConfigManager") -> Tuple[str, str]:
     if use_keyring:
         access_key = keyring.get_password(service_name, "aws_access_key_id")
         secret_key = keyring.get_password(service_name, "aws_secret_access_key")
-        if not access_key or not secret_key:
+        if not isinstance(access_key, str) or not access_key.strip() or not isinstance(secret_key, str) or not secret_key.strip():
             logger.error(f"AWS credentials not found in keyring for service '{service_name}'.", indent=2,
                          error_type=RuntimeError)
+            raise RuntimeError(f"AWS credentials not found in keyring for service '{service_name}'.")
         logger.custom("Retrieved AWS credentials from keyring.", indent=2, emoji="🔑")
         return access_key, secret_key
     else:
         access_key = cfg.get("aws.access_key")
         secret_key = cfg.get("aws.secret_key")
-        if not access_key or not secret_key:
+        if not isinstance(access_key, str) or not access_key.strip() or not isinstance(secret_key, str) or not secret_key.strip():
             logger.error("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key "
                          "settings.", indent=2, error_type=RuntimeError)
+            raise RuntimeError("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key settings.")
         logger.custom("Retrieved AWS credentials from config.", indent=2, emoji="🔑")
         return access_key, secret_key
 

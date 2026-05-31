@@ -57,8 +57,7 @@ class GeocodeImagesTool:
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         oid_param = arcpy.Parameter(
@@ -68,7 +67,6 @@ class GeocodeImagesTool:
             parameterType="Required",
             direction="Input"
         )
-        oid_param.description = "The Oriented Imagery Dataset to process."
         params.append(oid_param)
 
         config_param = arcpy.Parameter(
@@ -78,8 +76,8 @@ class GeocodeImagesTool:
             parameterType="Optional",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
-        config_param.filter.list = ["yaml", "yml"]
+        if config_param.filter is not None:
+            config_param.filter.list = ["yaml", "yml"]
         params.append(config_param)
 
         return params

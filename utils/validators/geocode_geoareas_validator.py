@@ -22,8 +22,6 @@ __all__ = ["validate_geocode_geoareas_inputs"]
 import arcpy
 from typing import List, Optional, Tuple, Dict, Any
 
-from utils.shared.arcpy_utils import validate_fields_exist
-
 
 def validate_geocode_geoareas_inputs(
     photos_fc: str,

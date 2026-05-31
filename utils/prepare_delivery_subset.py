@@ -82,7 +82,11 @@ def _choose_spacing_ids(records: Sequence[Dict], cfg: ConfigManager, logger) -> 
     if mode == "auto_stride":
         stride = max(1, int(round(target_spacing / source_spacing)))
     else:
-        stride = int(stride)
+        if stride is None:
+            stride = 1
+            notes.append("stride_override was not set; defaulted to 1.")
+        else:
+            stride = int(stride)
 
     group_by_reel = bool(spacing_cfg.get("group_by_reel", True))
     validate_distance = bool(spacing_cfg.get("validate_distance", True))

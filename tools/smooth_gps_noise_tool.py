@@ -61,8 +61,7 @@ class SmoothGPSNoiseTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         oid_param = arcpy.Parameter(
@@ -72,8 +71,8 @@ class SmoothGPSNoiseTool(object):
             parameterType="Required",
             direction="Input"
         )
-        oid_param.filter.list = []
-        oid_param.description = "The Oriented Imagery Dataset feature class to analyze."
+        if oid_param.filter is not None:
+            oid_param.filter.list = []
         params.append(oid_param)
 
         route_param = arcpy.Parameter(
@@ -83,8 +82,8 @@ class SmoothGPSNoiseTool(object):
             parameterType="Optional",
             direction="Input"
         )
-        route_param.filter.list = ["Polyline"]
-        route_param.description = "Optional M-aware centerline feature to validate points against known track/route."
+        if route_param.filter is not None:
+            route_param.filter.list = ["Polyline"]
         params.append(route_param)
 
         flag_param = arcpy.Parameter(
@@ -95,7 +94,6 @@ class SmoothGPSNoiseTool(object):
             direction="Input"
         )
         flag_param.value = False
-        flag_param.description = "Only flag GPS outliers in QCFlag field without modifying geometry."
         params.append(flag_param)
 
         # Config file
@@ -106,7 +104,6 @@ class SmoothGPSNoiseTool(object):
             parameterType="Required",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         return params

@@ -17,6 +17,8 @@
 # Notes:                Used for validation of schema changes and custom field additions to OID templates.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_config_section,
@@ -25,8 +27,10 @@ from utils.validators.common_validators import (
     validate_type,
 )
 
-def validate(cfg: "ConfigManager") -> bool:
+if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
+
+def validate(cfg: "ConfigManager") -> bool:
     """
     Validates the 'linear_ref_fields' and 'custom_fields' sections of the OID schema template.
 

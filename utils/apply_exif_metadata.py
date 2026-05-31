@@ -371,6 +371,7 @@ def _cleanup_exiftool_original_backups(rows, cursor_fields, logger) -> int:
     seen = set()
 
     for row in rows:
+        backup_path = None
         try:
             image_path = row[path_idx]
             if not image_path:
@@ -384,7 +385,8 @@ def _cleanup_exiftool_original_backups(rows, cursor_fields, logger) -> int:
                 os.remove(backup_path)
                 deleted += 1
         except (OSError, TypeError) as exc:
-            logger.warning(f"Failed to remove ExifTool backup '{backup_path}': {exc}", indent=2)
+            backup_label = backup_path if backup_path else "<unknown>"
+            logger.warning(f"Failed to remove ExifTool backup '{backup_label}': {exc}", indent=2)
 
     return deleted
 
@@ -420,6 +422,7 @@ def update_metadata_from_config(cfg: ConfigManager, oid_fc: str):
     cursor_fields = base_fields + [f for f in required_fields if f not in base_fields]
 
     logger.debug(f"Fields used for SearchCursor: {cursor_fields}")
+    rows = []
     with arcpy.da.SearchCursor(oid_fc, cursor_fields) as cursor:
         rows = [row for row in cursor]
 

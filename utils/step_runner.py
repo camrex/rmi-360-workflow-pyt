@@ -139,27 +139,18 @@ def run_steps(
                 time.sleep(wait_seconds)
 
     def perform_cache_clearing(stp_key: str, oid_fc: Optional[str]):
-        """Clear ArcGIS caches after steps that modify feature classes to prevent stale data issues"""
+        """Clear the cached workspace connection after steps that modify the OID,
+        so the next step reads current data rather than a stale connection."""
         cache_clear_steps = ["smooth_gps_noise", "correct_gps_outliers"]
-        
+
         if stp_key in cache_clear_steps and oid_fc:
             try:
                 import arcpy
-                logger.info(f"🔄 Clearing ArcGIS caches after {stp_key} step...", indent=1)
-                
-                # Clear feature class caches
-                arcpy.ClearWorkspaceCache_management(arcpy.Describe(oid_fc).path)
-                
-                # Refresh workspace connections  
-                arcpy.RefreshCatalog(arcpy.Describe(oid_fc).path)
-                
-                # Force geometry index rebuild on next access
-                arcpy.management.RebuildIndexes(arcpy.Describe(oid_fc).path, "NO_SYSTEM")
-                
-                logger.info("✅ Cache clearing completed", indent=1)
-                
+                logger.info(f"🔄 Clearing workspace cache after {stp_key} step...", indent=1)
+                arcpy.management.ClearWorkspaceCache(arcpy.Describe(oid_fc).path)
+                logger.info("✅ Workspace cache cleared", indent=1)
             except Exception as e:
-                logger.warning(f"Cache clearing failed (non-critical): {e}", indent=1)
+                logger.warning(f"Workspace cache clear failed (non-critical): {e}", indent=1)
 
     def execute_step(lbl: str, function, rpt_data: Dict[str, Any], step_key=None):
         stp_start = datetime.now(timezone.utc)

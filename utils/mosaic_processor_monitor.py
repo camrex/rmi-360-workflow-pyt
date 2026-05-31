@@ -21,14 +21,12 @@
 # Ext. Dependencies:    os, csv, json, time, threading, pathlib
 #
 # =============================================================================
-import os
 import csv
 import json
 import time
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from collections import defaultdict
+from typing import Dict, Optional
 
 __all__ = ["MosaicProcessorMonitor"]
 
@@ -464,7 +462,7 @@ class MosaicProcessorMonitor:
 
     def is_monitoring(self) -> bool:
         """Check if monitoring is currently active."""
-        return self._monitor_thread and self._monitor_thread.is_alive()
+        return bool(self._monitor_thread and self._monitor_thread.is_alive())
 
 
 def create_monitor_from_config(cfg, input_reels_dir: str, progress_callback=None) -> MosaicProcessorMonitor:

@@ -2,6 +2,8 @@
 
 ## 🧰 Tool Name
 
+Geocode Images
+
 ---
 
 ## 📝 Purpose
@@ -14,9 +16,9 @@ Assigns spatial coordinates to images based on their EXIF GPS data or external C
 
 | Parameter            | Required | Description                                      |
 |----------------------|----------|--------------------------------------------------|
-| OID Feature Class    | ✅       | Input OID containing image references             |
-| Config File          | ✅       | Path to `config.yaml` with geocoding options      |
-| Project Folder       | ✅       | Project root for resolving outputs                |
+| OID Feature Class    | ✅       | Input OID containing image references            |
+| Config File          | ✅       | Path to `config.yaml` with geocoding options     |
+| Project Folder       | ✅       | Project root for resolving outputs               |
 
 ---
 
@@ -73,12 +75,13 @@ geocode_images:
 
 ## 📤 Output
 
-| File | Description |
-|------|-------------|
-| `logs/geocode_args.txt` | ExifTool command batch file |
-| `logs/geocode_logs.txt` | Human-readable log of geocoded images |
+| File                    | Description                            |
+| ----------------------- | -------------------------------------- |
+| `logs/geocode_args.txt` | ExifTool command batch file            |
+| `logs/geocode_logs.txt` | Human-readable log of geocoded images  |
 
 Metadata tags added (if available):
+
 - `XMP:XMP-iptcExt:LocationShownCity`
 - `XMP:XMP-iptcExt:ProvinceState`
 - `XMP:XMP-iptcExt:CountryName`
@@ -103,6 +106,7 @@ geocode_images(
 ## ✅ Validation
 
 Validation is performed by `validate_tool_geocode_images()` in `utils/validators`:
+
 - Checks that `method` is `"exiftool"`
 - Validates that chosen DB is one of `default`, `geolocation500`, or `geocustom`
 - Validates presence and path of `.config` file if using a custom or Geolocation500 DB

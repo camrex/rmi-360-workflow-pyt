@@ -60,7 +60,6 @@ def get_video_creation_time(video_file: str) -> datetime:
     
     # Fallback to file creation time
     from pathlib import Path
-    import os
     import platform
     
     file_path = Path(video_file)
@@ -81,6 +80,8 @@ def get_gpx_first_timestamp(gpx_file: str) -> datetime:
     
     first_time = tree.find('.//gpx:time', ns)
     if first_time is not None:
+        if first_time.text is None:
+            raise ValueError("GPX time element is empty")
         timestamp = first_time.text.replace('Z', '+00:00')
         return datetime.fromisoformat(timestamp)
     
@@ -114,7 +115,7 @@ def correct_video_timestamps(
     corrected_time = original_time + timedelta(seconds=offset_seconds)
     creation_time_str = corrected_time.strftime('%Y-%m-%dT%H:%M:%S.000000Z')
     
-    print(f"\nTimestamp correction:")
+    print("\nTimestamp correction:")
     print(f"  Original: {original_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Corrected: {corrected_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Offset: {offset_seconds:.1f} seconds ({offset_seconds/86400:.1f} days)")
@@ -130,14 +131,14 @@ def correct_video_timestamps(
     if preserve_quality:
         # Fast copy - no re-encoding
         cmd.extend(['-c', 'copy'])
-        print(f"\nMode: Fast copy (no re-encoding)")
+        print("\nMode: Fast copy (no re-encoding)")
     else:
         # Re-encode (slower but can fix other issues)
         cmd.extend(['-c:v', 'copy', '-c:a', 'copy'])
     
     cmd.append(output_video)
     
-    print(f"\nRunning ffmpeg...")
+    print("\nRunning ffmpeg...")
     print(f"Command: {' '.join(cmd)}")
     
     result = subprocess.run(cmd)
@@ -150,13 +151,13 @@ def correct_video_timestamps(
     
     # Verify correction
     new_time = get_video_creation_time(output_video)
-    print(f"\nVerification:")
+    print("\nVerification:")
     print(f"  New timestamp: {new_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Expected: {corrected_time.strftime('%Y-%m-%d %H:%M:%S')}")
     if abs((new_time - corrected_time).total_seconds()) < 2:
-        print(f"  ✓ Timestamps match!")
+        print("  ✓ Timestamps match!")
     else:
-        print(f"  ⚠️ Timestamp mismatch - may need manual verification")
+        print("  ⚠️ Timestamp mismatch - may need manual verification")
 
 
 def main():
@@ -214,18 +215,18 @@ def main():
         
         offset = calculate_offset(video_time, gpx_time)
         
-        print(f"\n" + "=" * 70)
-        print(f"CALCULATED OFFSET")
+        print("\n" + "=" * 70)
+        print("CALCULATED OFFSET")
         print("=" * 70)
         print(f"\nOffset: {offset:.1f} seconds")
         print(f"        {offset/3600:.2f} hours")
         print(f"        {offset/86400:.1f} days")
         print(f"\nInterpretation: GPX is {offset:.1f} seconds ahead of video")
         
-        print(f"\n" + "=" * 70)
-        print(f"NEXT STEP:")
+        print("\n" + "=" * 70)
+        print("NEXT STEP:")
         print("=" * 70)
-        print(f"\nTo correct this video, run:")
+        print("\nTo correct this video, run:")
         print(f'python {Path(__file__).name} --mode correct \\')
         print(f'    --video "{args.video}" \\')
         print(f'    --offset-seconds {offset:.1f}')
@@ -257,15 +258,15 @@ def main():
             preserve_quality=True
         )
         
-        print(f"\n" + "=" * 70)
-        print(f"NEXT STEPS:")
+        print("\n" + "=" * 70)
+        print("NEXT STEPS:")
         print("=" * 70)
-        print(f"\n1. Verify corrected video plays correctly")
-        print(f"2. Use Video Multiplexer WITHOUT timeshift file:")
+        print("\n1. Verify corrected video plays correctly")
+        print("2. Use Video Multiplexer WITHOUT timeshift file:")
         print(f"   - Input Video: {output_file}")
-        print(f"   - Metadata File: your_track.gpx")
-        print(f"   - Timeshift File: (leave empty)")
-        print(f"3. GPS track should now align perfectly with video!")
+        print("   - Metadata File: your_track.gpx")
+        print("   - Timeshift File: (leave empty)")
+        print("3. GPS track should now align perfectly with video!")
     
     return 0
 

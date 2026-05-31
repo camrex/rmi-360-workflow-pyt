@@ -107,8 +107,9 @@ def check_sufficient_disk_space(
     with cursor_factory(oid_fc, ["ImagePath"]) as cursor:
         image_path = next((row[0] for row in cursor if row[0]), None)
 
-    if not image_path:
+    if not isinstance(image_path, str) or not image_path:
         logger.error(f"No valid ImagePath found in the OID feature class: {oid_fc}", error_type=ValueError, indent=1)
+        raise ValueError(f"No valid ImagePath found in the OID feature class: {oid_fc}")
 
     # Determine target folder from ImagePath
     target_dir = os.path.dirname(image_path)
@@ -118,10 +119,11 @@ def check_sufficient_disk_space(
 
     base_dir = find_base_dir(target_dir, original_folder)
 
-    if not base_dir:
+    if not isinstance(base_dir, str) or not base_dir:
         logger.error(
             f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}",
             error_type=ValueError, indent=1)
+        raise ValueError(f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}")
 
     if not os.path.exists(base_dir):
         logger.error(f"Base folder not found: {base_dir}", error_type=FileNotFoundError, indent=1)

@@ -8,4 +8,4 @@
   - Calculation of Heading
 - [ ] Remove dependency on `EXIFTOOL` for metadata updates (Handle using Python)
 - [ ] Fix `enhance_images` to not expose seam line
-
+- [ ] Monitor validator `ConfigManager` type-only import refactor; revert this change set if fatal runtime import/circular-reference behavior is observed.

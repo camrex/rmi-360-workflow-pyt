@@ -62,8 +62,7 @@ class CreateOIDTemplateTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         # Config file
@@ -74,7 +73,6 @@ class CreateOIDTemplateTool(object):
             parameterType="Required",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         return params

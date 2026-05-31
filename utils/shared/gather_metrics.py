@@ -29,7 +29,7 @@
 
 import arcpy
 from collections import defaultdict
-from typing import Tuple, Dict, Any, List
+from typing import Dict, Any
 
 
 def collect_oid_metrics(

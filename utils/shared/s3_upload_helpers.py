@@ -261,7 +261,7 @@ def s3_object_matches_local(
         if age_diff > 3600:  # 1 hour
             print(f"[WARNING] Large file size match but timestamps differ by {age_diff/3600:.1f} hours: {fpath.name}")
             print(f"[WARNING] Local: {local_mtime}, S3: {last_modified}")
-            print(f"[WARNING] Using size-only match - consider --force if concerned about integrity")
+            print("[WARNING] Using size-only match - consider --force if concerned about integrity")
 
     return (True, "size_match_large")
 

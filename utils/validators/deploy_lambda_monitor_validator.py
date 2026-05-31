@@ -16,14 +16,18 @@
 # Notes:                Used for validation of AWS and project settings in Lambda monitoring tools.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.validators.common_validators import (
     validate_config_section,
     validate_type
 )
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the Lambda monitor deployment tool.
 

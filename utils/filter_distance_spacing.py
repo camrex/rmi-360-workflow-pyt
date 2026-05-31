@@ -214,11 +214,13 @@ def filter_distance_spacing(
     logger = cfg.get_logger()
     cfg.validate(tool="filter_distance_spacing")
 
-    # Get configuration values with defaults
-    min_spacing_m = min_spacing_m or cfg.get("distance_spacing.min_spacing_meters", 5.0)
-    tolerance_m = tolerance_m or cfg.get("distance_spacing.tolerance_meters", 1.0)
+    # Resolve configuration values to concrete floats for type safety.
+    resolved_min_spacing = min_spacing_m if min_spacing_m is not None else cfg.get("distance_spacing.min_spacing_meters", 5.0)
+    resolved_tolerance = tolerance_m if tolerance_m is not None else cfg.get("distance_spacing.tolerance_meters", 1.0)
+    min_spacing_m = float(5.0 if resolved_min_spacing is None else resolved_min_spacing)
+    tolerance_m = float(1.0 if resolved_tolerance is None else resolved_tolerance)
 
-    logger.info(f"🚀 Starting distance spacing filter:", indent=1)
+    logger.info("🚀 Starting distance spacing filter:", indent=1)
     logger.info(f"   Min spacing: {min_spacing_m}m (±{tolerance_m}m tolerance)", indent=2)
     logger.info(f"   Action: {action}", indent=2)
 
@@ -268,7 +270,7 @@ def filter_distance_spacing(
         elif stats["spacing_issues_detected"]:
             logger.info(f"     Minor spacing adjustments: {stats['removed_count']}/{stats['total_points']} images", indent=2)
         else:
-            logger.info(f"     ✓ Good distance-based spacing pattern", indent=2)
+            logger.info("     ✓ Good distance-based spacing pattern", indent=2)
 
         # Add to CSV for debugging (include both removed and analysis summary)
         if stats["is_time_based"] or stats.get("spacing_issues_detected", False):
@@ -355,9 +357,8 @@ def filter_distance_spacing(
         with arcpy.da.SearchCursor(oid_fc, ["ImagePath", "Name", "Reel"], where_clause) as cursor:
             for image_path, image_name, reel in cursor:
                 if image_path and Path(image_path).exists():
+                    src_file = Path(image_path)
                     try:
-                        src_file = Path(image_path)
-
                         # Preserve reel folder structure in quarantine
                         reel_name = reel or "unknown_reel"
                         reel_quarantine_dir = quarantine_dir / reel_name
@@ -411,7 +412,7 @@ def filter_distance_spacing(
     total_removed = sum(stats["removed_count"] for stats in reel_stats.values())
     distance_reels = [reel for reel, stats in reel_stats.items() if not stats["is_time_based"]]
 
-    logger.info(f"[SUMMARY] Distance Filter Results:", indent=1)
+    logger.info("[SUMMARY] Distance Filter Results:", indent=1)
     logger.info(f"   Processed: {total_images} images across {len(points_by_reel)} reel(s)", indent=2)
 
     if time_based_reels:
@@ -440,7 +441,7 @@ def filter_distance_spacing(
         try:
             final_count = int(arcpy.GetCount_management(oid_fc)[0])
             desc = arcpy.Describe(oid_fc)
-            logger.debug(f"📊 Post-filter feature class state:", indent=1)
+            logger.debug("📊 Post-filter feature class state:", indent=1)
             logger.debug(f"   • Feature count: {final_count}", indent=2)
             logger.debug(f"   • Spatial reference: {desc.spatialReference.name}", indent=2)
             logger.debug(f"   • Has spatial index: {desc.hasSpatialIndex}", indent=2)
@@ -468,7 +469,7 @@ def filter_distance_spacing(
             try:
                 desc_after = arcpy.Describe(oid_fc)
                 logger.debug(f"✓ Spatial index status after rebuild: {desc_after.hasSpatialIndex}", indent=2)
-            except:
+            except Exception:
                 pass
 
         except Exception as e:

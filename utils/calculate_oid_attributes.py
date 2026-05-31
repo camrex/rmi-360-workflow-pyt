@@ -179,6 +179,10 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
     roll = registry.get("CameraRoll", {}).get("oid_default", 0)
     near = registry.get("NearDistance", {}).get("oid_default", 2)
     far = registry.get("FarDistance", {}).get("oid_default", 50)
+    image_rotation = registry.get("ImageRotation", {}).get("oid_default", 0)
+    orientation_accuracy = registry.get(
+        "OrientationAccuracy", {}
+    ).get("oid_default", "15;0.2;0.5;0.5;0.5;0;0;1")
 
     # Determine fields to fetch and update
     esri_cfg = cfg.get("oid_schema_template.esri_default", {})
@@ -202,6 +206,7 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
     check_oid_fov_defaults(oid_fc_path, registry, logger)
 
     # Read first image path to extract reel metadata
+    first_image_path = None
     with arcpy.da.SearchCursor(oid_fc_path, ["ImagePath"], where_clause="ImagePath IS NOT NULL") as cursor:
         first_image_path = next((row[0].strip() for row in cursor if row[0]), None)
 
@@ -254,6 +259,10 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
                     row[field_to_index["NearDistance"]] = near
                 if "FarDistance" in field_to_index:
                     row[field_to_index["FarDistance"]] = far
+                if "ImageRotation" in field_to_index:
+                    row[field_to_index["ImageRotation"]] = image_rotation
+                if "OrientationAccuracy" in field_to_index:
+                    row[field_to_index["OrientationAccuracy"]] = orientation_accuracy
                 if "X" in field_to_index:
                     row[field_to_index["X"]] = x
                 if "Y" in field_to_index:

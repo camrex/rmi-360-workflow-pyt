@@ -5,20 +5,25 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 ---
 
 ## 🔧 Short-Term Tasks  
+
 **Goal**: These tasks require near-immediate attention and should be completed within the **v1.x** release line. They address critical requirements or improvements that are essential for initial project success.
 
 ### **1. 🌊 Watermark Support During Image Enhancement**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Refinement-orange)
 **Description**: Add the capability to overlay **configurable text or logos** on processed images.  
+
 - **Action Items**:
   - Support watermark position, opacity, and size customization.
-  - Integrate watermark functionality during image enhancement. 
+  - Integrate watermark functionality during image enhancement.
 - **Development Plan**: [View Development Plan](../dev_docs/short_term/watermark_support.md)
 📅 **Timeline**: Week 1-2: Implementation of watermark functionality.
 
 ### **2. 🔑 Lambda IAM Role Validation**  
+
 ![Effort](https://img.shields.io/badge/effort-LOW-green) ![Category](https://img.shields.io/badge/category-Foundational-blue)
 **Description**: Implement checks to verify that **proper IAM permissions** are set up before deploying Lambda functions.  
+
 - **Action Items**:
   - Create Lambda IAM role validation function to ensure proper permissions.
   - Add error handling for permission issues during deployment.
@@ -26,8 +31,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Week 2: IAM validation setup.
 
 ### **3. 💻 Optional CLI Runner for Pipelines**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Flexibility-yellow)
 **Description**: Provide an **optional CLI runner** for pipelines, allowing users to execute processing workflows independently of ArcGIS Pro.  
+
 - **Action Items**:
   - Develop the CLI runner that triggers the image processing pipeline.
   - Provide CLI arguments for configuration, input/output directories, and other options.
@@ -37,11 +44,14 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 ---
 
 ## **Phase 1: Foundational & Immediate Priorities**  
+
 **Goal**: Establish a solid foundation for the Toolbox, focusing on efficient metadata management, flexible config handling, and a reprocessable workflow.
 
 ### **1. 📍 Centralizing Metadata Management and Gathering**  
+
 ![Effort](https://img.shields.io/badge/effort-HIGH-red) ![Category](https://img.shields.io/badge/category-Foundational-blue)  
 **Description**: Create a centralized **SQLite database** to store all metadata, enabling easy updates and non-destructive edits.  
+
 - **Action Items**:
   - Implement metadata capture during image collection.
   - Integrate metadata into the processing pipeline for easy access.  
@@ -50,8 +60,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Week 1-2: Database setup, Week 3-4: Integration with pipeline.
 
 ### **2. 🔧 Refining Config Handling and Runtime Management**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Foundational-blue)  
 **Description**: Introduce **RuntimeManager** to centralize config handling, ensuring dynamic access to configurations.  
+
 - **Action Items**:
   - Refactor existing tools to fetch config from the centralized runtime database.  
 - **Development Plan**: [View Development Plan](../dev_docs/phase_1/refining_config_handling.md)  
@@ -59,8 +71,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Week 2-3: Refactor tools.
 
 ### **3. 🔄 Reprocessing and Selective Workflow Execution**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Flexibility-yellow)  
 **Description**: Allow users to reprocess specific images or steps of the pipeline without rerunning the entire workflow.  
+
 - **Action Items**:
   - Develop a tool that enables step-based reprocessing.
   - Implement metadata restoration capabilities.  
@@ -71,11 +85,14 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 ---
 
 ## **Phase 2: Core Features & Cloud Integration**  
+
 **Goal**: Optimize workflows, integrate cloud-based functionalities for scalability, and enhance flexibility for users.
 
 ### **1. ☁️ Cloud Integration for Metadata Management and Reprocessing**  
+
 ![Effort](https://img.shields.io/badge/effort-HIGH-red) ![Category](https://img.shields.io/badge/category-Scalable-green)  
 **Description**: Migrate metadata management to cloud services (e.g., AWS RDS) for remote storage and processing, enabling larger datasets and automated workflows.  
+
 - **Action Items**:
   - Set up cloud-based metadata storage and integrate with S3 triggers.
   - Automate reprocessing using AWS Lambda functions.  
@@ -84,8 +101,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Month 2-3: Cloud integration setup.
 
 ### **2. 🌐 Web-Based OID + Image Preview Viewer**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Flexibility-yellow)  
 **Description**: Develop a **web-based viewer** to preview **Oriented Imagery Datasets (OID)** and images, allowing easy access for remote users.  
+
 - **Action Items**:
   - Build a web viewer using **React** or **Flask** for metadata display and image manipulation.  
 - **Development Plan**: [View Development Plan](../dev_docs/phase_2/oid_image_viewer.md)  
@@ -93,8 +112,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Month 3: Web viewer development.
 
 ### **3. 💻 CLI and GUI Config Editors**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Flexibility-yellow)  
 **Description**: Provide a **CLI runner** for independent pipelines and develop a **GUI config editor** for users to modify settings with ease.  
+
 - **Action Items**:
   - Implement the **CLI runner** to execute workflows via the command line.
   - Develop a **GUI editor** (e.g., Electron or Jupyter-based) for easy configuration management.  
@@ -105,11 +126,14 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 ---
 
 ## **Phase 3: Future-Proofing, Automation, and Innovation**  
+
 **Goal**: Establish long-term capabilities like cloud-native operations, automation, and innovative features for enhanced performance and flexibility.
 
 ### **1. 🚀 Fully Automated Cloud-Based Pipeline**  
+
 ![Effort](https://img.shields.io/badge/effort-HIGH-red) ![Category](https://img.shields.io/badge/category-Scalable-green)  
 **Description**: Transition the image processing pipeline to **cloud-native services** (e.g., AWS Fargate, ECS), fully automating each step for scalability and efficiency.  
+
 - **Action Items**:
   - Containerize tools for deployment on AWS services.
   - Use **AWS Step Functions** for orchestration of the full pipeline.  
@@ -118,8 +142,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Month 4-5: Full cloud-native transition.
 
 ### **2. 🤖 AI-Based Image Enhancement**  
+
 ![Effort](https://img.shields.io/badge/effort-HIGH-red) ![Category](https://img.shields.io/badge/category-Innovation-purple)  
 **Description**: Integrate **AI-driven image enhancement** (e.g., blur detection, automatic contrast adjustments) into the pipeline to improve output quality.  
+
 - **Action Items**:
   - Research and implement AI-based models for enhancing or processing images based on their content.  
 - **Development Plan**: [View Development Plan](../dev_docs/phase_3/ai_image_enhancement.md)  
@@ -127,8 +153,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Month 6: Research and model integration.
 
 ### **3. 📤 Cloud-Based Image Syncing and Publishing**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Scalable-green)  
 **Description**: Automate the **uploading and syncing** of images to cloud storage (e.g., S3) with integrated metadata publishing to external viewers (e.g., ArcGIS Online).  
+
 - **Action Items**:
   - Implement **S3 triggers** for image and metadata syncing.
   - Develop APIs for clients to upload data directly into the pipeline.  
@@ -139,11 +167,14 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 ---
 
 ## **Phase 4: Long-Term Growth & User Experience Enhancements**  
+
 **Goal**: Focus on improving user experience, developing seamless workflows, and expanding the scope of features available to users.
 
 ### **1. 👁️ Standalone Viewer for Web and External Access**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Nice--to--Have-lightgrey)  
 **Description**: Develop a **standalone image viewer** (e.g., **Photo Sphere Viewer** or **WebGL**) to access images directly from cloud storage.  
+
 - **Action Items**:
   - Create a standalone viewer for users to view images and metadata from the cloud.  
 - **Development Plan**: [View Development Plan](../dev_docs/phase_4/standalone_viewer.md)  
@@ -151,8 +182,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Month 8: Standalone viewer development.
 
 ### **2. 📈 Advanced Reporting and Analytics**  
+
 ![Effort](https://img.shields.io/badge/effort-MEDIUM-orange) ![Category](https://img.shields.io/badge/category-Refinement-orange)  
 **Description**: Generate **automated reports** based on the processed images, summarizing key metrics, errors, and quality checks.  
+
 - **Action Items**:
   - Integrate reporting tools to automatically generate PDF/HTML reports summarizing processing results.  
 - **Development Plan**: [View Development Plan](../dev_docs/phase_4/advanced_reporting.md)  
@@ -160,8 +193,10 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 📅 **Timeline**: Month 8-9: Reporting implementation.
 
 ### **3. 📊 AI-Powered Cloud Analytics**  
+
 ![Effort](https://img.shields.io/badge/effort-HIGH-red) ![Category](https://img.shields.io/badge/category-Innovation-purple)  
 **Description**: Implement **AI-driven analytics** for advanced image analysis, metadata extraction, and anomaly detection.  
+
 - **Action Items**:
   - Research and deploy AI models for extracting more detailed insights from images and metadata.  
 - **Development Plan**: [View Development Plan](../dev_docs/phase_4/ai_powered_analytics.md)  
@@ -171,6 +206,7 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 ---
 
 ## **Next Steps**  
+
 1. **Begin Phase 1 Development**: Focus on **Centralizing Metadata Management** and **Refining Config Handling**.
 2. **Initiate Cloud Integration** for future scalability and automate metadata syncing.
 3. **Prepare for Phase 2** by experimenting with **Web-Based Viewers** and building a **CLI Runner**.

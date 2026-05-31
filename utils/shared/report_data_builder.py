@@ -129,11 +129,13 @@ def save_report_json(report_data: Dict[str, Any], cfg: ConfigManager, logger: Op
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(report_data, f, indent=2, ensure_ascii=False)
 
-        logger.custom(f"Saved report JSON to: {out_path}", emoji="📄", indent=1)
+        if logger is not None:
+            logger.custom(f"Saved report JSON to: {out_path}", emoji="📄", indent=1)
         return str(out_path)
 
     except Exception as e:
-        logger.error(f"Failed to save report JSON: {e}", indent=1)
+        if logger is not None:
+            logger.error(f"Failed to save report JSON: {e}", indent=1)
         return None
 
 
@@ -159,5 +161,6 @@ def load_report_json_if_exists(cfg: ConfigManager, logger: Optional[Any] = None)
                 return json.load(f)
         return None
     except Exception as e:
-        logger.error(f"Failed to load report JSON: {e}", indent=1)
+        if logger is not None:
+            logger.error(f"Failed to load report JSON: {e}", indent=1)
         return None

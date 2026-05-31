@@ -107,6 +107,7 @@ def geocode_images(cfg: ConfigManager, oid_fc: str) -> None:
     required_fields = ["OID@", "ImagePath", "X", "Y"]
     validate_fields_exist(oid_fc, ["ImagePath", "X", "Y"])
 
+    rows = []
     with arcpy.da.SearchCursor(oid_fc, required_fields) as cursor:
         rows = [row for row in cursor]
 

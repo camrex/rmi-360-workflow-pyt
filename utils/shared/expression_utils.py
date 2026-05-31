@@ -167,7 +167,7 @@ def _resolve_field_expr(expr: str, row: dict) -> str:
         elif mod == "lower":
             value = str(value).lower()
 
-    return value
+    return str(value)
 
 
 def _resolve_config_expr(expr: str, cfg: "ConfigManager") -> Any:

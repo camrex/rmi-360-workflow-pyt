@@ -71,7 +71,6 @@ class CopyToAwsTool:
             parameterType="Required",
             direction="Input"
         )
-        in_image_folder.description = "Folder where images to be uploaded to AWS are located."
         params.append(in_image_folder)
 
         # Skip uploading files to AWS if they already exist
@@ -83,7 +82,6 @@ class CopyToAwsTool:
             direction="Input"
         )
         skip_exist_aws_param.value = False
-        skip_exist_aws_param.description = "If checked, skips uploading files that already exist in S3."
         params.append(skip_exist_aws_param)
 
         # Config file
@@ -94,7 +92,6 @@ class CopyToAwsTool:
             parameterType="Required",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         # (0) Project folder - Root folder for this Mosaic 360 imagery project. All imagery and logs will be organized

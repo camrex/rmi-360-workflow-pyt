@@ -71,6 +71,7 @@ class SetAWSKeyringCredentialsTool(object):
         to the system keyring under a configurable service name. Logs success or error messages
         using the provided messaging object.
         """
+        logger = None
         try:
             cfg = ConfigManager.from_file(messages=messages)
             logger = cfg.get_logger()
@@ -88,4 +89,8 @@ class SetAWSKeyringCredentialsTool(object):
             logger.info(f"✅ AWS credentials saved to keyring under service '{service_name}'.")
 
         except Exception as e:
-            logger.error(f"Failed to set AWS credentials: {e}", error_type=RuntimeError)
+            if logger is not None:
+                logger.error(f"Failed to set AWS credentials: {e}", error_type=RuntimeError)
+            else:
+                arcpy.AddError(f"Failed to set AWS credentials: {e}")
+                raise RuntimeError(f"Failed to set AWS credentials: {e}") from e

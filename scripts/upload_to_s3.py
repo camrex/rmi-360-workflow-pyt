@@ -28,7 +28,7 @@
 
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
+r"""
 upload_to_s3.py - Unified S3 Upload for RMI 360 Workflow
 =========================================================
 
@@ -96,9 +96,10 @@ import os
 import signal
 import sys
 import time
+import importlib.util
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
 
 # Add repo root to path for imports
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -106,33 +107,15 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 # Third-party deps: boto3, pyyaml
-try:
-    import yaml  # PyYAML
-except ImportError:
+if importlib.util.find_spec("yaml") is None:
     print("PyYAML is required. Install with: pip install pyyaml", file=sys.stderr)
     raise
 
 try:
-    import boto3
     from boto3.s3.transfer import S3Transfer
-    from botocore.exceptions import ClientError
 except ImportError:
     print("boto3 is required. Install with: pip install boto3", file=sys.stderr)
     raise
-
-# Import helper modules
-from utils.shared.s3_upload_helpers import (
-    load_cfg,
-    resolve_project_base,
-    resolve_session,
-    resolve_max_concurrency,
-    normalize_s3_prefix,
-    s3_object_matches_local,
-    parse_uploaded_keys_from_log
-)
-from utils.shared.s3_transfer_config import get_transfer_config, get_boto_config
-from utils.shared.s3_status_tracker import StatusTracker
-
 
 # File extension definitions by folder type
 FOLDER_TYPE_EXTENSIONS = {
@@ -289,6 +272,19 @@ def reel_from_key(s3_key: str, project_key: str, folder_type: str = "reels") -> 
 # -----------------------------
 
 def main() -> int:
+    # Delayed imports require repo-root path injection above when this script is
+    # executed directly from the scripts/ folder.
+    from utils.shared.s3_upload_helpers import (
+        load_cfg,
+        resolve_project_base,
+        resolve_session,
+        resolve_max_concurrency,
+        s3_object_matches_local,
+        parse_uploaded_keys_from_log,
+    )
+    from utils.shared.s3_transfer_config import get_transfer_config, get_boto_config
+    from utils.shared.s3_status_tracker import StatusTracker
+
     p = argparse.ArgumentParser(
         description="Upload RMI 360 project files to S3 with resume and live status tracking."
     )
@@ -370,7 +366,7 @@ def main() -> int:
     elif args.timestamp:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 
-    print(f"[INFO] Starting S3 upload")
+    print("[INFO] Starting S3 upload")
     print(f"[INFO] Config:       {cfg_path}")
     print(f"[INFO] Project base: {project_base}")
     print(f"[INFO] Local folder: {local_folder}")
@@ -434,7 +430,6 @@ def main() -> int:
 
     # Default transfer config (will be overridden per file based on size)
     tcfg = get_transfer_config(64 * 1024 * 1024, max_workers)  # Default for 64MB
-    transfer = S3Transfer(s3, config=tcfg)
 
     # Determine group_key for StatusTracker based on folder types
     if len(folder_types) == 1 and folder_types[0] == 'reels':
@@ -446,10 +441,8 @@ def main() -> int:
     status_path = Path(args.status_json).resolve() if args.status_json else None
     tracker = StatusTracker(status_path, args.status_interval, group_key=group_key)
 
-    # Set totals for each group
-    for folder_type in groups:
-        for group_name, file_list in groups[folder_type].items():
-            tracker.set_totals({group_name: len(file_list)})
+    # Set global total file count; per-group planned counts are set in start_group.
+    tracker.set_totals(total_files)
 
     # Ctrl+C / SIGTERM graceful exit
     def _graceful_exit(signum, frame):
@@ -490,13 +483,13 @@ def main() -> int:
                 ]
                 writer.writerow(header)
                 fcsv.flush()  # Force immediate write
-                print(f"[INFO] CSV header written to new file")
+                print("[INFO] CSV header written to new file")
                 if args.debug:
                     print(f"[DEBUG] Header: {header}")
 
             # CSV is ready for writing
             if args.debug:
-                print(f"[DEBUG] CSV writer initialized and ready")
+                print("[DEBUG] CSV writer initialized and ready")
 
             uploaded = skipped = failed = 0
             total_size = 0
@@ -550,7 +543,7 @@ def main() -> int:
                                 print(f"[DEBUG] Skipping (prior log): {fpath.name}")
                             continue
 
-                        extra = {"ServerSideEncryption": "AES256"}
+                        extra: Dict[str, Any] = {"ServerSideEncryption": "AES256"}
                         if ctype:
                             extra["ContentType"] = ctype
 
@@ -561,9 +554,8 @@ def main() -> int:
                                 from utils.shared.s3_upload_helpers import sha256_file as compute_sha256
                                 local_sha256 = compute_sha256(fpath)
                                 # Store SHA-256 in metadata instead of using ChecksumSHA256
-                                if "Metadata" not in extra:
-                                    extra["Metadata"] = {}
-                                extra["Metadata"]["sha256"] = local_sha256
+                                metadata: Dict[str, str] = {"sha256": local_sha256}
+                                extra["Metadata"] = metadata
                                 print(f"[INFO] Uploading {fpath.name} with SHA-256 in metadata")
                             except Exception as e:
                                 print(f"[WARNING] Could not compute SHA-256 for {fpath.name}: {e}")
@@ -579,82 +571,82 @@ def main() -> int:
                         status = "uploaded"
                         err = ""
 
-                    # Adaptive retry strategy for large files
-                    max_retries = 3 if size >= 1024 * 1024 * 1024 else 1  # 3 retries for 1GB+ files
-                    retry_count = 0
+                        # Adaptive retry strategy for large files
+                        max_retries = 3 if size >= 1024 * 1024 * 1024 else 1  # 3 retries for 1GB+ files
+                        retry_count = 0
 
-                    # Use size-optimized transfer config for this specific file
-                    file_transfer_config = get_transfer_config(size)
-                    file_transfer = S3Transfer(s3, config=file_transfer_config)
+                        # Use size-optimized transfer config for this specific file
+                        file_transfer_config = get_transfer_config(size)
+                        file_transfer = S3Transfer(s3, config=file_transfer_config)
 
-                    while retry_count < max_retries:
-                        try:
-                            if retry_count > 0:
-                                print(f"[RETRY] Attempt {retry_count + 1}/{max_retries} for {fpath.name}")
-                                # Exponential backoff: 30s, 60s, 90s
-                                time.sleep(30 * retry_count)
+                        while retry_count < max_retries:
+                            try:
+                                if retry_count > 0:
+                                    print(f"[RETRY] Attempt {retry_count + 1}/{max_retries} for {fpath.name}")
+                                    # Exponential backoff: 30s, 60s, 90s
+                                    time.sleep(30 * retry_count)
 
-                            file_transfer.upload_file(
-                                str(fpath),
-                                bucket,
-                                key,
-                                extra_args=extra,
-                                callback=tracker.file_progress_cb(group_name),
-                            )
-                            uploaded += 1
-                            total_size += size
-                            if args.debug:
-                                print(f"[DEBUG] Upload completed: {fpath.name}")
-                            elif retry_count > 0:
-                                print(f"[SUCCESS] Upload succeeded on retry {retry_count + 1}: {fpath.name}")
-                            break  # Success, exit retry loop
+                                file_transfer.upload_file(
+                                    str(fpath),
+                                    bucket,
+                                    key,
+                                    extra_args=extra,
+                                    callback=tracker.file_progress_cb(group_name),
+                                )
+                                uploaded += 1
+                                total_size += size
+                                if args.debug:
+                                    print(f"[DEBUG] Upload completed: {fpath.name}")
+                                elif retry_count > 0:
+                                    print(f"[SUCCESS] Upload succeeded on retry {retry_count + 1}: {fpath.name}")
+                                break  # Success, exit retry loop
 
-                        except Exception as e:
-                            retry_count += 1
-                            err_str = str(e)
+                            except Exception as e:
+                                retry_count += 1
+                                err_str = str(e)
 
-                            # Check if this is a retryable error
-                            is_retryable = any(keyword in err_str.lower() for keyword in [
-                                "ssl", "timeout", "connection", "eof", "protocol", "broken pipe"
-                            ])
+                                # Check if this is a retryable error
+                                is_retryable = any(keyword in err_str.lower() for keyword in [
+                                    "ssl", "timeout", "connection", "eof", "protocol", "broken pipe"
+                                ])
 
-                            if is_retryable and retry_count < max_retries:
-                                print(f"[WARNING] Retryable error for {fpath.name} (attempt {retry_count}/{max_retries}): {e}")
-                                continue
-                            else:
-                                # Final failure
-                                status = "error"
-                                err = err_str
-                                failed += 1
-                                if retry_count >= max_retries:
-                                    print(f"[ERROR] Upload failed after {max_retries} attempts for {fpath.name}: {e}")
+                                if is_retryable and retry_count < max_retries:
+                                    print(f"[WARNING] Retryable error for {fpath.name} (attempt {retry_count}/{max_retries}): {e}")
+                                    continue
                                 else:
-                                    print(f"[ERROR] Upload failed (non-retryable) for {fpath.name}: {e}")
-                                break
+                                    # Final failure
+                                    status = "error"
+                                    err = err_str
+                                    failed += 1
+                                    if retry_count >= max_retries:
+                                        print(f"[ERROR] Upload failed after {max_retries} attempts for {fpath.name}: {e}")
+                                    else:
+                                        print(f"[ERROR] Upload failed (non-retryable) for {fpath.name}: {e}")
+                                    break
 
-                    dt = time.time() - t0
-                    # Log to CSV with immediate flush
-                    result_row = [time.time(), str(fpath), key, status, err, size, round(dt, 3), ctype or ""]
-                    writer.writerow(result_row)
-                    fcsv.flush()  # Force immediate write to disk
-                    tracker.file_done(group_name, status, size)
+                        dt = time.time() - t0
+                        # Log to CSV with immediate flush
+                        result_row = [time.time(), str(fpath), key, status, err, size, round(dt, 3), ctype or ""]
+                        writer.writerow(result_row)
+                        fcsv.flush()  # Force immediate write to disk
+                        tracker.file_done(group_name, status, size)
 
+                        if args.debug:
+                            print(f"[DEBUG] CSV logged result: {result_row}")
+                        elif status == "error":
+                            print(f"[INFO] CSV logged error for: {fpath.name}")
+                        elif status == "uploaded":
+                            print(f"[INFO] CSV logged upload for: {fpath.name}")
+
+                    # Complete the group
+                    tracker.complete_group(group_name)
+                    gstats = tracker.data[group_key][group_name]
+                    print(f"[{folder_type.upper()}] <<< Completed {group_name} | uploaded={gstats['uploaded']} skipped={gstats['skipped']} failed={gstats['failed']} bytes={gstats['bytes_uploaded']}")
+
+                    # Ensure CSV is flushed after each group
+                    fcsv.flush()
                     if args.debug:
-                        print(f"[DEBUG] CSV logged result: {result_row}")
-                    elif status == "error":
-                        print(f"[INFO] CSV logged error for: {fpath.name}")
-                    elif status == "uploaded":
-                        print(f"[INFO] CSV logged upload for: {fpath.name}")
-
-                # Complete the group
-                tracker.complete_group(group_name)
-                gstats = tracker.data[group_key][group_name]
-                print(f"[{folder_type.upper()}] <<< Completed {group_name} | uploaded={gstats['uploaded']} skipped={gstats['skipped']} failed={gstats['failed']} bytes={gstats['bytes_uploaded']}")
-
-                # Ensure CSV is flushed after each group
-                fcsv.flush()
-                if args.debug:
-                    print(f"[DEBUG] CSV flushed after {group_name}")
+                        print(f"[DEBUG] CSV flushed after {group_name}")
 
             elapsed = time.time() - start
             mb = total_size / (1024 * 1024) if elapsed >= 0 else 0.0

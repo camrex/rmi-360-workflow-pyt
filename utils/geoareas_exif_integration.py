@@ -304,7 +304,12 @@ def get_geoareas_xpcomment_suffix(row: Any) -> str:
             nearest_miles = None
             direction = "near"
             
-            if geo_prev_place and geo_next_place:
+            if (
+                geo_prev_place
+                and geo_next_place
+                and geo_prev_miles is not None
+                and geo_next_miles is not None
+            ):
                 # Both available, pick closer one
                 if geo_prev_miles <= geo_next_miles:
                     nearest_place, nearest_miles = geo_prev_place, geo_prev_miles
@@ -312,10 +317,10 @@ def get_geoareas_xpcomment_suffix(row: Any) -> str:
                 else:
                     nearest_place, nearest_miles = geo_next_place, geo_next_miles
                     direction = "UP"  # Up (higher milepost)
-            elif geo_prev_place:
+            elif geo_prev_place and geo_prev_miles is not None:
                 nearest_place, nearest_miles = geo_prev_place, geo_prev_miles
                 direction = "DN"
-            elif geo_next_place:
+            elif geo_next_place and geo_next_miles is not None:
                 nearest_place, nearest_miles = geo_next_place, geo_next_miles
                 direction = "UP"
             

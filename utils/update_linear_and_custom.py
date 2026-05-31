@@ -31,7 +31,7 @@ __all__ = ["update_linear_and_custom"]
 
 import arcpy
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any, Tuple
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
@@ -100,7 +100,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
             input_count = int(arcpy.GetCount_management(projected_oid_fc)[0])
             orig_count = int(arcpy.GetCount_management(oid_fc)[0])
             desc = arcpy.Describe(oid_fc)
-            logger.debug(f"📍 Linear referencing input diagnostics:", indent=2)
+            logger.debug("📍 Linear referencing input diagnostics:", indent=2)
             logger.debug(f"   • Original features: {orig_count}", indent=3)
             logger.debug(f"   • Projected features: {input_count}", indent=3)
             logger.debug(f"   • Has spatial index: {desc.hasSpatialIndex}", indent=3)
@@ -118,7 +118,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                         sample_distances.append(f"JOIN_KEY {join_key}: {round(min_dist, 2)}m from route")
 
             if sample_distances:
-                logger.debug(f"   • Sample distances to route:", indent=3)
+                logger.debug("   • Sample distances to route:", indent=3)
                 for dist_info in sample_distances:
                     logger.debug(f"     - {dist_info}", indent=4)
 
@@ -173,7 +173,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                             if not (cleaned_mp == cleaned_mp and abs(cleaned_mp) != float('inf')):  # NaN check
                                 cleaned_mp = None
                                 invalid_mp_values.append(f"JOIN_KEY {join_key}: NaN/Inf value")
-                        except (ValueError, TypeError) as e:
+                        except (ValueError, TypeError):
                             invalid_mp_values.append(f"JOIN_KEY {join_key}: '{mp}' ({type(mp).__name__})")
                             cleaned_mp = None
 
@@ -231,7 +231,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
 
             # Show sample of MP values for debugging
             if sample_values:
-                logger.debug(f"Sample MP values from locate operation:", indent=2)
+                logger.debug("Sample MP values from locate operation:", indent=2)
                 for sample in sample_values:
                     logger.debug(f"  • {sample}", indent=3)
 
@@ -245,7 +245,7 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                     logger.warning(f"  Sample NULL MP join keys: {sample_nulls} (and {len(null_mp_join_keys)-5} more)", indent=3)
 
                 # Check distances for NULL join keys to see if they're within tolerance
-                logger.debug(f"Investigating NULL join key distances to route:", indent=3)
+                logger.debug("Investigating NULL join key distances to route:", indent=3)
                 routes = [row[0] for row in arcpy.da.SearchCursor(centerline_fc, ["SHAPE@"])]
                 null_distances = []
                 if null_mp_join_keys[:5]:  # Only if we have NULL join keys to investigate
@@ -273,9 +273,6 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
     except Exception as e:
         logger.warning(f"Linear referencing failed: {e}", indent=1)
         return {}
-
-
-from typing import List, Dict, Any, Tuple
 
 def compute_linear_and_custom_updates(
     cfg: ConfigManager,

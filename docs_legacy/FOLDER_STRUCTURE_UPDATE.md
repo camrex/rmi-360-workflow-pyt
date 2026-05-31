@@ -10,7 +10,7 @@ The RMI 360 Workflow has been updated to support a new standardized folder struc
 
 All project files are now stored under a unified base directory:
 
-```
+```text
 D:/Process360_Data/projects/{project_key}/
 ├── reels/          # Raw 360 video reels from S3
 ├── config/         # Project-specific configuration files
@@ -28,7 +28,7 @@ D:/Process360_Data/projects/{project_key}/
 
 The S3 bucket structure has been expanded to support config and GIS data uploads:
 
-```
+```text
 s3://rmi-360-raw/{project_key}/
 ├── reels/          # Raw video uploads (existing)
 ├── config/         # Configuration files (NEW)
@@ -40,10 +40,12 @@ s3://rmi-360-raw/{project_key}/
 ### 1. Unified Project Directory
 
 **Before:**
+
 - Projects used `{local_root}/scratch/{project_slug}/` for temporary processing
 - Inconsistent handling of project files
 
 **After:**
+
 - All projects use `{local_root}/projects/{project_key}/`
 - Consistent, persistent project directory structure
 - Better organization and easier maintenance
@@ -171,18 +173,21 @@ paths = stage_project_files(
 ### For Existing Projects
 
 1. **Update config.yaml:**
+
    ```yaml
    runtime:
      local_root: "D:/Process360_Data"
    ```
 
 2. **Move existing project data (if needed):**
+
    ```powershell
    # On EC2, if you have data in old scratch location
    Move-Item "D:/old_location/scratch/RMI25320" "D:/Process360_Data/projects/RMI25320"
    ```
 
 3. **Upload config files to S3 (optional but recommended):**
+
    ```bash
    python scripts/upload_to_s3.py \
      --config config.yaml \
@@ -195,6 +200,7 @@ paths = stage_project_files(
 ### For New Projects
 
 The new structure is automatically used when:
+
 - Creating a new project with the orchestrator
 - Specifying `runtime.local_root` in config.yaml
 - The toolbox will create all necessary subdirectories
@@ -229,6 +235,7 @@ The new structure is automatically used when:
 ## Support
 
 For questions or issues with the new folder structure:
+
 1. Check this document first
 2. Review the config.sample.yaml for examples
 3. Check tool logs in `{project_dir}/logs/`

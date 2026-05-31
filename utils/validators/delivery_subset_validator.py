@@ -1,15 +1,23 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from utils.shared.rmi_exceptions import ConfigValidationError
+
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
 
 
 def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
+def _to_float(value) -> float | None:
+    if _is_number(value):
+        return float(value)
+    return None
 
+
+def validate(cfg: "ConfigManager") -> bool:
     logger = cfg.get_logger()
     error_count = 0
 
@@ -28,23 +36,25 @@ def validate(cfg: "ConfigManager") -> bool:
 
     source_spacing = block.get("source_capture_spacing_meters")
     target_spacing = block.get("target_spacing_meters")
+    source_spacing_num = _to_float(source_spacing)
+    target_spacing_num = _to_float(target_spacing)
 
-    if not _is_number(source_spacing) or float(source_spacing) <= 0:
+    if source_spacing_num is None or source_spacing_num <= 0:
         logger.error(
             "delivery_subset.source_capture_spacing_meters must be a positive number.",
             error_type=ConfigValidationError,
         )
         error_count += 1
 
-    if not _is_number(target_spacing) or float(target_spacing) <= 0:
+    if target_spacing_num is None or target_spacing_num <= 0:
         logger.error(
             "delivery_subset.target_spacing_meters must be a positive number.",
             error_type=ConfigValidationError,
         )
         error_count += 1
 
-    if _is_number(source_spacing) and _is_number(target_spacing):
-        if float(target_spacing) < float(source_spacing):
+    if source_spacing_num is not None and target_spacing_num is not None:
+        if target_spacing_num < source_spacing_num:
             logger.error(
                 "delivery_subset.target_spacing_meters must be greater than or equal to "
                 "delivery_subset.source_capture_spacing_meters.",
@@ -96,7 +106,8 @@ def validate(cfg: "ConfigManager") -> bool:
             error_count += 1
 
     tolerance_percent = spacing_selector.get("tolerance_percent")
-    if not _is_number(tolerance_percent) or float(tolerance_percent) < 0:
+    tolerance_percent_num = _to_float(tolerance_percent)
+    if tolerance_percent_num is None or tolerance_percent_num < 0:
         logger.error(
             "delivery_subset.spacing_selector.tolerance_percent must be a number greater than or equal to 0.",
             error_type=ConfigValidationError,
@@ -166,7 +177,9 @@ def validate(cfg: "ConfigManager") -> bool:
             logger.error(f"{context}.max must be a number.", error_type=ConfigValidationError)
             error_count += 1
 
-        if _is_number(min_value) and _is_number(max_value) and float(min_value) > float(max_value):
+        min_num = _to_float(min_value)
+        max_num = _to_float(max_value)
+        if min_num is not None and max_num is not None and min_num > max_num:
             logger.error(f"{context}.min cannot be greater than {context}.max.", error_type=ConfigValidationError)
             error_count += 1
 

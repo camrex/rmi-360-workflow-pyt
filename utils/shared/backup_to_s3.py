@@ -26,10 +26,9 @@
 
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Tuple, Optional, Set, Dict
+from typing import List, Optional, Dict
 import os
 import time
-import csv
 import mimetypes
 from datetime import datetime
 
@@ -137,6 +136,14 @@ def upload_project_artifacts(
 
     session = get_boto3_session(cfg)
     s3 = session.client("s3", region_name=region)
+
+    if TransferConfig is None or S3Transfer is None:
+        logger.error(
+            "boto3 transfer components are unavailable; install boto3 with s3 transfer support.",
+            indent=1,
+            error_type=RuntimeError,
+        )
+        raise RuntimeError("boto3 transfer components are unavailable")
 
     # Transfer config
     max_workers = cfg.get("aws.max_workers", 16)

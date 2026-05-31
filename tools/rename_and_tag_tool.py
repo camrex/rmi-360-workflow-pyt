@@ -68,8 +68,7 @@ class RenameAndTagImagesTool(object):
             parameterType="Required",
             direction="Input"
         )
-        project_param.description = ("Root folder for this Mosaic 360 imagery project. All imagery and logs will be "
-                                     "organized under this folder.")
+        # Root folder for the project; imagery and logs are organized under this path.
         params.append(project_param)
 
         oid_param = arcpy.Parameter(
@@ -79,7 +78,6 @@ class RenameAndTagImagesTool(object):
             parameterType="Required",
             direction="Input"
         )
-        oid_param.description = "The Oriented Imagery Dataset to process."
         params.append(oid_param)
 
         delete_orig = arcpy.Parameter(
@@ -90,7 +88,6 @@ class RenameAndTagImagesTool(object):
             direction="Input"
         )
         delete_orig.value = False
-        delete_orig.description = "If checked, original image files will be deleted after renaming."
         params.append(delete_orig)
 
         # Config file
@@ -101,7 +98,6 @@ class RenameAndTagImagesTool(object):
             parameterType="Optional",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         return params

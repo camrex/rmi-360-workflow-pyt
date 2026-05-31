@@ -34,7 +34,7 @@ import subprocess
 import shutil
 from pathlib import Path
 import yaml
-from typing import Any, List, Optional, Union, TYPE_CHECKING
+from typing import Any, List, Optional, Union, TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
@@ -53,7 +53,12 @@ class PathManager:
 
     Supports config overrides, expression-based log prefixes, and runtime executable checks.
     """
-    def __init__(self, project_base: Path, config: Union[dict, ConfigManager] = None, script_base: Path = None):
+    def __init__(
+        self,
+        project_base: Path,
+        config: Optional[Union[dict, "ConfigManager"]] = None,
+        script_base: Optional[Path] = None,
+    ):
         """
         Initialize the PathManager.
 
@@ -65,7 +70,9 @@ class PathManager:
         """
         self.script_base: Path = script_base or Path(__file__).resolve().parents[2]
         self.project_base: Path = Path(project_base).resolve()
-        if config is not None and config.__class__.__name__ == "ConfigManager":
+        self._cfg_manager: Optional["ConfigManager"] = None
+        if config is not None and not isinstance(config, dict) and hasattr(config, "raw"):
+            self._cfg_manager = config  # type: ignore[assignment]
             self.cfg = config.raw
         else:
             self.cfg = config or {}
@@ -280,7 +287,8 @@ class PathManager:
         prefix = ""
         if prefix_expr:
             try:
-                resolved = resolve_expression(prefix_expr, cfg=cfg)
+                active_cfg = cfg or self._cfg_manager
+                resolved = resolve_expression(prefix_expr, cfg=active_cfg) if active_cfg is not None else prefix_expr
                 if not isinstance(resolved, (str, int, float)):
                     raise ValueError(f"logs.prefix must resolve to a string/int/float, got {type(resolved).__name__}")
                 prefix = str(resolved).strip()
@@ -294,8 +302,8 @@ class PathManager:
 
         return log_dir / log_file
 
-    def validate_mosaic_config(self, messages: Optional[List] = None, config: Optional[dict] = None, 
-                          log_func: Optional[callable] = None) -> bool:
+    def validate_mosaic_config(self, messages: Optional[List] = None, config: Optional[dict] = None,
+                          log_func: Optional[Callable[..., Any]] = None) -> bool:
         """
         Validates mosaic processor configuration and logs any errors found.
 
@@ -381,7 +389,7 @@ class PathManager:
         return val
 
     @staticmethod
-    def _is_executable_available(exe_path: str, test_args: list[str] = None) -> bool:
+    def _is_executable_available(exe_path: str, test_args: Optional[list[str]] = None) -> bool:
         """
         Returns True if the given executable runs without error.
 
@@ -421,7 +429,7 @@ class PathManager:
             return False
 
     @classmethod
-    def from_config_file(cls, config_path: Path, project_base: Path, script_base: Path = None) -> "PathManager":
+    def from_config_file(cls, config_path: Path, project_base: Path, script_base: Optional[Path] = None) -> "PathManager":
         """
         Load configuration from a YAML file and initialize a PathManager.
 

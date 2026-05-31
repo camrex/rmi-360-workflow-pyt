@@ -46,10 +46,7 @@ __all__ = [
 
 import arcpy
 import os
-from typing import Dict, List, Optional, Union, Callable, Any, Tuple
-from pathlib import Path
-
-from utils.shared.arcpy_utils import validate_fields_exist
+from typing import Dict, List, Optional, Callable, Any, Tuple
 
 
 # =============================================================================
@@ -95,21 +92,31 @@ def _get_text_field_lengths(feature_class: str) -> Dict[str, int]:
     return lengths
 
 
-def _resolve_join_field(join_field_names: List[str], candidates: List[str]) -> Optional[str]:
+def _resolve_join_field(
+    join_field_names: List[str],
+    candidates: List[str],
+    exclude_exact_names: Optional[List[str]] = None,
+) -> Optional[str]:
     """Resolve a field name from SpatialJoin output, handling ArcGIS suffixes like _1."""
-    upper_to_original = {name.upper(): name for name in join_field_names}
+    excluded = set(exclude_exact_names or [])
 
-    # Prefer exact candidate names first.
+    # Prefer suffixed variants first because they usually indicate join-side fields
+    # when target and join datasets share names like Name/NAME.
     for candidate in candidates:
-        matched = upper_to_original.get(candidate)
-        if matched:
-            return matched
+        prefix = f"{candidate.upper()}_"
+        for original in join_field_names:
+            if original in excluded:
+                continue
+            if original.upper().startswith(prefix):
+                return original
 
-    # Fall back to suffixed variants produced by SpatialJoin field conflict handling.
+    # Fall back to exact (case-insensitive) candidate names.
     for candidate in candidates:
-        prefix = f"{candidate}_"
-        for upper_name, original in upper_to_original.items():
-            if upper_name.startswith(prefix):
+        candidate_upper = candidate.upper()
+        for original in join_field_names:
+            if original in excluded:
+                continue
+            if original.upper() == candidate_upper:
                 return original
 
     return None
@@ -300,14 +307,23 @@ def enrich_points_places_counties(
         place_updates = 0
         # Detect joined fields from SpatialJoin output (field names may be suffixed).
         places_join_fields = [f.name for f in arcpy.ListFields(temp_places_join)]
+        target_field_names = [f.name for f in arcpy.ListFields(photos_fc)]
         results["_debug"]["places"]["join_fields"] = places_join_fields
         join_oid_field = _resolve_join_field(places_join_fields, [temp_oid_field, "TARGET_FID", "ORIG_FID"])
         if not join_oid_field:
             raise RuntimeError("Unable to resolve target OID field from places spatial join output")
         results["_debug"]["places"]["join_oid_field"] = join_oid_field
         join_fields = [join_oid_field]
-        place_name_field = _resolve_join_field(places_join_fields, ["NAME", "PLACE_NAME", "PLACENAME"])
-        place_fips_field = _resolve_join_field(places_join_fields, ["GEOID", "FIPS", "PLACE_FIPS", "PLACEFIPS"])
+        place_name_field = _resolve_join_field(
+            places_join_fields,
+            ["NAME", "PLACE_NAME", "PLACENAME"],
+            exclude_exact_names=target_field_names,
+        )
+        place_fips_field = _resolve_join_field(
+            places_join_fields,
+            ["GEOID", "FIPS", "PLACE_FIPS", "PLACEFIPS"],
+            exclude_exact_names=target_field_names,
+        )
         results["_debug"]["places"]["place_name_field"] = place_name_field
         results["_debug"]["places"]["place_fips_field"] = place_fips_field
         
@@ -402,12 +418,33 @@ def enrich_points_places_counties(
         
         # Detect joined fields from SpatialJoin output (field names may be suffixed).
         counties_join_fields = [f.name for f in arcpy.ListFields(temp_counties_join)]
+        target_field_names = [f.name for f in arcpy.ListFields(photos_fc)]
         results["_debug"]["counties"]["join_fields"] = counties_join_fields
-        county_name_field = _resolve_join_field(counties_join_fields, ["NAME", "COUNTY_NAME", "COUNTYNAME"])
-        county_fips_field = _resolve_join_field(counties_join_fields, ["GEOID", "FIPS", "COUNTY_FIPS", "COUNTYFIPS"])
-        state_fips_field = _resolve_join_field(counties_join_fields, ["STATEFP", "STATE_FIPS", "STATEFIPS"])
-        state_abbr_field = _resolve_join_field(counties_join_fields, ["STUSPS", "STATE_ABBR", "STATEABBR"])
-        state_name_field = _resolve_join_field(counties_join_fields, ["STATE_NAME", "STATENAME"])
+        county_name_field = _resolve_join_field(
+            counties_join_fields,
+            ["NAME", "COUNTY_NAME", "COUNTYNAME"],
+            exclude_exact_names=target_field_names,
+        )
+        county_fips_field = _resolve_join_field(
+            counties_join_fields,
+            ["GEOID", "FIPS", "COUNTY_FIPS", "COUNTYFIPS"],
+            exclude_exact_names=target_field_names,
+        )
+        state_fips_field = _resolve_join_field(
+            counties_join_fields,
+            ["STATEFP", "STATE_FIPS", "STATEFIPS"],
+            exclude_exact_names=target_field_names,
+        )
+        state_abbr_field = _resolve_join_field(
+            counties_join_fields,
+            ["STUSPS", "STATE_ABBR", "STATEABBR"],
+            exclude_exact_names=target_field_names,
+        )
+        state_name_field = _resolve_join_field(
+            counties_join_fields,
+            ["STATE_NAME", "STATENAME"],
+            exclude_exact_names=target_field_names,
+        )
         results["_debug"]["counties"]["county_name_field"] = county_name_field
         results["_debug"]["counties"]["county_fips_field"] = county_fips_field
         results["_debug"]["counties"]["state_fips_field"] = state_fips_field
@@ -761,7 +798,6 @@ def bridge_place_gaps_by_milepost(
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields, where_clause=where_clause) as cursor:
             for row in cursor:
-                oid = row[0]
                 current_mile = row[1]
                 
                 if current_mile is None:
@@ -774,7 +810,7 @@ def bridge_place_gaps_by_milepost(
                     if gap['start_mile'] <= current_mile <= gap['end_mile']:
                         # Optional county consistency check
                         if use_county_check:
-                            current_county = row[-1]  # Last field is county
+                            _ = row[-1]  # Last field is county
                             # Get county of anchor points - simplified check
                             # In production, you might want more sophisticated county validation
                         
@@ -822,7 +858,9 @@ def build_place_mile_ranges(
     """
     # Create output table if not specified
     if out_table is None:
-        out_table = arcpy.CreateScratchName("place_mile_ranges", "", "Table")
+        out_table = str(arcpy.CreateScratchName("place_mile_ranges", "", "Table"))
+    else:
+        out_table = str(out_table)
     
     # Create ranges table schema
     arcpy.management.CreateTable(
@@ -977,7 +1015,6 @@ def apply_place_mile_ranges(
         
         with arcpy.da.UpdateCursor(photos_fc, update_fields, where_clause=where_clause) as cursor:
             for row in cursor:
-                oid = row[0]
                 current_mile = row[1]
                 
                 if current_mile is None:

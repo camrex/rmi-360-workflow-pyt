@@ -65,7 +65,7 @@
 #   - Ensure all Core Utils and config files are synchronized for consistent behavior.
 # =============================================================================
 
-from typing import Optional, Any, Callable, Dict, List
+from typing import Optional, Any, Callable, Dict, List, cast
 from pathlib import Path
 import arcpy
 import time
@@ -237,7 +237,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        config_file_param.filter.list = ["yaml", "yml"]
+        if config_file_param.filter is not None:
+            config_file_param.filter.list = ["yaml", "yml"]
         params.append(config_file_param)
 
         # 1) Source Mode
@@ -248,7 +249,8 @@ class Process360Workflow(object):
             parameterType="Required",
             direction="Input",
         )
-        source_mode_param.filter.list = ["Local", "AWS"]
+        if source_mode_param.filter is not None:
+            source_mode_param.filter.list = ["Local", "AWS"]
         source_mode_param.value = "Local"
         params.append(source_mode_param)
 
@@ -311,7 +313,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        start_step_param.filter.list = ["--SELECT STEP--"] + step_labels
+        if start_step_param.filter is not None:
+            start_step_param.filter.list = ["--SELECT STEP--"] + step_labels
         start_step_param.value = "--SELECT STEP--"
         params.append(start_step_param)
 
@@ -371,7 +374,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        distance_filter_action_param.filter.list = ["flag", "remove"]
+        if distance_filter_action_param.filter is not None:
+            distance_filter_action_param.filter.list = ["flag", "remove"]
         distance_filter_action_param.value = "flag"
         params.append(distance_filter_action_param)
 
@@ -438,7 +442,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        centerline_param.filter.list = ["Polyline"]
+        if centerline_param.filter is not None:
+            centerline_param.filter.list = ["Polyline"]
         params.append(centerline_param)
 
         # 17) Route ID Field
@@ -449,8 +454,9 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        route_id_param.parameterDependencies = [centerline_param.name]
-        route_id_param.filter.list = ["Short", "Long", "Text"]
+        route_id_param.parameterDependencies = cast(Any, [centerline_param.name])
+        if route_id_param.filter is not None:
+            route_id_param.filter.list = ["Short", "Long", "Text"]
         params.append(route_id_param)
 
         # 18) Generate HTML Summary Report
@@ -516,7 +522,8 @@ class Process360Workflow(object):
 
         if project_key:
             project_key.enabled = is_aws
-            project_key.filter.list = []
+            if project_key.filter is not None:
+                project_key.filter.list = []
 
         if staging_folder:
             staging_folder.enabled = True
@@ -538,13 +545,15 @@ class Process360Workflow(object):
         # 2) Populate AWS Project Key dropdown
         if is_aws and raw_s3_bucket and raw_s3_bucket.valueAsText and project_key:
             try:
-                project_key.filter.list = list_projects(raw_s3_bucket.valueAsText.strip())
+                if project_key.filter is not None:
+                    project_key.filter.list = list_projects(raw_s3_bucket.valueAsText.strip())
             except Exception:
                 pass
 
         # 3) Populate Reels multiselect
         if reels_param:
-            reels_param.filter.list = []
+            if reels_param.filter is not None:
+                reels_param.filter.list = []
             if not is_aws:
                 base = project_folder.valueAsText if project_folder else None
                 try:
@@ -556,17 +565,21 @@ class Process360Workflow(object):
                                 for d in self.os_mod.listdir(reels_root)
                                 if self.os_mod.path.isdir(self.os_mod.path.join(reels_root, d))
                             ]
-                            reels_param.filter.list = sorted(names)
+                            if reels_param.filter is not None:
+                                reels_param.filter.list = sorted(names)
                 except Exception:
-                    reels_param.filter.list = []
+                    if reels_param.filter is not None:
+                        reels_param.filter.list = []
             else:
                 try:
                     bucket = raw_s3_bucket.valueAsText.strip() if raw_s3_bucket and raw_s3_bucket.valueAsText else ""
                     proj = project_key.valueAsText.strip().strip("/") if project_key and project_key.valueAsText else ""
                     if bucket and proj:
-                        reels_param.filter.list = list_reels(bucket, proj)
+                        if reels_param.filter is not None:
+                            reels_param.filter.list = list_reels(bucket, proj)
                 except Exception:
-                    reels_param.filter.list = []
+                    if reels_param.filter is not None:
+                        reels_param.filter.list = []
 
         # 4) Start step → OID in/out enablement
         if start_step:
@@ -668,7 +681,6 @@ class Process360Workflow(object):
         oid_out = p.get("oid_fc_output")
 
         enable_linear_ref = p.get("enable_linear_ref")
-        enable_smooth_gps = p.get("enable_smooth_gps")
         centerline_param = p.get("centerline_fc")
         route_id_param = p.get("route_id_field")
 
@@ -701,10 +713,11 @@ class Process360Workflow(object):
         if project_folder and not project_folder.valueAsText:
             project_folder.setErrorMessage("⚠️ Please specify the Project Folder.")
         else:
-            project_folder.clearMessage()
+            if project_folder:
+                project_folder.clearMessage()
 
         # Local nicety: warn if <project>\reels missing
-        if project_folder and project_folder.valueAsText and (source_mode.valueAsText != "AWS"):
+        if project_folder and project_folder.valueAsText and not is_aws:
             try:
                 reels_root = self.os_mod.path.join(project_folder.valueAsText, "reels")
                 if not self.os_mod.path.isdir(reels_root):
@@ -738,7 +751,6 @@ class Process360Workflow(object):
 
         # 3) Centerline / Route ID messages
         linear_ref_enabled = bool(getattr(enable_linear_ref, "value", False))
-        smooth_gps_enabled = bool(getattr(enable_smooth_gps, "value", False))
 
         if centerline_param:
             centerline_param.clearMessage()
@@ -801,9 +813,14 @@ class Process360Workflow(object):
         generate_report_flag = bool(p.get("generate_report", True))
 
         # ----------- Load config, logger, paths -----------
+        project_folder_param = pmap.get("project_folder")
+        source_mode_param = pmap.get("source_mode")
+        raw_s3_bucket_param = pmap.get("raw_s3_bucket")
+        project_key_param = pmap.get("project_key")
+
         cfg = ConfigManager.from_file(
             path=p.get("config_file"),
-            project_base=(pmap.get("project_folder").valueAsText if pmap.get("project_folder") else None),
+            project_base=(project_folder_param.valueAsText if project_folder_param else None),
             messages=messages,
         )
         logger = cfg.get_logger(messages)
@@ -852,7 +869,7 @@ class Process360Workflow(object):
             logger.info(f"Skipping staging cleanup (starting from '{early_start_step}' - preserving existing reels)", indent=1)
 
         # ----------- Resolve reels locally based on Source Mode -----------
-        source_mode = (pmap.get("source_mode").valueAsText if pmap.get("source_mode") else "Local") or "Local"
+        source_mode = (source_mode_param.valueAsText if source_mode_param else "Local") or "Local"
         selected_reels = _parse_multi(pmap.get("reels_to_process"))
 
         if source_mode == "Local":
@@ -862,7 +879,6 @@ class Process360Workflow(object):
                 return
 
             project_folder_path = Path(project_folder).resolve()
-            work_project_dir_path = work_project_dir.resolve()
             project_reels = project_folder_path / "reels"
             
             # Skip reorganization only when source reels and destination reels are the exact same folder.
@@ -895,10 +911,10 @@ class Process360Workflow(object):
             p["input_reels_folder"] = str(reels_root)
 
         else:  # AWS
-            raw_s3_bucket = (pmap.get("raw_s3_bucket").valueAsText if pmap.get("raw_s3_bucket") else None) or cfg.get(
+            raw_s3_bucket = (raw_s3_bucket_param.valueAsText if raw_s3_bucket_param else None) or cfg.get(
                 "aws.s3_bucket_raw", cfg.get("aws.s3_bucket")
             )
-            project_key = (pmap.get("project_key").valueAsText if pmap.get("project_key") else None)
+            project_key = project_key_param.valueAsText if project_key_param else None
             if not raw_s3_bucket or not project_key:
                 logger.error("Raw S3 Bucket and Project Key are required for AWS mode.", indent=1)
                 return
@@ -983,13 +999,17 @@ class Process360Workflow(object):
             logger.warning(f"Could not describe OID FC yet: {e}", indent=1)
             report_data.setdefault("paths", {})["oid_gdb"] = "Unavailable"
 
-        try:
-            raw_metrics = self.collect_oid_metrics_fn(p["oid_fc"])
-            summary, reels = self.summarize_oid_metrics_fn(raw_metrics)
-            report_data["metrics"].update(summary)
-            report_data["reels"] = reels
-        except Exception as e:
-            logger.warning(f"Could not gather OID stats: {e}", indent=1)
+        oid_fc_value = p.get("oid_fc")
+        if isinstance(oid_fc_value, str) and oid_fc_value.strip():
+            try:
+                raw_metrics = self.collect_oid_metrics_fn(oid_fc_value)
+                summary, reels = self.summarize_oid_metrics_fn(raw_metrics)
+                report_data["metrics"].update(summary)
+                report_data["reels"] = reels
+            except Exception as e:
+                logger.warning(f"Could not gather OID stats: {e}", indent=1)
+        else:
+            logger.warning("Skipping OID stats: OID path is missing or invalid.", indent=1)
 
         # Count reel folders under the resolved local input path
         try:

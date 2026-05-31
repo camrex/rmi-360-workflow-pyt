@@ -32,7 +32,7 @@ orchestrator:
 
 When the orchestrator completes, it will automatically upload the selected artifacts to S3:
 
-```
+```text
 s3://rmi-360-raw/{project_key}/config/{YYYYMMDD_HHMM}/config.yaml
 s3://rmi-360-raw/{project_key}/logs/{YYYYMMDD_HHMM}/*.log
 s3://rmi-360-raw/{project_key}/report/{YYYYMMDD_HHMM}/report.html
@@ -79,7 +79,7 @@ python scripts/upload_to_s3.py \
 
 ### Example Structure
 
-```
+```text
 s3://rmi-360-raw/RMI25320/
 ├── reels/
 │   └── reel_0001/...
@@ -132,11 +132,13 @@ s3://rmi-360-raw/RMI25320/
 ## Artifact Types
 
 ### config
+
 - **What**: The `config.yaml` file used for the processing run
 - **Why**: Reproduce exact processing parameters
 - **Example files**: `config.yaml`, custom settings JSON
 
 ### logs
+
 - **What**: All log files generated during processing
 - **Why**: Troubleshooting, audit trail, performance metrics
 - **Example files**:
@@ -146,6 +148,7 @@ s3://rmi-360-raw/RMI25320/
   - `mosaic_processor_output.log` - Mosaic Processor output
 
 ### report
+
 - **What**: HTML reports, JSON data, and associated assets
 - **Why**: Share results, historical comparison
 - **Example files**:
@@ -154,6 +157,7 @@ s3://rmi-360-raw/RMI25320/
   - `assets/*.png` - Charts and images
 
 ### gis_data (optional)
+
 - **What**: GIS reference data used during processing
 - **Why**: Document exact spatial references used
 - **Example files**: Shapefiles, geodatabases, KML files
@@ -241,7 +245,7 @@ orchestrator:
 The upload process automatically filters files by extension:
 
 | Artifact Type | Allowed Extensions |
-|--------------|-------------------|
+| ------------- | ------------------ |
 | **config** | `.yaml`, `.yml`, `.json`, `.txt` |
 | **logs** | `.txt`, `.log`, `.csv`, `.args` |
 | **report** | `.html`, `.json`, `.png`, `.jpg`, `.jpeg`, `.pdf` |
@@ -348,6 +352,7 @@ aws:
 ### "Failed to upload artifacts to S3"
 
 Check:
+
 1. AWS credentials are configured
 2. IAM role/user has S3 write permissions
 3. Bucket exists and is accessible
@@ -356,6 +361,7 @@ Check:
 ### Artifacts Not Uploading
 
 Verify:
+
 1. `upload_artifacts_to_s3: true` in config
 2. `artifact_types` list is not empty
 3. Workflow completed successfully (no failures)
@@ -364,6 +370,7 @@ Verify:
 ### Large GIS Data Upload Slow
 
 GIS geodatabases can be very large. Consider:
+
 1. Excluding `gis_data` from routine uploads
 2. Upload GIS data once manually, then comment out in config
 3. Use AWS CLI for large GIS data uploads
@@ -373,9 +380,11 @@ GIS geodatabases can be very large. Consider:
 ### Storage Costs
 
 S3 Standard storage pricing (as of 2025):
+
 - First 50 TB: ~$0.023 per GB/month
 
 Example cost calculation:
+
 - Config: ~50 KB per run
 - Logs: ~10 MB per run
 - Report: ~5 MB per run
@@ -399,6 +408,7 @@ Download from S3: ~$0.09 per GB (first 10 TB/month).
 ## Summary
 
 Artifact backup to S3 provides:
+
 - ✅ Complete audit trail
 - ✅ Version control for configs
 - ✅ Reproducibility

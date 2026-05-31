@@ -18,14 +18,18 @@
 # Notes:                Used for validation of smoothing and outlier detection settings for GPS data.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     validate_keys_with_types
 )
 
-def validate(cfg: "ConfigManager") -> bool:
+if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
+
+def validate(cfg: "ConfigManager") -> bool:
     """
     Validates the 'gps_smoothing' section of the configuration for required keys and value types.
 

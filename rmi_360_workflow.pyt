@@ -169,7 +169,6 @@ GenerateOIDService = _load_tool_class("generate_oid_service_tool.py", "GenerateO
 GenerateReportFromJSONTool = _load_tool_class("generate_report_tool.py", "GenerateReportFromJSONTool")
 CreateOIDTemplateTool = _load_tool_class("create_oid_template_tool.py", "CreateOIDTemplateTool")
 SetAWSKeyringCredentialsTool = _load_tool_class("set_aws_keyring_tool.py", "SetAWSKeyringCredentialsTool")
-ExportOIDForCOLMAPTool = _load_tool_class("export_oid_for_colmap_tool.py", "ExportOIDForCOLMAPTool")
 
 
 class Toolbox(object):
@@ -190,6 +189,5 @@ class Toolbox(object):
             GenerateOIDService,
             GenerateReportFromJSONTool,
             CreateOIDTemplateTool,
-            SetAWSKeyringCredentialsTool,
-            ExportOIDForCOLMAPTool
+            SetAWSKeyringCredentialsTool
         ]

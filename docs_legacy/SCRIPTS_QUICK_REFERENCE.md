@@ -19,6 +19,7 @@ python scripts/upload_to_s3.py \
 ```
 
 **Features:**
+
 - Unified script for all folder types (reels, config, gis_data, logs, report)
 - Resume support via S3 HEAD checks and CSV logging
 - MD5 verification for small files (<64MB)
@@ -30,6 +31,7 @@ python scripts/upload_to_s3.py \
 **Examples:**
 
 Upload reels only:
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -39,6 +41,7 @@ python scripts/upload_to_s3.py \
 ```
 
 Upload config and gis_data with timestamp:
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -50,6 +53,7 @@ python scripts/upload_to_s3.py \
 ```
 
 Upload everything except reels:
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -59,6 +63,7 @@ python scripts/upload_to_s3.py \
 ```
 
 Upload single folder type:
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -69,6 +74,7 @@ python scripts/upload_to_s3.py \
 ```
 
 With live status JSON:
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -80,6 +86,7 @@ python scripts/upload_to_s3.py \
 ```
 
 Force re-upload (ignore resume):
+
 ```bash
 python scripts/upload_to_s3.py \
   --config config.yaml \
@@ -90,6 +97,7 @@ python scripts/upload_to_s3.py \
 ```
 
 **Supported file types:**
+
 - **reels**: `.mp4`, `.json`, `.csv`, `.gpx`
 - **config**: `.yaml`, `.yml`, `.json`, `.txt`
 - **gis_data**: `.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`, `.sbn`, `.sbx`, `.xml`, `.geojson`, `.json`, `.kml`, `.kmz`, `.gdb`, `.gpkg`
@@ -120,6 +128,7 @@ python scripts/download_project_files.py \
 **Examples:**
 
 Download both config and gis_data (default, excludes reels):
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -127,6 +136,7 @@ python scripts/download_project_files.py \
 ```
 
 Download only config files:
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -135,6 +145,7 @@ python scripts/download_project_files.py \
 ```
 
 Download including reels (normally orchestrator handles this):
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -144,6 +155,7 @@ python scripts/download_project_files.py \
 ```
 
 Download to custom location:
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -152,6 +164,7 @@ python scripts/download_project_files.py \
 ```
 
 Force re-download (overwrite existing):
+
 ```bash
 python scripts/download_project_files.py \
   --config config.yaml \
@@ -183,10 +196,12 @@ orchestrator:
 ### Behavior
 
 When enabled, the orchestrator will:
+
 1. Complete all processing steps
 2. Generate the final report
 3. Upload selected artifacts to S3 with timestamp:
-   ```
+
+   ```text
    s3://rmi-360-raw/{project_key}/config/{YYYYMMDD_HHMM}/config.yaml
    s3://rmi-360-raw/{project_key}/logs/{YYYYMMDD_HHMM}/process_log.txt
    s3://rmi-360-raw/{project_key}/report/{YYYYMMDD_HHMM}/report.html
@@ -202,6 +217,7 @@ When enabled, the orchestrator will:
 ## Common Options
 
 ### --dry-run
+
 Preview what would be uploaded/downloaded without making changes.
 
 ```bash
@@ -214,6 +230,7 @@ python scripts/upload_project_files.py \
 ```
 
 ### --force (download only)
+
 Re-download files even if they already exist locally.
 
 ```bash
@@ -228,6 +245,7 @@ python scripts/download_project_files.py \
 ### Setting Up a New Project on EC2
 
 1. **Upload all project files (reels, config, gis_data) in one command:**
+
    ```bash
    python scripts/upload_to_s3.py \
      --config config.yaml \
@@ -239,6 +257,7 @@ python scripts/download_project_files.py \
    Or upload separately:
 
    **a. Upload reels:**
+
    ```bash
    python scripts/upload_to_s3.py \
      --config config.yaml \
@@ -248,6 +267,7 @@ python scripts/download_project_files.py \
    ```
 
    **b. Upload config files (optional):**
+
    ```bash
    python scripts/upload_to_s3.py \
      --config config.yaml \
@@ -257,6 +277,7 @@ python scripts/download_project_files.py \
    ```
 
    **c. Upload GIS data (optional):**
+
    ```bash
    python scripts/upload_to_s3.py \
      --config config.yaml \
@@ -266,6 +287,7 @@ python scripts/download_project_files.py \
    ```
 
 2. **On EC2, download config/GIS (optional, reels excluded by default):**
+
    ```bash
    python scripts/download_project_files.py \
      --config config.yaml \
@@ -279,6 +301,7 @@ python scripts/download_project_files.py \
 ## Resume Support
 
 The unified upload script (`upload_to_s3.py`) supports robust resume functionality:
+
 - S3 HEAD checks to verify if files already exist
 - MD5 verification for small files (<64MB)
 - Size-based matching for large/multipart files
@@ -300,7 +323,7 @@ If an upload or download fails:
 
 After running these scripts and the orchestrator, your S3 bucket will have:
 
-```
+```text
 s3://rmi-360-raw/
 └── RMI25320/
     ├── reels/
@@ -335,6 +358,7 @@ s3://rmi-360-raw/
 ```
 
 **Timestamping Benefits:**
+
 - Multiple runs create separate timestamped folders
 - Easy to correlate artifacts from the same processing run
 - Version history for configs, logs, and reports
@@ -344,7 +368,7 @@ s3://rmi-360-raw/
 
 After downloading, your EC2 instance will have:
 
-```
+```text
 D:/Process360_Data/projects/RMI25320/
 ├── reels/          # Auto-downloaded by orchestrator
 ├── config/         # Downloaded by download_project_files.py
@@ -358,25 +382,31 @@ D:/Process360_Data/projects/RMI25320/
 ## Troubleshooting
 
 ### "Missing aws.s3_bucket_raw in config"
+
 Add to your `config.yaml`:
+
 ```yaml
 aws:
   s3_bucket_raw: "rmi-360-raw"
 ```
 
 ### "Missing runtime.local_root in configuration"
+
 Add to your `config.yaml`:
+
 ```yaml
 runtime:
   local_root: "D:/Process360_Data"
 ```
 
 ### Files not uploading
+
 - Check file extensions match the allowed types
 - Verify folder structure is correct
 - Check AWS credentials and permissions
 
 ### Downloads failing
+
 - Verify S3 bucket name and project key
 - Check IAM role/user has S3 read permissions
 - Ensure files exist in S3 at the expected paths

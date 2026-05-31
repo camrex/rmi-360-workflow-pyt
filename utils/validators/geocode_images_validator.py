@@ -17,15 +17,19 @@
 # Notes:                Used for validation of geocoding method, database, and ExifTool path.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
     check_file_exists
 )
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the geocoding configuration for the image geocoding tool.
 

@@ -26,9 +26,8 @@
 from __future__ import annotations
 from pathlib import Path
 import concurrent.futures as cf
-from typing import Iterable, List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict
 import boto3
-import os
 
 __all__ = [
     "normalize_prefix",
@@ -178,7 +177,6 @@ def stage_reels(
     # Log staging start if logger provided (show total reel count)
     if logger and to_get:
         total_reels = len(all_files_by_reel)
-        total_files = len(to_get)
         files_to_download = len(filtered)
         logger.info(f"📦 Staging {files_to_download} files across {total_reels} reel(s)...", indent=2)
 

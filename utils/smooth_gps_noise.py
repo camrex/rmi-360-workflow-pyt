@@ -144,7 +144,8 @@ def process_gps_metrics(
                 p["route_dist"] = 0
 
         global_counter[0] += 1
-        progressor.update(global_counter[0])
+        if progressor is not None:
+            progressor.update(global_counter[0])
 
     # Route distance smoothing
     for i in range(1, len(points) - 1):
@@ -152,7 +153,8 @@ def process_gps_metrics(
         avg = (prev["route_dist"] + nxt["route_dist"]) / 2
         curr["route_dev"] = abs(curr["route_dist"] - avg)
         global_counter[0] += 1
-        progressor.update(global_counter[0])
+        if progressor is not None:
+            progressor.update(global_counter[0])
 
 
 def smooth_gps_noise(cfg: ConfigManager, oid_fc: str, centerline_fc: Optional[str] = None) -> None:

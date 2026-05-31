@@ -36,7 +36,6 @@ import io
 import contextlib
 from datetime import datetime, timezone
 from pathlib import Path
-from boto3 import Session
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression

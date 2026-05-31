@@ -17,6 +17,8 @@
 # Notes:                Used for validation of schema blocks, templates, and field registries in OID tools.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.shared.expression_utils import load_field_registry
 from utils.validators.common_validators import (
@@ -26,9 +28,11 @@ from utils.validators.common_validators import (
     check_duplicate_field_names
 )
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for building an OID schema template.
 

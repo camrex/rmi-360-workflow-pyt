@@ -64,7 +64,6 @@ class CreateOrientedImageryDatasetTool(object):
             parameterType="Required",
             direction="Output"
         )
-        output_param.description = "Path to the new Oriented Imagery Dataset (OID) feature class to be created."
         params.append(output_param)
 
         # Optional spatial reference
@@ -74,10 +73,6 @@ class CreateOrientedImageryDatasetTool(object):
             datatype="GPSpatialReference",
             parameterType="Optional",
             direction="Input"
-        )
-        sr_param.description = (
-            "Spatial reference for the output OID. If omitted, the default defined in config.yaml will be used. "
-            "Defaults to WGS 1984 (4326) with vertical WKID 5703 (ellipsoidal height)."
         )
         params.append(sr_param)
 
@@ -89,7 +84,6 @@ class CreateOrientedImageryDatasetTool(object):
             parameterType="Required",
             direction="Input"
         )
-        config_param.description = "Config.yaml file containing project-specific settings."
         params.append(config_param)
 
         # Project folder - Root folder for this Mosaic 360 imagery project. All imagery and logs will be organized

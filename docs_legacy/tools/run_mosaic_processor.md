@@ -1,10 +1,13 @@
 # 🛠️ Tool: Run Mosaic Processor
 
 ## 🧰 Tool Name
-**01 – Run Mosaic Processor**
+
+01 – Run Mosaic Processor
 
 ## 🧭 Purpose
+
 This tool initiates the **first step** in the Mosaic 360 imagery pipeline. It runs the Mosaic Processor CLI with the Mistika VR backend to:
+
 - Render stitched JPEG panoramas from raw `.mp4` reels
 - Automatically fix reel issues
 - Integrate GPS data from `.gpx` files into the resulting images
@@ -34,14 +37,14 @@ This step is **required before image enhancement, renaming, metadata tagging, or
 
 ## 🧰 Parameters
 
-| Parameter         | Required | Description                                         |
-|-------------------|----------|-----------------------------------------------------|
-| Project Folder    | ✅       | Root for project outputs and logs                   |
-| Input Reels Folder | ✅       | Folder containing raw Mosaic `.mp4` reels with optional `.gpx` |
-| Config File       | ⬜️       | Path to `config.yaml` with processing options        |
-| Mosaic GRP Template Path | ⬜️       | Overrides `executables.mosaic_processor.grp_path` |
-| Start Frame       | ⬜️       | First frame to process                               |
-| End Frame         | ⬜️       | Last frame to process                                |
+| Parameter                | Required | Description                                                    |
+|--------------------------|----------|----------------------------------------------------------------|
+| Project Folder           | ✅       | Root for project outputs and logs                              |
+| Input Reels Folder       | ✅       | Folder containing raw Mosaic `.mp4` reels with optional `.gpx` |
+| Config File              | ⬜️       | Path to `config.yaml` with processing options                  |
+| Mosaic GRP Template Path | ⬜️       | Overrides `executables.mosaic_processor.grp_path`              |
+| Start Frame              | ⬜️       | First frame to process                                         |
+| End Frame                | ⬜️       | Last frame to process                                          |
 
 ---
 
@@ -107,6 +110,7 @@ mosaic_processor:
 ## ✅ Validation
 
 Validation is performed by the appropriate validator in `utils/validators`.
+
 - Checks that the input folder and output folder are valid
 - Ensures config options are present and correct
 - Validates image file types and required metadata fields
@@ -138,7 +142,7 @@ Validation is performed by the appropriate validator in `utils/validators`.
 ## 🔧 Config Sections Used
 
 | Path | Purpose |
-|------|---------|
+| ------ | ------- |
 | `executables.mosaic_processor.exe_path` | Path to Mosaic Processor CLI |
 | `executables.mosaic_processor.grp_path` | Default GRP file path |
 | `image_output.folders.parent` and `.original` | Defines output folder hierarchy |
@@ -151,6 +155,7 @@ Validation is performed by the appropriate validator in `utils/validators`.
 Tool-specific validator: `validate_tool_mosaic_processor(config)`
 
 Checks:
+
 - `exe_path`, `grp_path`, `cfg_path` are valid and not empty
 - Files exist or are resolvable (unless `"DISABLED"`)
 - Types are validated (`str`)
