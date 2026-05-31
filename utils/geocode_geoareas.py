@@ -117,12 +117,14 @@ def _resolve_join_field(join_field_names: List[str], candidates: List[str]) -> O
 
 def _ensure_temp_oid_join_field(feature_class: str, field_name: str = "TMP_OID_JOIN") -> Tuple[str, bool]:
     """Ensure a stable numeric key field exists for join round-trips; returns (field_name, created)."""
+    oid_field_name = arcpy.Describe(feature_class).oidFieldName
     existing = {f.name.upper() for f in arcpy.ListFields(feature_class)}
+    created = False
     if field_name.upper() not in existing:
         arcpy.management.AddField(feature_class, field_name, "LONG")
-        arcpy.management.CalculateField(feature_class, field_name, "!OBJECTID!", "PYTHON3")
-        return field_name, True
-    return field_name, False
+        created = True
+    arcpy.management.CalculateField(feature_class, field_name, f"!{oid_field_name}!", "PYTHON3")
+    return field_name, created
 
 
 def _fit_text_value(value: Any, max_length: int) -> Optional[str]:
@@ -1132,7 +1134,12 @@ def geocode_geoareas(
             progress(10, "Performing polygon containment...")
         
         containment_results = enrich_points_places_counties(
-            photos_fc, places_fc, counties_fc, logger, None
+            photos_fc,
+            places_fc,
+            counties_fc,
+            logger,
+            None,
+            raise_on_error=True,
         )
         
         # Merge containment results

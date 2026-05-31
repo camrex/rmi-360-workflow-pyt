@@ -2,7 +2,6 @@ import importlib.util
 import pathlib
 import sys
 import types
-import atexit
 from unittest.mock import MagicMock
 
 
@@ -40,29 +39,25 @@ _STUBBED_MODULE_NAMES = [
     "utils.manager.config_manager",
 ]
 _snapshots = {name: sys.modules.get(name, _MISSING) for name in _STUBBED_MODULE_NAMES}
-sys.modules["utils"] = utils_mod
-sys.modules["utils.shared"] = shared_mod
-sys.modules["utils.manager"] = manager_mod
-sys.modules["utils.shared.rmi_exceptions"] = rmi_ex_mod
-sys.modules["utils.manager.config_manager"] = cfg_mgr_mod
+try:
+    sys.modules["utils"] = utils_mod
+    sys.modules["utils.shared"] = shared_mod
+    sys.modules["utils.manager"] = manager_mod
+    sys.modules["utils.shared.rmi_exceptions"] = rmi_ex_mod
+    sys.modules["utils.manager.config_manager"] = cfg_mgr_mod
 
-repo_root = pathlib.Path(__file__).resolve().parents[1]
-validator_path = repo_root / "utils" / "validators" / "delivery_subset_validator.py"
-spec = importlib.util.spec_from_file_location("delivery_subset_validator_under_test", validator_path)
-validator = importlib.util.module_from_spec(spec)
-assert spec is not None and spec.loader is not None
-spec.loader.exec_module(validator)
-
-
-def _restore_modules() -> None:
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    validator_path = repo_root / "utils" / "validators" / "delivery_subset_validator.py"
+    spec = importlib.util.spec_from_file_location("delivery_subset_validator_under_test", validator_path)
+    validator = importlib.util.module_from_spec(spec)
+    assert spec is not None and spec.loader is not None
+    spec.loader.exec_module(validator)
+finally:
     for _name, _prior in _snapshots.items():
         if _prior is _MISSING:
             sys.modules.pop(_name, None)
         else:
             sys.modules[_name] = _prior
-
-
-atexit.register(_restore_modules)
 
 
 class DummyCfg:
