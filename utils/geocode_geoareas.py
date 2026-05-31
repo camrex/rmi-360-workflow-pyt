@@ -236,7 +236,7 @@ def enrich_points_places_counties(
     counties_fc: str,
     logger: Optional[Callable] = None,
     progress: Optional[Callable] = None,
-    raise_on_error: bool = False
+    raise_on_error: bool = True
 ) -> Dict[str, Any]:
     """
     Perform polygon containment joins to fill place, county, and state fields.

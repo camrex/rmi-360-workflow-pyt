@@ -68,7 +68,7 @@ def collect_upload_tasks(local_dir, include_extensions, cfg: ConfigManager, secu
     return tasks
 
 
-def collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg: ConfigManager, secured_mode: bool = False):
+def collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg: ConfigManager, secured_mode: bool = False, logger=None):
     """Collect upload tasks from a manifest CSV with local_path or filename columns."""
     manifest_path = Path(manifest_path)
     if not manifest_path.is_file():
@@ -87,11 +87,17 @@ def collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg: C
             elif filename:
                 local_file = Path(cfg.paths.renamed) / filename
             else:
+                if logger:
+                    logger.warning(f"Skipping manifest row with no local_path or filename: {row}", indent=2)
                 continue
 
             if not local_file.is_file():
+                if logger:
+                    logger.warning(f"Skipping manifest row for missing file: {local_file} (row={row})", indent=2)
                 continue
             if local_file.suffix.lower() not in include_extensions:
+                if logger:
+                    logger.warning(f"Skipping manifest row for unsupported extension: {local_file} (row={row})", indent=2)
                 continue
 
             s3_key = build_oid_object_key(cfg, local_file.name, secured_mode=secured_mode)
@@ -274,7 +280,7 @@ def copy_to_aws(
     # COLLECT ALL TASKS
     if manifest_path:
         logger.info(f"Using delivery subset manifest: {manifest_path}", indent=2)
-        all_tasks = collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg, secured_mode=secured_mode)
+        all_tasks = collect_upload_tasks_from_manifest(manifest_path, include_extensions, cfg, secured_mode=secured_mode, logger=logger)
     else:
         all_tasks = collect_upload_tasks(local_dir_path, include_extensions, cfg, secured_mode=secured_mode)
     if not all_tasks:
@@ -303,7 +309,7 @@ def copy_to_aws(
 
     try:
         verify_s3_target_access(s3, bucket, bucket_folder, logger)
-    except Exception:
+    except Exception as ex:
         return {
             "uploaded": 0,
             "skipped": 0,
@@ -312,7 +318,8 @@ def copy_to_aws(
             "cancelled": False,
             "log_file": str(log_file),
             "summary_file": str(summary_file),
-            "status": "error"
+            "status": "error",
+            "message": f"Unable to access target S3 bucket '{bucket}': {ex}",
         }
 
     if using_acceleration:

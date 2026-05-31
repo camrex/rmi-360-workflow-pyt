@@ -11,18 +11,24 @@ Usage:
 """
 
 import argparse
-import csv
 try:
     import defusedxml.ElementTree as ET
 except ImportError:
+    import warnings
+    warnings.warn(
+        "defusedxml is unavailable; falling back to xml.etree.ElementTree",
+        RuntimeWarning,
+    )
     import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import Any, List, Optional, Tuple
 
 try:
-    from geopy.distance import geodesic
+    from geopy.distance import geodesic as _geodesic  # pyright: ignore[reportMissingImports]
+    geodesic: Optional[Any] = _geodesic
     GEOPY_AVAILABLE = True
 except ImportError:
+    geodesic = None
     GEOPY_AVAILABLE = False
     print("⚠️  geopy not installed. Install with: pip install geopy")
 
@@ -36,9 +42,15 @@ def parse_gpx_track(gpx_file: str) -> List[dict]:
     for trkpt in tree.findall('.//gpx:trkpt', ns):
         time_elem = trkpt.find('gpx:time', ns)
         if time_elem is not None:
-            lat = float(trkpt.get('lat'))
-            lon = float(trkpt.get('lon'))
-            timestamp = time_elem.text.replace('Z', '+00:00')
+            lat_raw = trkpt.get('lat')
+            lon_raw = trkpt.get('lon')
+            time_text = time_elem.text
+            if lat_raw is None or lon_raw is None or time_text is None:
+                continue
+
+            lat = float(lat_raw)
+            lon = float(lon_raw)
+            timestamp = time_text.replace('Z', '+00:00')
             timestamp = datetime.fromisoformat(timestamp)
             points.append({'time': timestamp, 'lat': lat, 'lon': lon})
     
@@ -47,7 +59,8 @@ def parse_gpx_track(gpx_file: str) -> List[dict]:
 
 def calculate_speeds(points: List[dict]) -> List[float]:
     """Calculate speed between consecutive GPS points."""
-    if not GEOPY_AVAILABLE:
+    geodesic_fn = geodesic
+    if not GEOPY_AVAILABLE or geodesic_fn is None:
         raise ImportError("geopy required for speed calculation")
     
     speeds = [0.0]  # First point has no speed
@@ -56,7 +69,7 @@ def calculate_speeds(points: List[dict]) -> List[float]:
         p1, p2 = points[i-1], points[i]
         
         # Calculate distance
-        dist_m = geodesic((p1['lat'], p1['lon']), (p2['lat'], p2['lon'])).meters
+        dist_m = geodesic_fn((p1['lat'], p1['lon']), (p2['lat'], p2['lon'])).meters
         
         # Calculate time difference
         time_diff = (p2['time'] - p1['time']).total_seconds()
@@ -92,7 +105,6 @@ def find_moving_segments(
     """
     segments = []
     segment_start = None
-    segment_start_idx = None
     
     for i, speed in enumerate(speeds):
         is_moving = speed > min_speed_mps
@@ -100,7 +112,6 @@ def find_moving_segments(
         if is_moving:
             if segment_start is None:
                 segment_start = points[i]['time']
-                segment_start_idx = i
         else:
             if segment_start is not None:
                 segment_end = points[i-1]['time']
@@ -111,7 +122,6 @@ def find_moving_segments(
                     segments.append((segment_start, segment_end))
                 
                 segment_start = None
-                segment_start_idx = None
     
     # Close final segment if still moving
     if segment_start is not None:
@@ -188,9 +198,12 @@ def main() -> int:
     print(f"\nParsing GPX file: {args.gpx}")
     points = parse_gpx_track(args.gpx)
     print(f"  Found {len(points)} GPS trackpoints")
+    if not points:
+        print("Error: No trackpoints found in GPX")
+        return 1
     
     # Calculate speeds
-    print(f"\nCalculating speeds...")
+    print("\nCalculating speeds...")
     speeds = calculate_speeds(points)
     avg_speed = sum(speeds) / len(speeds)
     max_speed = max(speeds)
@@ -207,7 +220,7 @@ def main() -> int:
     moving_duration = sum((end - start).total_seconds() for start, end in segments)
     stopped_duration = total_gpx_duration - moving_duration
     
-    print(f"\nStatistics:")
+    print("\nStatistics:")
     print(f"  Total GPX duration: {total_gpx_duration/60:.1f} minutes")
     print(f"  Moving duration: {moving_duration/60:.1f} minutes ({moving_duration/total_gpx_duration*100:.1f}%)")
     print(f"  Stopped duration: {stopped_duration/60:.1f} minutes ({stopped_duration/total_gpx_duration*100:.1f}%)")
@@ -239,20 +252,20 @@ def main() -> int:
         print(f'ffmpeg -i "{args.video_file}" \\')
         print(f'    -ss {start_time} \\')
         print(f'    -t {duration:.3f} \\')
-        print(f'    -c copy \\')
+        print('    -c copy \\')
         print(f'    "{output_file}"')
     
     # Concatenation command
     print("\n" + "=" * 70)
     print("CONCATENATE ALL SEGMENTS (Optional)")
     print("=" * 70)
-    print(f"\n# Create file list")
+    print("\n# Create file list")
     print(f"$segments = 1..{len(segments)}")
     print(f'$segments | ForEach-Object {{ "file \'{args.output_prefix}_${{_:D3}}.mp4\'" }} | Out-File -Encoding ASCII concat_list.txt')
-    print(f'\n# Concatenate')
-    print(f'ffmpeg -f concat -safe 0 -i concat_list.txt -c copy moving_only_combined.mp4')
+    print('\n# Concatenate')
+    print('ffmpeg -f concat -safe 0 -i concat_list.txt -c copy moving_only_combined.mp4')
     
-    print(f"\n" + "=" * 70)
+    print("\n" + "=" * 70)
     print("NOTE: Concatenated video will have discontinuous timestamps!")
     print("Use individual segments for Video Multiplexer, or adjust timeshift dynamically.")
     print("=" * 70)

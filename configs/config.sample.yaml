@@ -791,6 +791,8 @@ aws:
 # Notes:
 #   - Keep enabled: false in config.sample.yaml.
 #   - Enable per project when secured delivery is validated.
+#   - Secured-storage serving on Enterprise 12.0 is unverified pending Esri Case 04187998.
+#   - Keep enabled: false until Esri resolves Case 04187998.
 #   - s3_bucket_folder must match upload key prefix to avoid path drift.
 # ------------------------------------------------------------------------------
 secured_storage:

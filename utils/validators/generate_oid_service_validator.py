@@ -18,6 +18,8 @@
 # Notes:                Used for validation of portal and AWS configuration for OID service deployment.
 # =============================================================================
 
+from typing import TYPE_CHECKING
+
 from utils.shared.rmi_exceptions import ConfigValidationError
 from utils.validators.common_validators import (
     validate_type,
@@ -26,9 +28,11 @@ from utils.validators.common_validators import (
 )
 from utils.validators.secured_storage_validator import validate_secured_storage_deployment
 
+if TYPE_CHECKING:
+    from utils.manager.config_manager import ConfigManager
+
 
 def validate(cfg: "ConfigManager") -> bool:
-    from utils.manager.config_manager import ConfigManager
     """
     Validates the configuration for the OID service generation tool.
 
