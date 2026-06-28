@@ -35,9 +35,65 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
+from utils.shared.manifest_fields import (
+    load_manifest_attr_map,
+    populate_oid_fields_from_manifest,
+    resolve_manifest_path,
+)
+from utils.shared.oid_storage_paths import extract_filename_from_image_path
 
 
-def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logger) -> dict:
+def _linear_field_manifest_spec(cfg: ConfigManager, key: str):
+    """Return ``(oid_field_name, manifest_column, None, field_type)`` for a single
+    linear-ref field (by config key) that declares a ``manifest_field``, else None."""
+    field = (cfg.get("oid_schema_template.linear_ref_fields", {}) or {}).get(key, {})
+    manifest_col = field.get("manifest_field")
+    if field.get("name") and manifest_col:
+        return (field.get("name"), str(manifest_col), None, field.get("type"))
+    return None
+
+
+def _event_allowed(route_id_val, join_key, intended_route_by_join_key) -> bool:
+    """Whether a LocateFeaturesAlongRoutes event may be considered for a point.
+
+    With no intended-route map (non-manifest), all events are allowed (classic
+    nearest-event behavior). In relocate mode, an event is allowed only if its route
+    matches the point's intended subdivision (or the point has no intended entry)."""
+    if intended_route_by_join_key is None:
+        return True
+    intended = intended_route_by_join_key.get(join_key)
+    return intended is None or str(route_id_val) == str(intended)
+
+
+def _build_intended_route_map(cfg: ConfigManager, oid_fc_path: str, manifest_path: str,
+                              intended_col: str, logger) -> dict:
+    """Map JOIN_KEY (``OID_<objectid>``) -> intended subdivision id, by joining the
+    manifest's ``intended_col`` (mp_pre) to each OID row by image filename."""
+    import arcpy
+
+    attr_map = load_manifest_attr_map(manifest_path, [intended_col], logger)
+    col = intended_col.lower()
+    out: dict = {}
+    total = 0
+    with arcpy.da.SearchCursor(oid_fc_path, ["OID@", "ImagePath"]) as cursor:
+        for oid, image_path in cursor:
+            total += 1
+            filename = extract_filename_from_image_path(image_path)
+            rec = attr_map.get(filename.lower()) if filename else None
+            if rec and rec.get(col):
+                out[f"OID_{oid}"] = rec[col]
+    if total and not out:
+        # Join keys on the ORIGINAL filename, so this must run before Rename Images.
+        logger.error(
+            f"No OID image name matched the manifest (of {total:,}) for linear relocation. "
+            "Update Linear must run BEFORE Rename Images — check step order or the manifest path.",
+            error_type=RuntimeError, indent=1,
+        )
+    return out
+
+
+def get_located_points(oid_fc: str, centerline_fc: str, route_id_field: str, logger,
+                       intended_route_by_join_key: Optional[Dict[str, Any]] = None) -> dict:
     """
     Finds the route identifier and milepost value for each point in the OID feature class by projecting it to the
     centerline's spatial reference and locating features along routes.
@@ -45,6 +101,14 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
     Projects the input feature class to match the centerline's spatial reference, computes a suitable search tolerance
     based on the maximum distance from points to routes, and uses ArcPy's LocateFeaturesAlongRoutes to associate each
     point with its nearest route and milepost value.
+
+    When ``intended_route_by_join_key`` is provided (manifest/pre-thin "relocate"
+    mode), a point's events are restricted to its INTENDED subdivision route — the
+    geometrically nearest but wrong-subdivision event is ignored. This is the
+    orchestrated equivalent of the corridor per-route Locate (see utils/corridor/
+    calc_mp.py). Points whose intended route has no event within tolerance get no
+    entry (measure stays null), mirroring calc_mp's beyond-radius behavior. With no
+    map (None), behavior is unchanged (nearest event wins).
 
     Returns:
         dict: A mapping from each object ID (OID) to a dictionary with 'route_id' and 'mp_value' keys.
@@ -176,6 +240,10 @@ def get_located_points(oid_fc: str, centerline_fc: str, route_id_field:str, logg
                         except (ValueError, TypeError):
                             invalid_mp_values.append(f"JOIN_KEY {join_key}: '{mp}' ({type(mp).__name__})")
                             cleaned_mp = None
+
+                # Relocate mode: restrict each point to its intended subdivision route.
+                if not _event_allowed(route_id_val, join_key, intended_route_by_join_key):
+                    continue  # ignore events on a different (wrong) subdivision
 
                 candidate = {
                     "route_id": route_id_val,
@@ -381,10 +449,33 @@ def update_linear_and_custom(
 
     update_fields = ["OID@"] + linear_field_names + custom_field_names
 
+    # Resolve manifest mode (pre-thin). MP_Pre always comes from the manifest's
+    # intended subdivision; MP_Num source is controlled by mp_num_source.
+    manifest_path = resolve_manifest_path(cfg)
+    id_spec = _linear_field_manifest_spec(cfg, "route_identifier")
+    meas_spec = _linear_field_manifest_spec(cfg, "route_measure")
+    manifest_mode = bool(manifest_path) and id_spec is not None
+    mp_num_source = str(cfg.get("corridor_thinning.manifest.mp_num_source", "relocate")).lower()
+    can_relocate = bool(enable_linear_ref and centerline_fc and route_id_field)
+    relocate_mode = manifest_mode and mp_num_source == "relocate" and can_relocate
+
+    # In relocate mode, constrain linear referencing to each image's intended route.
+    intended_route_by_jk = None
+    if relocate_mode:
+        intended_route_by_jk = _build_intended_route_map(cfg, oid_fc_path, manifest_path, id_spec[1], logger)
+        logger.info(
+            f"Manifest relocate mode: constraining linear referencing to intended subdivision "
+            f"for {len(intended_route_by_jk):,} image(s).",
+            indent=1,
+        )
+
     # 🔁 Only run linear referencing if requested
     oid_to_loc = {}
     if enable_linear_ref and centerline_fc and route_id_field:
-        oid_to_loc = get_located_points(oid_fc_path, centerline_fc, route_id_field, logger)
+        oid_to_loc = get_located_points(
+            oid_fc_path, centerline_fc, route_id_field, logger,
+            intended_route_by_join_key=intended_route_by_jk,
+        )
 
     row_count = int(arcpy.management.GetCount(oid_fc_path)[0])
 
@@ -438,6 +529,29 @@ def update_linear_and_custom(
         logger.debug(f"Updated OIDs: {sorted(updated_oids)}", indent=2)
     if failed_oids:
         logger.warning(f"Failed OIDs: {sorted(failed_oids)}", indent=2)
+
+    # Manifest linear-ref reconciliation (pre-thin). MP_Pre is always set from the
+    # manifest's intended subdivision. MP_Num is either re-measured along that route
+    # (relocate mode, handled above by constraining the Locate) or taken from the
+    # manifest's mp_meas. No-op without a manifest, so non-manifest runs are unchanged.
+    if manifest_mode:
+        if relocate_mode:
+            # Locate already produced the intended-route measure; here we only ensure
+            # MP_Pre = intended for every manifest image (incl. those beyond radius).
+            specs = [id_spec]
+        else:
+            if mp_num_source == "relocate" and not can_relocate:
+                logger.warning(
+                    "mp_num_source='relocate' but no centerline/linear ref available; "
+                    "taking MP_Num from the manifest (mp_meas) instead.",
+                    indent=1,
+                )
+            specs = [s for s in (id_spec, meas_spec) if s]
+        logger.info(
+            f"Applying manifest linear-ref values ({'MP_Pre only, relocate measure' if relocate_mode else mp_num_source})...",
+            indent=1,
+        )
+        populate_oid_fields_from_manifest(cfg, oid_fc_path, specs, manifest_path, logger)
 
     assign_sequence_order(cfg, oid_fc_path, enable_linear_ref, logger)
 

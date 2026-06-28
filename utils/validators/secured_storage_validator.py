@@ -374,10 +374,10 @@ def validate_secured_storage_deployment(cfg: "ConfigManager") -> bool:
     """
     Tiered secured-storage deployment validation.
 
-    Runs only when secured_storage.enabled is true. Check order:
+    Runs only when aws.secured_delivery.enabled is true. Check order:
       Tier 1: Enterprise version >= 12.0
       Tier 2: cloud_store_name exists among registered cloud stores
-      Tier 3: cloud store objectStore bucket agrees with secured_storage.s3_bucket
+      Tier 3: cloud store objectStore bucket agrees with aws.s3_bucket_panos_secured
 
     Permissions and endpoint reachability issues degrade to warnings to avoid
     blocking non-admin users on otherwise valid deployments.
@@ -386,7 +386,7 @@ def validate_secured_storage_deployment(cfg: "ConfigManager") -> bool:
     requires test publish and viewer image access.
     """
     logger = cfg.get_logger()
-    secured = cfg.get("secured_storage", {}) or {}
+    secured = cfg.get("aws.secured_delivery", {}) or {}
 
     if not isinstance(secured, dict) or not secured.get("enabled", False):
         return True
@@ -437,7 +437,7 @@ def validate_secured_storage_deployment(cfg: "ConfigManager") -> bool:
     if version_ok is False:
         logger.error(
             "Secured storage validation failed: Enterprise version is below 12.0. "
-            "Secured storage requires Enterprise 12.0+; set secured_storage.enabled to false or upgrade.",
+            "Secured storage requires Enterprise 12.0+; set aws.secured_delivery.enabled to false or upgrade.",
             error_type=ConfigValidationError,
         )
         cfg.raw[_CACHE_KEY] = False
@@ -463,7 +463,7 @@ def validate_secured_storage_deployment(cfg: "ConfigManager") -> bool:
 
     if matched_item is None:
         logger.error(
-            f"Secured storage validation failed: secured_storage.cloud_store_name '{configured_store_name}' was not "
+            f"Secured storage validation failed: aws.secured_delivery.cloud_store_name '{configured_store_name}' was not "
             f"found among registered cloud stores from {source_url}. Verify the name in Server Manager.",
             error_type=ConfigValidationError,
         )
@@ -499,7 +499,7 @@ def validate_secured_storage_deployment(cfg: "ConfigManager") -> bool:
         cfg.raw[_CACHE_KEY] = True
         return True
 
-    config_bucket = str(secured.get("s3_bucket", "")).strip()
+    config_bucket = str(cfg.get("aws.s3_bucket_panos_secured", "")).strip()
     if bucket_from_store.lower() != config_bucket.lower():
         logger.error(
             f"Secured storage validation failed: configured secured bucket '{config_bucket}' does not match cloud store "

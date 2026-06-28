@@ -48,7 +48,7 @@ def validate(cfg: "ConfigManager") -> bool:
     # ✅ Required keys
     required_keys = {
         "region": str,
-        "s3_bucket": str,
+        "s3_bucket_panos_unsecured": str,
         "s3_bucket_folder": str
     }
 
@@ -59,7 +59,6 @@ def validate(cfg: "ConfigManager") -> bool:
         "s3_bucket_raw": str,
         "skip_existing": bool,
         "retries": int,
-        "keyring_aws": bool,
         "keyring_service_name": str,
         "access_key": str,
         "secret_key": str,
@@ -74,10 +73,10 @@ def validate(cfg: "ConfigManager") -> bool:
         logger.error("aws.auth_mode must be one of: instance, keyring, config", error_type=ConfigValidationError)
         error_count += 1
     if auth_mode == "instance" and not aws.get("s3_bucket_raw"):
-        logger.warning("aws.s3_bucket_raw is not defined. Falling back to aws.s3_bucket for raw data staging.")
+        logger.warning("aws.s3_bucket_raw is not defined. Falling back to aws.s3_bucket_panos_unsecured for raw data staging.")
 
-    # ✅ Placeholder credential check if not using keyring
-    use_keyring = aws.get("keyring_aws", False)
+    # ✅ Placeholder credential check only in 'config' (plaintext) mode.
+    use_keyring = auth_mode == "keyring"
     access_key = aws.get("access_key")
     secret_key = aws.get("secret_key")
     if auth_mode == "instance":
@@ -116,26 +115,27 @@ def validate(cfg: "ConfigManager") -> bool:
     if not try_resolve_config_expression(folder_expr, "aws.s3_bucket_folder", cfg, expected_type=str):
         error_count += 1
 
-    secured = cfg.get("secured_storage", {})
+    secured = cfg.get("aws.secured_delivery", {})
     if secured:
         if not isinstance(secured, dict):
-            logger.error("secured_storage must be a mapping.", error_type=ConfigValidationError)
+            logger.error("aws.secured_delivery must be a mapping.", error_type=ConfigValidationError)
             error_count += 1
         else:
             if "enabled" in secured and not isinstance(secured.get("enabled"), bool):
-                logger.error("secured_storage.enabled must be a boolean", error_type=ConfigValidationError)
+                logger.error("aws.secured_delivery.enabled must be a boolean", error_type=ConfigValidationError)
                 error_count += 1
 
             if secured.get("enabled", False):
-                for key in ("s3_bucket", "region", "s3_bucket_folder"):
-                    if key not in secured or not isinstance(secured.get(key), str) or not str(secured.get(key)).strip():
-                        logger.error(f"secured_storage.{key} must be set when secured_storage.enabled is true", error_type=ConfigValidationError)
-                        error_count += 1
-                secured_folder_expr = secured.get("s3_bucket_folder")
-                if isinstance(secured_folder_expr, str):
-                    if not try_resolve_config_expression(secured_folder_expr, "secured_storage.s3_bucket_folder", cfg, expected_type=str):
-                        error_count += 1
-                else:
+                # Secured mode requires the secured panos bucket and the cloud store name.
+                secured_bucket = cfg.get("aws.s3_bucket_panos_secured")
+                if not isinstance(secured_bucket, str) or not secured_bucket.strip():
+                    logger.error("aws.s3_bucket_panos_secured must be set when aws.secured_delivery.enabled is true",
+                                 error_type=ConfigValidationError)
+                    error_count += 1
+                store = secured.get("cloud_store_name")
+                if not isinstance(store, str) or not store.strip():
+                    logger.error("aws.secured_delivery.cloud_store_name must be set when aws.secured_delivery.enabled is true",
+                                 error_type=ConfigValidationError)
                     error_count += 1
 
                 if error_count == 0 and not validate_secured_storage_deployment(cfg):

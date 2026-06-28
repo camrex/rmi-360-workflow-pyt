@@ -1,6 +1,6 @@
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.3.0
+schema_version: 1.4.0
 debug_messages: true
 
 # NEW RUNTIME CONFIG
@@ -620,17 +620,17 @@ image_output:
 # AWS credentials can be provided using any of the following methods:
 #   1. Environment variables      (recommended for automation)
 #   2. Plaintext access keys      (fallback for development only)
-#   3. Secure keyring             (enabled via `keyring_aws`)
+#   3. Secure keyring             (selected via `auth_mode: keyring`)
 #
-# keyring_aws            (bool)   - If true, retrieves AWS credentials from keyring
-# keyring_service_name   (str)    - Optional override for keyring service name
+# auth_mode              (str)    - Credential source: instance | keyring | config
+# keyring_service_name   (str)    - Keyring service name credentials are stored under
 #
 # access_key             (str)    - Fallback AWS Access Key (used if keyring is false)
 # secret_key             (str)    - Fallback AWS Secret Key (used if keyring is false)
 #
 # ─── Upload Settings ──────────────────────────────────────────────────────────
-# region                 (str)    - AWS region of your S3 bucket (e.g., "us-east-2")
-# s3_bucket              (str)    - Name of the target S3 bucket
+# region                 (str)    - AWS region of your S3 buckets (e.g., "us-east-2")
+# s3_bucket_panos_unsecured (str) - Name of the unsecured (public) panorama bucket
 # s3_bucket_folder       (expr)   - Expression to define folder path in S3 bucket
 #                                  Example: "config.project.number + '/' + config.project.rr_mark"
 #
@@ -653,8 +653,16 @@ image_output:
 
 aws:
   region: <YOUR_REGION>  # e.g., "us-east-2"
-  s3_bucket: <YOUR_BUCKET_NAME>  # e.g., "test-orient-img"
+  auth_mode: "keyring"   # Credential source: instance | keyring | config
   s3_bucket_folder: "config.project.slug"
+  s3_bucket_raw: <YOUR_RAW_BUCKET_NAME>                  # Reels + raw video + artifact backups
+  s3_bucket_panos_unsecured: <YOUR_BUCKET_NAME>          # e.g., "test-orient-img"
+  s3_bucket_panos_secured: <YOUR_SECURED_BUCKET_NAME>    # Secured (virtual cache) panorama hosting
+  s3_bucket_panos_unsecured_region: null
+  s3_bucket_panos_secured_region: null
+  secured_delivery:
+    enabled: false
+    cloud_store_name: "<CLOUD_STORE_NAME>"
   use_acceleration: true
 
   skip_existing: true
@@ -663,7 +671,6 @@ aws:
   upload_batch_size: 25     # Enables cancellation checks between batch groups
   allow_cancel_file_trigger: true
 
-  keyring_aws: true
   keyring_service_name: aws_keyring
 
   # Access credentials should only be included for development testing

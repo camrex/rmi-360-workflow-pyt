@@ -11,6 +11,12 @@ Optimized for Mosaic 51 cameras, with planned support for Insta360. Includes too
 
 New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all required Python libraries in your ArcGIS Pro environment before running the main tools.
 
+New: **Corridor Thinning (pre-thin)** — the optional `rmi_360_corridor_thinning.pyt` toolbox prefilters panorama points to a manifest so the OID is built for kept images only (instead of thinning after upload). Set `thinning_mode: pre` to drive Add Images To OID from the exported manifest; the post-thin `Filter Distance Spacing` step auto-skips. The default `thinning_mode: post` is unchanged. See [docs/corridor_thinning.md](docs/corridor_thinning.md).
+
+New: **OID Maintenance** — the `rmi_360_oid_maintenance.pyt` toolbox handles out-of-band upkeep of an already-published OID: rewrite ImagePaths, sync image objects between the unsecured and secured S3 buckets, migrate storage (orchestrated), validate ImagePath reachability, and audit OID vs S3. All mutating tools default to **Dry Run**. See [docs_legacy/tools/oid_maintenance.md](docs_legacy/tools/oid_maintenance.md).
+
+New: **Config Editor** — a standalone, comment-preserving editor for `config.yaml` under [config_editor/](config_editor/). The form is generated from `config.sample.yaml` itself, supports org profiles, migrates older configs forward (clean break to schema **1.4.0**), and includes live **Check AWS** auth/bucket validation and **Set AWS Keyring**. It runs in its own isolated virtual environment, separate from the ArcGIS Pro Python.
+
 *Tested using ArcGIS Pro 3.4.3 and 3.5.4.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 
 > ℹ️ The “Oriented Imagery” tools require **Standard or Advanced** licenses. All other functions are available with **Basic** or higher.
@@ -46,7 +52,7 @@ New: The `rmi_360_env_checker.pyt` toolbox is now included to check for all requ
 | HTML & JSON Reporting  | Auto-generated step summaries and final status reports                      |
 | Image Metadata Support | Auto tag EXIF metadata + rename by GPS, time, reel, frame, etc.             |
 
-Secured storage status: publishing now passes virtual_cache_directory when secured_storage.enabled is true.
+Secured storage status: publishing now passes virtual_cache_directory when aws.secured_delivery.enabled is true.
 End-to-end secured-storage serving on Enterprise 12.0 is still blocked by Esri Case #04187998.
 Legacy public-URL mode remains the supported path until the Esri issue is resolved.
 
@@ -56,21 +62,25 @@ Legacy public-URL mode remains the supported path until the Esri issue is resolv
 
 ```text
 rmi-360-workflow-pyt/
-├── rmi_360_workflow.pyt                # ArcGIS Python Toolbox
-├── rmi_360_env_checker.pyt             # ArcGIS Python Toolbox for environment checking
+├── rmi_360_workflow.pyt                # Main ArcGIS Python Toolbox
+├── rmi_360_env_checker.pyt             # Environment / dependency checker toolbox
+├── rmi_360_corridor_thinning.pyt       # Corridor pre-thinning toolbox
+├── rmi_360_oid_maintenance.pyt         # OID maintenance + storage migration toolbox
+├── config_editor/                      # Standalone config.yaml editor (own venv)
 ├── configs/
-│   ├── config.sample.yaml              # Config template
+│   ├── config.sample.yaml              # Config template (schema source of truth)
 │   └── esri_oid_fields_registry.yaml   # ESRI OID field definitions
-├── tools/                              # ArcGIS tool wrappers
+├── tools/                              # ArcGIS tool wrappers (workflow, corridor_*, oid_*)
 ├── utils/                              # Reusable logic
+│   ├── corridor/                       # Corridor thinning core (arcpy-free units/identity)
 │   ├── manager/                        # Managers (ConfigManager, LogManager, PathManager, ProgressorManager)
-│   ├── shared/                         # Shared utilities
+│   ├── shared/                         # Shared utilities (oid_storage_paths, oid_storage_migration, ...)
 │   └── validators/                     # Validators
 ├── aws_lambdas/                        # Lambda upload status functions
 ├── templates/                          # HTML report templates
-├── legacy_docs/                        # Full documentation set
 ├── docs/                               # Updated documentation set  (TODO: implement using sphinx)
-├── dev_docs/                           # Future development documentation
+├── docs_legacy/                        # Full documentation set (tool guides, schema changelog)
+└── dev_docs/                           # Future development documentation
 ```
 
 ---

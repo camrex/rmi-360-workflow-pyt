@@ -1,0 +1,21 @@
+# RMI Valuation org profile — partial overlay of organization-standard defaults.
+# Applied on top of config.sample.yaml when creating a new config. Only the keys
+# below are set; everything else keeps the sample's documented defaults.
+#
+# This is a STARTER. Fill in the real org-standard values (buckets, portal org,
+# regions, etc.) and remove any key that should stay project-specific.
+
+project:
+  client: "RMI Valuation, LLC"
+
+aws:
+  region: "us-east-2"
+  auth_mode: "keyring"
+  secured_delivery:
+    enabled: false      # keep legacy/public until Esri Case 04187998 resolves
+
+portal:
+  share_with: "PRIVATE"
+  add_footprint: "FOOTPRINT"
+
+thinning_mode: "post"

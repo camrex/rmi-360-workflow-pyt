@@ -5,6 +5,48 @@ This changelog tracks structural changes to the Oriented Imagery Dataset (OID) s
 
 ---
 
+## [1.4.0] - 2026-06-28
+
+### Changed (BREAKING — clean break, no backward compatibility)
+
+- Consolidated the `aws` and `secured_storage` sections into a single `aws` block.
+  The two sections duplicated `region` and `s3_bucket_folder` and split the three
+  buckets confusingly. New layout:
+  - `aws.s3_bucket` → `aws.s3_bucket_panos_unsecured`
+  - `secured_storage.s3_bucket` → `aws.s3_bucket_panos_secured`
+  - `aws.s3_bucket_raw` (unchanged) — reels/raw + artifact backups
+  - `secured_storage.enabled` → `aws.secured_delivery.enabled`
+  - `secured_storage.cloud_store_name` → `aws.secured_delivery.cloud_store_name`
+  - `secured_storage.region` / `secured_storage.s3_bucket_folder` → **removed**
+    (use the single `aws.region` / `aws.s3_bucket_folder`)
+- Added optional per-bucket region overrides: `aws.s3_bucket_panos_unsecured_region`,
+  `aws.s3_bucket_panos_secured_region` (null → use `aws.region`).
+- Removed the deprecated `aws.keyring_aws` flag (auth_mode is the single switch).
+- Runtime accepts **only** `1.4.0`. Older configs are rejected at load — upgrade them
+  with the config editor (its Upgrade applies the renames automatically).
+
+## [1.3.5] - 2026-06-28
+
+### Added
+
+- `custom_fields` entries may now be populated from the corridor manifest via a
+  `manifest_field` key (joined by image Name), with an optional `default`. Used for
+  per-image values the pipeline does not otherwise derive — e.g. parallel `track`.
+  Added a sample `custom2: Track` field. Populated by `add_images_to_oid_fc.py`.
+- `linear_ref_fields` (`route_identifier`, `route_measure`) accept a `manifest_field`
+  key so MP_Pre / MP_Num can come from the manifest in pre-thin mode. MP_Pre always
+  uses the manifest's intended subdivision (`mp_pre`), which prevents nearest-route
+  snapping to the wrong parallel subdivision.
+- `corridor_thinning.manifest.mp_num_source` (`"relocate"` | `"manifest"`, default
+  `"relocate"`): `relocate` re-runs linear referencing constrained to the intended
+  subdivision; `manifest` copies `mp_meas` directly.
+
+### Changed
+
+- `config.sample.yaml` now declares schema version `1.3.5`.
+- Runtime accepts `1.3.1`–`1.3.5` for backward compatibility. All additions are
+  optional and gated on the new keys, so existing configs behave unchanged.
+
 ## [1.3.3] - 2026-05-30
 
 ### Added (1.3.2)

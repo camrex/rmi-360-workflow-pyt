@@ -78,7 +78,7 @@ def resolve_oid_key_prefix(cfg, secured_mode=False):
 
 
 def resolve_oid_target_bucket(cfg, secured_mode=False):
-    return cfg.get("aws.s3_bucket", "")
+    return cfg.get("aws.s3_bucket_panos_unsecured", "")
 
 
 manager_cfg_mod.ConfigManager = ConfigManager
@@ -154,7 +154,7 @@ def test_collect_upload_tasks(tmp_path):
     class DummyCfg:
         def get(self, key, default=None):
             values = {
-                "secured_storage.enabled": False,
+                "aws.secured_delivery.enabled": False,
                 "aws.s3_bucket_folder": "bucket/folder",
                 "project.slug": "proj",
             }

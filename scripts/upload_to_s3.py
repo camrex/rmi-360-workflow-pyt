@@ -421,8 +421,8 @@ def main() -> int:
         print("[DRY-RUN] Exiting without uploading.")
         return 0
 
-    # AWS session and S3 client
-    session = resolve_session(auth_mode)
+    # AWS session and S3 client (service name must match aws.keyring_service_name)
+    session = resolve_session(auth_mode, aws.get("keyring_service_name", "rmi_s3"))
     boto_cfg = get_boto_config()
     s3 = session.client("s3", region_name=region, config=boto_cfg)
 

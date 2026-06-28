@@ -85,7 +85,7 @@ def initialize_report_data(paths_dict: Dict[str, Any], cfg: ConfigManager) -> Di
             "renamed_images": str(paths.renamed)
         },
         "aws": {
-            "bucket": cfg.resolve(cfg.get("aws.s3_bucket", "")),
+            "bucket": cfg.resolve(cfg.get("aws.s3_bucket_panos_unsecured", "")),
             "folder": cfg.resolve(cfg.get("aws.s3_bucket_folder", ""))
         },
         "camera": {

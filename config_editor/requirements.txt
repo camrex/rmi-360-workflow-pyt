@@ -1,0 +1,14 @@
+# RMI 360 Config Editor — standalone dependencies.
+# Install into a SEPARATE environment from ArcGIS Pro (do NOT add these to the
+# toolbox's requirements.txt — the AGP base env should stay untouched).
+#
+#   python -m venv .venv && .venv/Scripts/activate
+#   pip install -r config_editor/requirements.txt
+
+ruamel.yaml>=0.18    # comment-preserving YAML round-trip (the core requirement)
+pywebview>=5.0       # native window hosting the web UI (GUI layer)
+boto3                # AWS auth check (STS/S3); optional — check degrades to a warning if absent
+keyring              # AWS keyring check; optional — check degrades to a warning if absent
+
+# Dev / test
+pytest

@@ -41,6 +41,19 @@ Welcome to the **RMI 360 Imaging Workflow Python Toolbox** development roadmap! 
 - **Development Plan**: [View Development Plan](../dev_docs/short_term/cli_runner.md)
 📅 **Timeline**: Week 3: CLI development and testing.
 
+### **4. 🔒 Finalize Secured-Storage Migration (gated on Esri Case #04187998)**
+
+![Effort](https://img.shields.io/badge/effort-LOW-green) ![Category](https://img.shields.io/badge/category-Foundational-blue)
+**Description**: The **OID Maintenance** toolbox (`rmi_360_oid_maintenance.pyt`) ships as a `0.1.0` scaffold so projects can run in legacy/public mode now and migrate to secured storage cleanly once Esri resolves the cloud-store serving bug. Two pieces are intentionally deferred until secured serving is verified.
+
+- **Action Items**:
+  - Replace the secured-mode reachability check (currently a bucket key-existence proxy) with a true end-to-end serve check once Enterprise can serve from the cloud store. See `utils/shared/oid_storage_migration.py::validate_imagepath_reachability` (`TODO(esri-04187998)`).
+  - Wire the optional auto-publish step in `tools/oid_migrate_storage_tool.py` to call `generate_oid_service` on the migrated copy.
+  - Bump the maintenance tools off `0.1.0` and flip `aws.secured_delivery.enabled` guidance in `config.sample.yaml` once validated.
+- **Reference**: [OID Maintenance toolbox guide](tools/oid_maintenance.md); Esri Case [#04187998](https://my.esri.com/#/support/cases/tech-cases?caseNumber=04187998).
+- **Expected Outcome**: One-step, reversible migration from public to secured panorama delivery.
+📅 **Timeline**: When Esri resolves Case #04187998 (externally gated).
+
 ---
 
 ## **Phase 1: Foundational & Immediate Priorities**  

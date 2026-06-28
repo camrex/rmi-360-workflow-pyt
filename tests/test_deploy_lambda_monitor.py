@@ -63,7 +63,7 @@ def test_build_progress_json_defaults():
         "camera.sn": "SN123",
         "camera.firmware": "1.0",
         "camera.software": "soft",
-        "aws.s3_bucket": "bucket",
+        "aws.s3_bucket_panos_unsecured": "bucket",
         "aws.s3_bucket_folder": "folder",
         "aws.region": "us-west-2"
     }[k]

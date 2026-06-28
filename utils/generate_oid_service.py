@@ -154,7 +154,7 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     secured_mode = is_secured_storage_enabled(cfg)
     bucket = resolve_oid_target_bucket(cfg, secured_mode=secured_mode)
     region = resolve_oid_target_region(cfg, secured_mode=secured_mode)
-    cloud_store_name = str(cfg.get("secured_storage.cloud_store_name", "")).strip()
+    cloud_store_name = str(cfg.get("aws.secured_delivery.cloud_store_name", "")).strip()
 
     if not all([bucket, region]):
         logger.error("Missing required AWS values in config.yaml", error_type=ValueError, indent=2)
@@ -162,7 +162,7 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
 
     if secured_mode:
         if not cloud_store_name:
-            raise ValueError("secured_storage.cloud_store_name is required when secured_storage.enabled is true")
+            raise ValueError("aws.secured_delivery.cloud_store_name is required when aws.secured_delivery.enabled is true")
         logger.info(f"Secured storage ENABLED - binding virtual_cache_directory: {cloud_store_name}", indent=2)
     else:
         logger.info("Secured storage DISABLED - legacy public-URL publish", indent=2)

@@ -87,8 +87,8 @@ In `config.yaml`, include:
 ```yaml
 aws:
   region: <YOUR-AWS-REGION>
-  s3_bucket: <YOUR-BUCKET-NAME>
-  keyring_aws: true
+  auth_mode: keyring
+  s3_bucket_panos_unsecured: <YOUR-BUCKET-NAME>
   keyring_service_name: aws-deployer
 ```
 

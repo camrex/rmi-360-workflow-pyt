@@ -1,16 +1,47 @@
-
 # 📎 NOTE: All placeholder values in this file are wrapped in angle brackets, e.g.:
 #   "<YOUR_AWS_S3_REGION>", "<PROJECT_SLUG>", "<CLIENT_NAME>"
 # Replace each one with the actual value for your project.
 #
+# 🛠️ CONFIG EDITOR ANNOTATIONS (parsed by config_editor; ignored at runtime):
+#   - A field's inline comment is its help text in the editor.
+#   - @choices[a, b, c]  -> strict dropdown (value must be one of these).
+#   - @secret            -> password field; keep out of plaintext (prefer keyring).
+#   - @widget[textarea|number|text|list] -> force a widget (type is otherwise inferred).
+#   - "# @section: Title | description" above a top-level key labels that section.
+#   - @repeatable @itemlabel[name]  -> on a map of records (e.g. custom_fields),
+#       lets the editor add/remove entries; itemlabel names the field shown per row.
+#   - @when[other.path=v1,v2]  -> field is editable only when other.path is one of
+#       those values; otherwise the editor disables it (e.g. access_key only when
+#       auth_mode=config). Does not affect the toolbox.
+#   These are plain YAML comments — they do not affect how the toolbox loads config.
+#
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.3.3
-debug_messages: false
+schema_version: 1.4.0
+debug_messages: false   # Verbose debug-level logging
+
+# ------------------------------------------------------------------------------
+# 🪓 THINNING MODE (post-thin vs pre-thin)
+# ------------------------------------------------------------------------------
+# Controls WHEN imagery is thinned to the target spacing:
+#   - "post" (default, legacy): create the OID for ALL panoramas, then thin with
+#     the distance_spacing filter before upload. No behavior change from before.
+#   - "pre": thin FIRST via the separate Corridor Thinning toolbox
+#     (rmi_360_corridor_thinning.pyt), which emits a manifest CSV; Add Images To
+#     OID then adds ONLY the manifest's kept images, and the post-thin distance
+#     filter step is auto-skipped. Saves AWS storage/processing.
+#
+# In "pre" mode set corridor_thinning.manifest.path to the exported manifest (or
+# pass it on the Process360Workflow / Add Images tool dialog).
+# ------------------------------------------------------------------------------
+thinning_mode: "post"   # Pre-thin via corridor pipeline, or post-thin filter. @choices[post, pre]
 
 # NEW RUNTIME CONFIG
 #
-# local_root defines the base directory for project data on the EC2 instance.
+# local_root is the base directory for project data on the machine running the
+# workflow (the EC2 instance in production, or a processing workstation). It is
+# REQUIRED by the Process360Workflow orchestrator (individual interactive tools
+# use the Project Folder parameter instead and do not read it).
 # All project files are stored in: {local_root}/projects/{project_key}/
 #
 # Expected structure on EC2:
@@ -29,8 +60,9 @@ debug_messages: false
 #     ├── config/         # Configuration files
 #     └── gis_data/       # GIS reference data
 #
+# @section: Runtime | Required base directory where the workflow stages all project data: {local_root}/projects/{project.slug}/.
 runtime:
-  local_root: "D:/Process360_Data"   # Base path on EC2 (ignored on desktop)
+  local_root: "D:/Process360_Data"   # Required by the orchestrator: base dir where project data is staged (<local_root>/projects/<project.slug>/)
 
 # ------------------------------------------------------------------------------
 # 🪵 LOGGING & FILE PATHS
@@ -63,22 +95,23 @@ runtime:
 # rename_log           (str) - File rename summary log
 # process_log          (str) - Master runtime log (used by orchestrator, messages, etc.)
 # ------------------------------------------------------------------------------
+# @section: Logs & Reports | Log and report output locations.
 logs:
-  path: "logs"
-  report_path: "report"
+  path: "logs"                              # Folder (under project) for log files
+  report_path: "report"                     # Folder (under project) for HTML/JSON reports
   logo_filename: "rmi_logo.png"  # Logo should be located in templates/assets
-  prefix: "config.project.slug"
-  mosaic_processor_log: "mosaic_processor_output.log"
-  exiftool_logs: "exiftool_log.txt"
-  exiftool_args: "exiftool_batch.args"
-  geocode_logs: "exiftool_geocode_log.txt"
-  geocode_args: "exiftool_geocode.args"
-  gps_smooth_debug: "debuglog_outliers.csv"
-  distance_spacing_debug: "debuglog_distance_spacing.csv"
-  aws_upload_log: "aws_upload_log.csv"
-  aws_upload_summary: "aws_upload_summary.csv"
-  rename_log: "rename_log.csv"
-  process_log: "process_log.txt"
+  prefix: "config.project.slug"             # Filename prefix expression for logs
+  mosaic_processor_log: "mosaic_processor_output.log"  # Mosaic Processor output log filename
+  exiftool_logs: "exiftool_log.txt"         # ExifTool tagging log filename
+  exiftool_args: "exiftool_batch.args"      # ExifTool tagging args filename
+  geocode_logs: "exiftool_geocode_log.txt"  # ExifTool geocoding log filename
+  geocode_args: "exiftool_geocode.args"     # ExifTool geocoding args filename
+  gps_smooth_debug: "debuglog_outliers.csv"  # GPS smoothing debug CSV filename
+  distance_spacing_debug: "debuglog_distance_spacing.csv"  # Distance-spacing debug CSV filename
+  aws_upload_log: "aws_upload_log.csv"      # AWS upload log CSV filename
+  aws_upload_summary: "aws_upload_summary.csv"  # AWS upload summary CSV filename
+  rename_log: "rename_log.csv"              # Image rename log CSV filename
+  process_log: "process_log.txt"            # Main process log filename
 
 # --------------------------------------------------------------------
 # 📁 PROJECT-LEVEL METADATA
@@ -105,6 +138,7 @@ logs:
 # 📚 Tip:
 # These values are referenced using `config.project.KEY` in expressions.
 #
+# @section: Project | Identity used across filenames, folders, and metadata.
 project:
   company: "<YOUR COMPANY NAME>"           # Author of the imagery / data
   number: "<PROJECT_NUMBER>"               # Project ID (YY-###)
@@ -121,7 +155,7 @@ project:
 #   - NAD 1983 StatePlane California Zone 5 (US Feet) → 2229
 #   - NAD 1983 UTM Zone 14N → 26914
 # Failing to update this may cause incorrect OID footprint geometry or empty layers.
-  local_proj_wkid: <YOUR_PROJECT_WKID>
+  local_proj_wkid: <YOUR_PROJECT_WKID>      # Local projected CRS WKID for analysis
 
 # --------------------------------------------------------------------
 # 📷 CAMERA & HARDWARE CONFIGURATION
@@ -139,16 +173,17 @@ project:
 #   - metadata_tags (e.g., Model, Make, Software, FirmwareVersion)
 #   - XPKeywords (for filtering or search)
 #
+# @section: Camera | Camera hardware metadata (make, model, firmware) embedded in EXIF/XMP and reports.
 camera:
   make: "Mosaic"                                      # Camera manufacturer
   model: "Mosaic 51"                                  # Model name (used in EXIF) - (adjust as needed)
   sn: "<SERIAL_NUMBER>"                               # Serial number
   firmware: "2.2.0"                                   # Installed firmware version (adjust as needed)
   software: "Mosaic Processor 1.0.1/MistikaVR 10.14"  # Processing software version string (adjust as needed)
-  stitching_software: "MistikaVR"
-  image_width: 12288
-  image_height: 6144
-  source_photos: 6
+  stitching_software: "MistikaVR"           # Stitching software name (EXIF)
+  image_width: 12288                        # Output panorama width (px)
+  image_height: 6144                        # Output panorama height (px)
+  source_photos: 6                          # Number of source lenses/photos per pano
 
 # --------------------------------------------------------------------
 # 📏 CAMERA OFFSET: GNSS to Camera Lens Center
@@ -182,6 +217,7 @@ camera:
 #   > "The X/Y/Z coordinate values are used to shift the position measured by the GNSS.
 #   > The lever arm defines the displacement between the camera center and the GNSS antenna."
 #
+# @section: Camera Offset | GNSS-to-lens lever-arm offsets (cm) for vertical GPS correction and CameraHeight.
 camera_offset:
   # X/Y/Z lever arm between GNSS antenna and camera center (right, forward, up)
   x:
@@ -224,6 +260,7 @@ camera_offset:
 #   - WKID 4326 = WGS 1984 (horizontal)
 #   - WKID 5703 = WGS 1984 Ellipsoidal Height (vertical)
 #
+# @section: Spatial Reference | Coordinate system settings.
 spatial_ref:
   gcs_horizontal_wkid: 4326                         # Geographic — used in OID SRS
   vcs_vertical_wkid: 5703                           # Vertical — Ellipsoidal (GPS)
@@ -253,6 +290,7 @@ spatial_ref:
 # - If you maintain multiple GRP files for different cameras or projects, this value
 #   can be overridden per-project in future config profiles.
 #
+# @section: Executables | Paths to external tools (ExifTool, Mosaic Processor).
 executables:
   exiftool:
     exe_path: "exiftool"  # Command-line call or full path to ExifTool binary
@@ -299,23 +337,35 @@ executables:
 #                      - Route identifier (e.g., MP_Pre)
 #                      - Route measure (e.g., MP_Num)
 #
-# ➤ custom_fields: Fields computed using expressions referencing config or
-#                  project-specific attributes. Populated using:
-#                    `update_linear_and_custom.py`
+# ➤ custom_fields: Project-specific fields. A custom field is populated one of
+#                  two ways (mutually exclusive):
+#                    - expression:    computed value. Populated by
+#                                     `update_linear_and_custom.py`.
+#                    - manifest_field: value joined from the corridor manifest
+#                                      (pre-thin mode) by image Name. Populated by
+#                                      `add_images_to_oid_fc.py` after the images
+#                                      are added. Use this for per-image values the
+#                                      pipeline does not otherwise derive (e.g.,
+#                                      parallel `track`).
 #
 # 🧪 FIELD DEFINITION FORMAT
 # --------------------------------------------------------------------
 # Each field must follow this structure:
-#   name:        Field name (string)
-#   type:        ESRI field type (TEXT, DOUBLE, LONG, DATE, etc.)
-#   length:      Required for TEXT fields (null for other types)
-#   alias:       Friendly display name (used in ArcGIS)
-#   expression:  (Optional) Expression for computing values dynamically
+#   name:           Field name (string)
+#   type:           ESRI field type (TEXT, DOUBLE, LONG, DATE, etc.)
+#   length:         Required for TEXT fields (null for other types)
+#   alias:          Friendly display name (used in ArcGIS)
+#   expression:     (Optional) Expression for computing values dynamically
+#   manifest_field: (Optional) Corridor manifest column to join by image Name
+#   default:        (Optional) Value used when the manifest cell is empty/missing
 #
-# ➤ Expressions are only supported in `custom_fields`
-#   - They may reference:
+# ➤ Expressions and manifest_field are only supported in `custom_fields`
+#   - Expressions may reference:
 #       - config values (e.g., config.project.rr_mark)
 #       - resolved milepost values (e.g., mp_value, route_id)
+#   - manifest_field requires pre-thin mode with corridor_thinning.manifest.path
+#     set (or a manifest passed to Add Images). In post-thin mode the field is
+#     left null.
 #
 # 🛑 STRUCTURE RULES
 # --------------------------------------------------------------------
@@ -330,17 +380,18 @@ executables:
 #
 # ESRI Oriented Imagery documentation:
 # - https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/oriented-imagery-table.htm
+# @section: OID Schema & Fields | ESRI, mosaic, linear-ref, and custom OID fields.
 oid_schema_template:
   template:
-    auto_create_oid_template: true
-    templates_dir: "templates"
+    auto_create_oid_template: true          # Auto-create the OID schema template if missing
+    templates_dir: "templates"              # Directory holding the template geodatabase
     gdb_path: "templates.gdb"  # located in "templates_dir"
-    template_name: "oid_schema_template"
+    template_name: "oid_schema_template"    # Name of the OID schema template table
   esri_default:
-    field_registry: "configs/esri_oid_fields_registry.yaml"
-    standard: true
-    not_applicable: false
-  mosaic_fields:  # Extra fields used only in Mosaic workflows
+    field_registry: "configs/esri_oid_fields_registry.yaml"  # Path to the ESRI OID field registry YAML
+    standard: true                          # Include standard ESRI OID fields
+    not_applicable: false                   # Include not-applicable ESRI fields
+  mosaic_fields:  # Extra fields used only in Mosaic workflows. @repeatable @itemlabel[name]
     mosaic_reel:
       name: "Reel"
       type: "TEXT"
@@ -353,35 +404,50 @@ oid_schema_template:
       alias: "Frame"
   grp_idx_fields:
     group_index:
-      name: "GroupIndex"
-      type: "SHORT"
-      length: null
-      alias: "Display Interval Group"
+      name: "GroupIndex"                    # OID field name
+      type: "SHORT"                         # ESRI field type
+      length: null                          # Field length (TEXT only; null otherwise)
+      alias: "Display Interval Group"       # Display alias in ArcGIS
   linear_ref_fields:  # Fields populated by locate_images_along_route
+    # manifest_field names the manifest column each field maps to in pre-thin mode.
+    # MP_Pre is always taken from the manifest's mp_pre (intended subdivision), which
+    # prevents a point from being snapped to the geometrically nearest WRONG
+    # subdivision. MP_Num's source is controlled by corridor_thinning.manifest.
+    # mp_num_source ("relocate" re-measures along the intended route; "manifest" uses
+    # mp_meas below). Without a manifest, normal nearest-route behavior is unchanged.
     route_identifier:
-      name: "MP_Pre"
-      type: "TEXT"
-      length: 6
-      alias: "Prefix"
+      name: "MP_Pre"                        # OID field name
+      type: "TEXT"                          # ESRI field type
+      length: 6                             # Field length (TEXT only; null otherwise)
+      alias: "Prefix"                       # Display alias in ArcGIS
+      manifest_field: "mp_pre"    # intended subdivision from the corridor manifest
     route_measure:
-      name: "MP_Num"
-      type: "DOUBLE"
-      length: null
-      alias: "Milepost"
-  custom_fields:  # Project-specific fields populated using expressions
+      name: "MP_Num"                        # OID field name
+      type: "DOUBLE"                        # ESRI field type
+      length: null                          # Field length (TEXT only; null otherwise)
+      alias: "Milepost"                     # Display alias in ArcGIS
+      manifest_field: "mp_meas"   # only used when mp_num_source == "manifest"
+  custom_fields:  # Project-specific fields (expression- or manifest-populated). @repeatable @itemlabel[name]
     custom1:
       name: "RR"
       type: "TEXT"
       length: 6
       alias: "Railroad Code"
       expression: "config.project.rr_mark"
+    custom2:
+      name: "Track"
+      type: "TEXT"
+      length: 20
+      alias: "Track"
+      manifest_field: "track"   # joined from the corridor manifest 'track' column by image Name
+      default: "_main"          # parallel-track convention: empty/NULL track -> _main
 #    You can define additional custom fields as needed:
-#    custom2:
+#    custom3:
 #      name: "FieldName"
 #      type: "TEXT"
 #      length: 12
 #      alias: "Field Alias"
-#      expression: ""
+#      expression: ""           # OR manifest_field: "<manifest_column>"
 
 # ------------------------------------------------------------------------------
 # 🔢 SEQUENCE ORDER (Optional OID Navigation Ordering)
@@ -404,15 +470,16 @@ oid_schema_template:
 #   - descending_prefixes: prefixes where MP_Num should run high to low.
 #   - null_milepost_position: where null MP_Num rows are placed inside each prefix group.
 # ------------------------------------------------------------------------------
+# @section: Sequence Order | Optional SequenceOrder population for OID navigation.
 sequence_order:
-  enabled: false
-  field_name: "SequenceOrder"
-  acquisition_datetime_field: "AcquisitionDate"
-  lr_prefix_field: "MP_Pre"
-  lr_mile_field: "MP_Num"
+  enabled: false                            # Populate SequenceOrder for OID navigation
+  field_name: "SequenceOrder"               # OID field that stores the sequence order
+  acquisition_datetime_field: "AcquisitionDate"  # Datetime field used when LR ordering is unavailable
+  lr_prefix_field: "MP_Pre"                 # OID prefix field used for grouped ordering
+  lr_mile_field: "MP_Num"                   # OID milepost field used for ordering within a group
   prefix_order: []              # Example: ["G", "H", "K", "MH"]
   descending_prefixes: []       # Example: ["MH"]
-  null_milepost_position: "end"  # Options: "start", "end"
+  null_milepost_position: "end"  # Where null-milepost rows sort within a prefix group. @choices[start, end]
 
 # ------------------------------------------------------------------------------
 # 🛰️ GPS CORRECTION / SMOOTHING – Outlier Detection Configuration
@@ -425,30 +492,21 @@ sequence_order:
 #   - Multiple criteria must fail to be flagged as outliers
 #   - Optionally logs a debug CSV for visualization/troubleshooting
 #
-# Parameters:
-#   deviation_threshold_m: Max lateral distance (in meters) from midpoint line
-#   angle_bounds_deg: Acceptable angle between forward and backward bearings
-#   proximity_check_range_m: Allowed step spacing variance
-#   max_route_dist_deviation_m: Allowed distance drift from centerline (if provided)
-#   smoothing_window: Number of neighbors before/after to evaluate
-#   outlier_reason_threshold: Minimum failed criteria to flag outlier
-#   segment_break_distance_m: Distance jump that starts a new capture segment within a reel
-#   segment_break_time_seconds: Time gap that starts a new capture segment within a reel
-#
 # Example:
 #   If a point is >0.5m from midpoint, angle is outside [175, 185],
 #   and spacing is outside ±0.75m, it may be flagged (if ≥2 checks fail).
 # ------------------------------------------------------------------------------
+# @section: GPS Smoothing | GPS noise smoothing and outlier correction.
 gps_smoothing:
-  capture_spacing_meters: 5.0
-  deviation_threshold_m: 0.5
-  angle_bounds_deg: [175, 185]
-  proximity_check_range_m: 0.75
-  max_route_dist_deviation_m: 0.5
-  smoothing_window: 2
-  outlier_reason_threshold: 2
-  segment_break_distance_m: 100.0
-  segment_break_time_seconds: 120.0
+  capture_spacing_meters: 5.0          # Nominal capture spacing (m) between consecutive images
+  deviation_threshold_m: 0.5           # Max lateral distance (m) from the midpoint line
+  angle_bounds_deg: [175, 185]         # Acceptable angle between forward and backward bearings
+  proximity_check_range_m: 0.75        # Allowed step-spacing variance (m)
+  max_route_dist_deviation_m: 0.5      # Allowed distance drift from centerline (m, if provided)
+  smoothing_window: 2                  # Number of neighbors before/after to evaluate
+  outlier_reason_threshold: 2          # Minimum failed criteria to flag a point as an outlier
+  segment_break_distance_m: 100.0      # Distance jump (m) that starts a new capture segment within a reel
+  segment_break_time_seconds: 120.0    # Time gap (s) that starts a new capture segment within a reel
 
 # ------------------------------------------------------------------------------
 # 🚚 DELIVERY SUBSET (Pre-AWS OID/Image Selection)
@@ -495,12 +553,13 @@ gps_smoothing:
 #   on_validation_failure=error
 #     - Stop the step on unresolved spacing validation/correction
 # ------------------------------------------------------------------------------
+# @section: Delivery Subset | Select a delivery subset at a target spacing (e.g. 5 m) from denser capture, via manifest or subset folder.
 delivery_subset:
-  enabled: false
+  enabled: false                            # Enable delivery-subset selection before cloud delivery
 
   # Source capture profile and target delivery spacing (meters)
-  source_capture_spacing_meters: 1.0
-  target_spacing_meters: 5.0
+  source_capture_spacing_meters: 1.0        # Spacing (m) of the source capture
+  target_spacing_meters: 5.0                # Target delivery spacing (m)
 
   # Runtime sanity-check of source capture spacing from OID geometry.
   # Computes median spacing from consecutive points per reel (no cross-reel segments),
@@ -510,10 +569,10 @@ delivery_subset:
     min_reels_with_estimate: 1          # Minimum reels with valid geometry needed to evaluate
 
   spacing_selector:
-    enabled: true
+    enabled: true                           # Enable index-stride spacing selection
 
     # Primary index selection strategy
-    mode: "auto_stride"                 # Options: "auto_stride", "fixed_stride"
+    mode: "auto_stride"                 # Stride selection mode. @choices[auto_stride, fixed_stride]
     stride_override: null                # Integer stride used only when mode="fixed_stride"
     group_by_reel: true                  # Restart index counting per reel
 
@@ -521,26 +580,26 @@ delivery_subset:
     validate_distance: true              # Validate selected spacing with lat/long distance
     tolerance_percent: 10.0              # Accept spacing in target +/- tolerance_percent
     max_local_adjustments_per_pick: 2    # Local adjustment attempts per selected pair
-    correction_strategy: "nearest_candidate"  # Options: "nearest_candidate", "forward_only"
+    correction_strategy: "nearest_candidate"  # Local spacing-correction strategy. @choices[nearest_candidate, forward_only]
 
   mp_range_selector:
-    enabled: false
+    enabled: false                          # Enable milepost-range selection
 
     # Multiple ranges can be combined in one delivery OID.
     # Each range is inclusive on milepost values and tied to one MP_Pre.
     # Examples:
     #   - { mp_pre: "M", min: 1.0, max: 2.0 }
     #   - { mp_pre: "N", min: 5.0, max: 6.0 }
-    ranges: []
+    ranges: []                              # MP windows, e.g. {mp_pre: M, min: 1.0, max: 2.0}
 
   # Output artifact consumed by downstream delivery steps
   output:
-    strategy: "manifest"               # Options: "manifest", "subset_folder"
-    manifest_filename: "delivery_subset_manifest.csv"
-    subset_folder_name: "delivery_subset"
+    strategy: "manifest"               # Delivery output artifact. @choices[manifest, subset_folder]
+    manifest_filename: "delivery_subset_manifest.csv"  # Filename for the delivery manifest CSV
+    subset_folder_name: "delivery_subset"   # Folder name when strategy = subset_folder
 
   # Behavior when spacing validation/correction cannot confirm target spacing
-  on_validation_failure: "warn_and_continue"  # Options: "warn_and_continue", "error"
+  on_validation_failure: "warn_and_continue"  # Action when target spacing can't be confirmed. @choices[warn_and_continue, error]
 
 # --------------------------------------------------------------------
 # 📏 DISTANCE-BASED SPACING FILTER
@@ -570,9 +629,62 @@ delivery_subset:
 #   - Preserves reels with proper distance-based spacing (5m/10m)
 #   - Maintains chronological order within each reel
 #
+# @section: Distance Spacing | Distance-based spacing filter for dense captures.
 distance_spacing:
   min_spacing_meters: 5.0    # Minimum distance between images
   tolerance_meters: 1.0      # Tolerance for spacing variation
+
+# --------------------------------------------------------------------
+# 🛤️ CORRIDOR THINNING (PRE-THIN PIPELINE)
+# --------------------------------------------------------------------
+# Defaults for the separate Corridor Thinning toolbox
+# (rmi_360_corridor_thinning.pyt). The stage tools also expose every value on
+# their dialogs, so this section is OPTIONAL convenience/defaults for scripted or
+# orchestrated runs. Only consulted in pre-thin mode.
+#
+# Correctness rules (see docs/corridor_thinning.md and PIPELINE.md):
+#   - wkid drives the threshold unit math: 6455 = US survey feet, so 5 m = 16.4042
+#     ft via metersPerUnit. Never hard-code feet.
+#   - reel identity = (reel, reel_start_ts) parsed from the filename, not the reel
+#     number alone (battery/power-cycle bug safe).
+#   - per-route Locate, (mp_pre, track) partitioning, oriented-frame tie-break.
+# --------------------------------------------------------------------
+# @section: Corridor Thinning | Pre-thin corridor pipeline defaults (per-route, manifest).
+corridor_thinning:
+  wkid: 6455                      # Projected CRS of the data (US survey ft for 6455)
+  search_radius: "200 Feet"       # Locate Features Along Routes search radius
+  route_id_field: "mp_pre"        # Route identifier on the routes FC (== mp_pre)
+  point_pre_field: "mp_pre"       # Subdivision-prefix field on the points FC
+  eps_miles: 0.0003               # Tie/near-tie grouping threshold (miles)
+  filename_regex: 'reel_(\d+)_(\d{8}-\d{6})_.*_(\d+)\.jpg$'  # Regex parsing reel/timestamp/frame from filenames
+  fields:
+    meas: "mp_meas"               # DOUBLE measure field
+    key: "Name"                   # Unique image id (present on points + routes)
+    track: "track"                # Parallel-track tag (NULL -> _main)
+    include: "include"            # Editorial inclusion flag (1 keep / 0 drop)
+    sub_order: "sub_order"        # Sequence within (mp_pre, track)
+    flag: "flag_5m"               # Thinning keep/drop flag
+  thin:
+    threshold_meters: 5.0         # Target interval (meters)
+    trim_meters: 1.5              # Pull-in (1.5 -> ~4.5 m effective). 0 = none.
+  reversals:
+    min_backtrack_ft: 15.0        # Min backward displacement (data units) to flag
+    oppose_deg: 120.0             # Bearing >= this off prevailing = opposing
+    prevail_window: 7             # Frames for rolling prevailing-bearing estimate
+    min_reversal_frames: 2        # Opposing run must persist this many steps
+    only_report_live: true        # Only report reversals with >=1 include=1 point
+  manifest:
+    path: null                    # Path to the exported manifest CSV (pre-thin)
+    # How the orchestrated OID build sets MP_Num when running from a manifest:
+    #   "relocate" (default): keep running linear referencing, but constrain it to
+    #     each image's intended subdivision (manifest mp_pre) so the measure is taken
+    #     along the CORRECT route — mirrors the pre-thin per-route Locate. MP_Pre and
+    #     MP_Num stay consistent. mp_meas is NOT read from the manifest.
+    #   "manifest": take MP_Num directly from the manifest's mp_meas column (and
+    #     MP_Pre from mp_pre). No re-measurement.
+    # MP_Pre always comes from the manifest's mp_pre in either mode. With no manifest
+    # (post-thin), linear referencing behaves exactly as before (nearest route).
+    mp_num_source: "relocate"     # MP_Num source when running from a manifest. @choices[relocate, manifest]
 
 # ------------------------------------------------------------------------------
 # 🖼️ IMAGE OUTPUT
@@ -623,6 +735,7 @@ distance_spacing:
 #
 #   Resulting filename:
 #     RMI25100_BNSF_W20.123_20250405T113005Z_RL0001_FR000234.jpg
+# @section: Image Output | Output folders, filename format, and metadata tags.
 image_output:
   folders:
     parent: "panos"
@@ -705,7 +818,7 @@ image_output:
 # Defines AWS auth and upload mechanics for copy_to_aws.py. This block governs
 # HOW images and artifacts are uploaded (credentials, threading, retries) and
 # the available buckets. WHICH bucket OID images land in, and how ImagePath is
-# written, is decided by the secured_storage block below.
+# written, is decided by the secured_delivery block below.
 #
 # The toolbox runs in one AWS account (the account that owns the upload
 # buckets). ArcGIS Enterprise may live in a separate account and reach the
@@ -717,10 +830,10 @@ image_output:
 #   - keyring: Pull keys from OS keyring (keyring_service_name)
 #   - config: Plaintext keys below (development only)
 #
-# Buckets:
-#   - s3_bucket: Public or unsecured hosting bucket (legacy OID model)
-#   - s3_bucket_raw: Raw video and artifact uploads (raw and prod split)
-#   - secured_storage.s3_bucket: Secured OID bucket used in virtual cache mode
+# Buckets (one key prefix, three buckets by role):
+#   - s3_bucket_raw: Reels + raw video + artifact backups
+#   - s3_bucket_panos_unsecured: Public/unsecured panorama hosting (legacy OID model)
+#   - s3_bucket_panos_secured: Secured panorama hosting (virtual cache mode)
 #
 # Upload settings:
 #   - use_acceleration: Enable S3 Transfer Acceleration
@@ -736,71 +849,49 @@ image_output:
 #     bucket or folder, cloudwatch:PutMetricData (optional).
 # ------------------------------------------------------------------------------
 
+# @section: AWS Storage | AWS auth, S3 buckets, and secured-delivery mode for uploads and OID hosting.
 aws:
-  region: "<YOUR_AWS_S3_REGION>"
-  auth_mode: "instance"            # "instance" | "keyring" | "config"
+  region: "<YOUR_AWS_S3_REGION>"            # Default AWS region (STS, clients, and buckets unless overridden)
+  auth_mode: "instance"            # Credential source: instance profile, OS keyring, or the plaintext keys below. @choices[instance, keyring, config]
 
-  # Buckets
-  s3_bucket: "<YOUR_S3_BUCKET_NAME>"             # Public or unsecured hosting bucket
-  s3_bucket_raw: "<YOUR_S3_RAW_BUCKET_NAME>"     # Raw uploads
-  s3_bucket_folder: "config.project.slug"        # Key prefix; aligns with ImagePath model
+  # Buckets — one key prefix; three buckets by role
+  s3_bucket_folder: "config.project.slug"                  # Key prefix inside every bucket; aligns with the ImagePath model
+  s3_bucket_raw: "<YOUR_S3_RAW_BUCKET_NAME>"               # Reels + raw video + artifact backups
+  s3_bucket_panos_unsecured: "<YOUR_S3_BUCKET_NAME>"       # Public/unsecured panorama hosting
+  s3_bucket_panos_secured: "<YOUR_SECURED_S3_BUCKET_NAME>" # Secured (virtual cache) panorama hosting
+
+  # Optional per-bucket region overrides (null -> use aws.region above; e.g. a secured bucket in another region/account)
+  s3_bucket_panos_unsecured_region: null
+  s3_bucket_panos_secured_region: null
+
+  # Secured (virtual-cache) OID delivery — single switch between two image-delivery models:
+  #   enabled: false -> legacy: images upload to s3_bucket_panos_unsecured; ImagePath is a public URL.
+  #   enabled: true  -> secured: images upload to s3_bucket_panos_secured; ImagePath = $virtualCacheDirectory:<prefix>/<file>
+  #                     (the registered cloud store resolves the bucket; needs ArcGIS Pro 3.7+ / Enterprise 12.0+).
+  # NOTE: secured serving on Enterprise 12.0 is unverified pending Esri Case 04187998 — keep enabled: false until resolved.
+  # Interim: run legacy against s3_bucket_panos_unsecured; keep the secured bucket private. Object keys are identical in
+  # both modes ({prefix}/{filename}), so migrating later is a key-for-key bucket copy + ImagePath rewrite (reversible).
+  # Use the OID Maintenance toolbox (rmi_360_oid_maintenance.pyt) for sync/rewrite/audit. See docs_legacy/tools/oid_maintenance.md.
+  secured_delivery:
+    enabled: false                              # Sample default: legacy mode
+    cloud_store_name: "<CLOUD_STORE_NAME>"      # Cloud store registered in Server Manager (secured mode). @when[aws.secured_delivery.enabled=true]
 
   # Upload mechanics
-  use_acceleration: true
-  skip_existing: true
+  use_acceleration: true                    # Use S3 Transfer Acceleration
+  skip_existing: true                       # Resume: skip files already uploaded per the prior upload log
   max_workers: 16                  # Fixed int (16) or pattern (cpu*2)
-  retries: 3
-  upload_batch_size: 25
-  allow_cancel_file_trigger: true
+  retries: 3                                # Upload retry attempts per file
+  upload_batch_size: 25                     # Files per upload batch
+  allow_cancel_file_trigger: true           # Allow cancelling an upload by creating cancel_copy.txt in the project folder
 
-  # Keyring (used when auth_mode: keyring)
-  keyring_aws: false
-  keyring_service_name: aws_s3
+  # Keyring (used when auth_mode: keyring) — store creds via the "Set AWS Keyring" tool
+  keyring_service_name: aws_s3              # Keyring service name credentials are stored under. @when[aws.auth_mode=keyring]
 
   # Plaintext keys (development only; used when auth_mode: config)
-  access_key: "<ACCESS_KEY_ID>"
-  secret_key: "<SECRET_ACCESS_KEY>"
+  access_key: "<ACCESS_KEY_ID>"   # Prefer keyring (auth_mode: keyring); avoid plaintext. @secret @when[aws.auth_mode=config]
+  secret_key: "<SECRET_ACCESS_KEY>"   # Prefer keyring (auth_mode: keyring); avoid plaintext. @secret @when[aws.auth_mode=config]
 
-  lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"
-
-# ------------------------------------------------------------------------------
-# 🔒 SECURED STORAGE (ArcGIS Cloud Store / Virtual Cache Directory)
-# ------------------------------------------------------------------------------
-# Single switch between two OID image-delivery models.
-#
-# Behavior:
-#   enabled: false -> legacy mode
-#     - Images upload to aws.s3_bucket
-#     - generate_oid_service rewrites ImagePath as public URLs
-#
-#   enabled: true -> secured mode
-#     - Images upload to secured_storage.s3_bucket
-#     - ImagePath is written as:
-#         $virtualCacheDirectory:<project_slug>/<image_filename>
-#
-# In secured mode, the bucket name is not written in ImagePath. The registered
-# cloud store resolves it. Image Path Prefix and Suffix are not used.
-#
-# The upload destination and ImagePath model should switch together from this
-# one flag so uploads and paths stay aligned.
-#
-# Requirements:
-#   ArcGIS Pro 3.7+ and ArcGIS Enterprise 12.0+.
-#   Cloud store must be registered on the hosting server.
-#
-# Notes:
-#   - Keep enabled: false in config.sample.yaml.
-#   - Enable per project when secured delivery is validated.
-#   - Secured-storage serving on Enterprise 12.0 is unverified pending Esri Case 04187998.
-#   - Keep enabled: false until Esri resolves Case 04187998.
-#   - s3_bucket_folder must match upload key prefix to avoid path drift.
-# ------------------------------------------------------------------------------
-secured_storage:
-  enabled: false                                # Sample default: legacy mode
-  cloud_store_name: "<CLOUD_STORE_NAME>"       # Name registered in Server Manager
-  s3_bucket: "<YOUR_SECURED_S3_BUCKET_NAME>"   # Secured OID bucket
-  region: "<YOUR_AWS_S3_REGION>"
-  s3_bucket_folder: "config.project.slug"      # Must match upload key prefix
+  lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"  # IAM role ARN for the upload-monitor Lambda
 
 # ------------------------------------------------------------------------------
 # 🌐 PORTAL SERVICE PUBLISHING
@@ -857,14 +948,15 @@ secured_storage:
 # - All expressions are resolved using resolve_expression() from config_loader.
 # - If publishing fails, check portal sign-in status in ArcGIS Pro.
 # ------------------------------------------------------------------------------
+# @section: Portal Publishing | ArcGIS portal service publishing options.
 portal:
   project_folder: "config.project.number"  # Or otherwise name
-  share_with: "PRIVATE"                    # Options: PRIVATE, ORGANIZATION, PUBLIC
-  add_footprint: "FOOTPRINT"               # Options: FOOTPRINT, NO_FOOTPRINT
-  portal_tags:
+  share_with: "PRIVATE"                    # Portal sharing level. @choices[PRIVATE, ORGANIZATION, PUBLIC]
+  add_footprint: "FOOTPRINT"               # Generate coverage footprint. @choices[FOOTPRINT, NO_FOOTPRINT]
+  portal_tags:                              # Tags applied to the published service
     - "config.project.number"
     - "Oriented Imagery"
-  summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"
+  summary: "'Oriented Imagery for ' + config.project.number + ' ' + config.project.rr_name + ' - ' + config.project.description"  # Service summary expression
 
 # ------------------------------------------------------------------------------
 # 🌍 GEOCODING & GEOGRAPHIC ENRICHMENT
@@ -877,7 +969,7 @@ portal:
 #   - "exiftool": Uses ExifTool's internal Geolocation module for basic reverse geocoding
 #   - "geo_areas": Uses corridor geo-areas enrichment with Living Atlas data sources
 #
-# Note: Methods are mutually exclusive - ExifTool geocoding would overwrite geo-areas 
+# Note: Methods are mutually exclusive - ExifTool geocoding would overwrite geo-areas
 # EXIF data, so only one method can be active per workflow run.
 #
 # Method details:
@@ -886,7 +978,7 @@ portal:
 #      - LocationShownCity / ProvinceState / CountryName (XMP/IPTC-Ext)
 #      - Simple point-based lookup from built-in or custom databases
 #
-#   🗺️ "geo_areas": Advanced corridor-aware geographic enrichment 
+#   🗺️ "geo_areas": Advanced corridor-aware geographic enrichment
 #      - Uses Living Atlas Places and Counties polygon data
 #      - Milepost-aware context (prev/next/nearest places along route)
 #      - Gap bridging and range building for continuous coverage
@@ -914,14 +1006,15 @@ portal:
 #   4. In that config file, define the absolute path:
 #        $Image::ExifTool::Geolocation::geoDir = '/ABSOLUTE/PATH/TO/[NameOfYourCustomGeoDB]"';
 #   ➤ Note: Relative paths in .config are not supported.
+# @section: Geocoding | ExifTool-based reverse geocoding.
 geocoding:
-  method: "geo_areas"  # Options: "exiftool", "geo_areas" (mutually exclusive)
-  exiftool_geodb: "default"  # Options: default, geolocation500, geocustom
-  geoloc500_config_path: "templates/exiftool/geolocation500.config"
-  geocustom_config_path: "templates/exiftool/geocustom.config"
+  method: "geo_areas"  # Reverse-geocoding engine (mutually exclusive). @choices[exiftool, geo_areas]
+  exiftool_geodb: "default"  # ExifTool geolocation database. @choices[default, geolocation500, geocustom]
+  geoloc500_config_path: "templates/exiftool/geolocation500.config"  # Path to the geolocation500 ExifTool config
+  geocustom_config_path: "templates/exiftool/geocustom.config"  # Path to the geocustom ExifTool config
 
 # ------------------------------------------------------------------------------
-# 🌍 GEO-AREAS ENRICHMENT  
+# 🌍 GEO-AREAS ENRICHMENT
 # ------------------------------------------------------------------------------
 # Controls how corridor photo points are enriched with Place/County/State context
 # and milepost-aware information before ExifTool tagging. This provides more
@@ -933,7 +1026,7 @@ geocoding:
 # Processing modes:
 #   - CONTAINMENT_ONLY: Only polygon containment joins
 #   - CONTAINMENT+MILEPOST_CONTEXT: Add prev/next/nearest milepost context (legacy)
-#   - CONTAINMENT+MILEPOST+GAP_BRIDGE: Add gap bridging between same places (legacy)  
+#   - CONTAINMENT+MILEPOST+GAP_BRIDGE: Add gap bridging between same places (legacy)
 #   - CONTAINMENT+RANGES_BUILD_APPLY: Add range-based lookup from anchors (recommended - most efficient)
 #   - FULL: Complete enrichment workflow (comprehensive but includes redundant milepost step)
 #
@@ -941,49 +1034,50 @@ geocoding:
 #   - places_fc: Polygon FC with place boundaries (cities, towns, CDPs)
 #   - counties_fc: Polygon FC with county boundaries including state info
 #
+# @section: Geo-Areas Enrichment | Place/county containment and milepost context.
 geo_areas:
   # Enable geo-areas enrichment (set to false to skip entirely)
-  enabled: true
-  
+  enabled: true                 # Run geo-areas enrichment (place/county containment)
+
   # Processing mode - controls which enrichment steps to perform
-  mode: "CONTAINMENT+RANGES_BUILD_APPLY"  # Options: CONTAINMENT_ONLY, CONTAINMENT+MILEPOST_CONTEXT, CONTAINMENT+MILEPOST+GAP_BRIDGE, CONTAINMENT+RANGES_BUILD_APPLY, FULL
-  
+  mode: "CONTAINMENT+RANGES_BUILD_APPLY"  # Enrichment steps to perform. @choices[CONTAINMENT_ONLY, CONTAINMENT+MILEPOST_CONTEXT, CONTAINMENT+MILEPOST+GAP_BRIDGE, CONTAINMENT+RANGES_BUILD_APPLY, FULL]
+
   # Field names in the photos feature class
   mile_field: "milepost"        # Field containing milepost values
   route_field: "route_id"       # Field for route identification (optional, leave null for single route)
-  
+
   # Gap bridging parameters
   max_gap_miles: 1.0           # Maximum gap distance (miles) for bridging between same-place anchors
   break_gap_miles: 0.5         # Gap distance (miles) that breaks range continuity
   min_points_per_range: 2      # Minimum points required for a valid place range
-  
+
   # Nearest place promotion
   promote_nearest_to_actual: false    # Promote nearest place to actual place if within threshold
   max_nearest_miles: 2.0             # Maximum distance (miles) for promoting nearest place
-  
+
   # Data source paths (update these to point to your Living Atlas data)
   places_fc: "gis_data/reference.gdb/USA_Places"      # Polygon FC containing place boundaries
   counties_fc: "gis_data/reference.gdb/USA_Counties"  # Polygon FC containing county boundaries
-  
+
   # Optional corridor-specific places (for future near-buffer logic)
   corridor_places_fc: null     # Optional places clipped to corridor buffer
-  
+
   # Reporting
-  write_report_csv: true       # Generate QA report CSV with enrichment statistics  
+  write_report_csv: true       # Generate QA report CSV with enrichment statistics
   report_csv_filename: "geocode_geoareas_report.csv"  # Filename for QA report
-  
+
   # EXIF metadata fallback strategy for points outside places
   # Controls what gets written to City/LocationShownCity tags when no place containment found
-  city_fallback_strategy: "nearest_then_county"  # Options: "county_only", "nearest_only", "nearest_then_county"
+  city_fallback_strategy: "nearest_then_county"  # Fallback when no place contains the point. @choices[county_only, nearest_only, nearest_then_county]
   #   - "county_only": Use county name as fallback (e.g., "Adams County")
-  #   - "nearest_only": Use nearest place name with optional indicator (e.g., "Springfield (nearest)")  
+  #   - "nearest_only": Use nearest place name with optional indicator (e.g., "Springfield (nearest)")
   #   - "nearest_then_county": Try nearest place first, then county (recommended)
   include_nearest_indicator: true                 # Add "(nearest)" suffix for nearest place fallbacks in City tags
-  
+
   # XPKeywords enrichment for enhanced searchability
   include_county_keyword: true                    # Add county name to XPKeywords (e.g., "Adams County")
   include_directional_context: true              # Add directional context for points outside places (e.g., "2.4 miles east of Sedalia")
-  
+
   # Milepost-based direction mapping (railroad operational directions)
   # Define directions based on increasing/decreasing milepost values along the route
   # This follows railroad operational direction rather than cardinal directions
@@ -992,16 +1086,17 @@ geo_areas:
     decreasing_direction: "east"   # Direction for decreasing milepost values (opposite of increasing)
   #   Example: If closest place is at MP 125.2 and point is at MP 127.8,
   #   point is 2.6 miles in the "increasing_direction" (west) of the place
-  
+
   # Performance tuning (advanced)
   nearest_radius_m: 8000       # Radius for nearest calculations (currently unused - using milepost logic)
 
 # ----------------------------------------------------------------
 # ORCHESTRATOR CONFIG
 # ----------------------------------------------------------------
+# @section: Orchestrator | Run controls: optional pre-step pauses, OID backups between steps, and artifact upload to S3.
 orchestrator:
   # Enable or disable waits before specific steps.
-  wait_between_steps: false
+  wait_between_steps: false                 # Pause before steps listed in wait_before_step
 
   # Number of seconds to pause BEFORE executing each step listed in `wait_before_step`.
   # This gives the user time to cancel, prepare, or manually inspect state before proceeding.
@@ -1010,7 +1105,7 @@ orchestrator:
   # List of step keys where a pause should occur BEFORE the step starts.
   # Step keys must match those defined in the toolbox (e.g., "copy_to_aws", "generate_service").
   # Useful for long-running, irreversible, or cloud-based operations.
-  wait_before_step:
+  wait_before_step:                         # Step keys to pause before
     - add_images
     - smooth_gps
     - rename_images
@@ -1020,19 +1115,19 @@ orchestrator:
     - generate_service
 
   # Enable or disable OID backups before specific steps.
-  backup_oid_between_steps: true
+  backup_oid_between_steps: true            # Snapshot the OID before risky steps
 
   # List of step keys where an OID snapshot should be saved BEFORE the step runs.
   # This protects against data loss during critical or irreversible operations.
-  backup_before_step:
+  backup_before_step:                       # Step keys to back up the OID before
     - smooth_gps
     - rename_images
     - generate_service
 
   # Location of the shared backup geodatabase where OID snapshots will be stored.
   # Backups are named like: OID_before_{step}_{timestamp}
-  backup_folder: "backups"
-  oid_backup_fgdb: "oid_snapshots.gdb"
+  backup_folder: "backups"                  # Folder for OID backup snapshots
+  oid_backup_fgdb: "oid_snapshots.gdb"      # Geodatabase storing OID snapshots
 
   # ----------------------------------------------------------------
   # ARTIFACT BACKUP TO S3 (NEW)
@@ -1054,7 +1149,7 @@ orchestrator:
   # - logs: All log files (process_log.txt, exiftool logs, etc.)
   # - report: HTML report, JSON data, and associated assets
   # - gis_data: Any GIS reference data in the project gis_data/ folder
-  artifact_types:
+  artifact_types:                           # Artifact types to upload to S3 after a run
     - config
     - logs
     - report
@@ -1063,6 +1158,7 @@ orchestrator:
 # ----------------------------------------------------------------
 # DISK SPACE CONFIG
 # ----------------------------------------------------------------
+# @section: Disk Space | Pre-run free-disk-space check (toggle + minimum free-space buffer ratio).
 disk_space:
-  check_enabled: True
-  min_buffer_ratio: 1.1
+  check_enabled: true                       # Check free disk space before running
+  min_buffer_ratio: 1.1                     # Required free space as a ratio of estimated need

@@ -110,6 +110,20 @@ class AddImagesToOIDTool(object):
         # Optional config.yaml file with project-specific settings.
         params.append(config_param)
 
+        # Corridor manifest (pre-thin mode). When supplied, ONLY the images listed
+        # in the manifest are added (manifest-driven pre-thinning). Leave empty for
+        # the standard all-images (post-thin) flow.
+        manifest_param = arcpy.Parameter(
+            displayName="Corridor Manifest CSV (optional — pre-thin)",
+            name="manifest_path",
+            datatype="DEFile",
+            parameterType="Optional",
+            direction="Input"
+        )
+        if manifest_param.filter is not None:
+            manifest_param.filter.list = ["csv"]
+        params.append(manifest_param)
+
         return params
 
     def execute(self, parameters, messages):
@@ -125,6 +139,7 @@ class AddImagesToOIDTool(object):
         oid_fc = parameters[1].valueAsText
         adjust_z = bool(parameters[2].value) if parameters[2].value is not None else True
         config_file = parameters[3].valueAsText
+        manifest_path = parameters[4].valueAsText if len(parameters) > 4 else None
 
         cfg = ConfigManager.from_file(
             path=config_file,               # May be None
@@ -134,7 +149,8 @@ class AddImagesToOIDTool(object):
 
         add_images_to_oid(
             cfg=cfg,
-            oid_fc_path=oid_fc
+            oid_fc_path=oid_fc,
+            manifest_path=manifest_path
         )
 
         assign_group_index(

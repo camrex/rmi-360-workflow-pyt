@@ -75,6 +75,10 @@ def skip_if_smooth_gps_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_smooth_gps", False) else None
 
 def skip_if_distance_filter_disabled(params):
+    # Pre-thin mode already culled images via the corridor manifest before the OID
+    # was built, so the post-thin distance filter must NOT run.
+    if str(params.get("thinning_mode", "post")).lower() == "pre":
+        return "Skipped (pre-thinned via corridor manifest)"
     return "Skipped (disabled by user)" if not params.get("enable_distance_filter", False) else None
 
 def skip_if_geocode_disabled(params):
@@ -249,7 +253,7 @@ def build_step_funcs(p, cfg):
         StepSpec("create_oid", "Create Oriented Imagery Dataset",
             lambda params, config: lambda **kwargs: create_oriented_imagery_dataset(output_fc_path=p["oid_fc"], cfg=cfg), None),
         StepSpec("add_images", "Add Images to OID",
-            lambda params, config: lambda **kwargs: add_images_to_oid(oid_fc_path=p["oid_fc"], cfg=cfg), None),
+            lambda params, config: lambda **kwargs: add_images_to_oid(oid_fc_path=p["oid_fc"], cfg=cfg, manifest_path=p.get("corridor_manifest_path")), None),
         StepSpec("assign_group_index", "Assign Group Index",
             lambda params, config: lambda **kwargs: assign_group_index(oid_fc_path=p["oid_fc"], cfg=cfg), None),
         StepSpec("enrich_oid", "Calculate OID Attributes",
@@ -262,6 +266,9 @@ def build_step_funcs(p, cfg):
             lambda params, config: lambda **kwargs: filter_distance_spacing(oid_fc=p["oid_fc"], action=p.get("distance_filter_action", "flag"), cfg=cfg), skip_if_distance_filter_disabled),
         StepSpec("update_linear_custom", "Update Linear and Custom Attributes",
             lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg), None),
+        # ORDERING: manifest joins (Track in add_images, MP_Pre/MP_Num here) key on the
+        # ORIGINAL image filename, so they MUST stay before rename_images. Moving rename
+        # earlier breaks the manifest match — a zero-match join fails fast (RuntimeError).
         StepSpec("rename_images", "Rename Images",
             lambda params, config: lambda **kwargs: rename_images(oid_fc=p["oid_fc"], cfg=cfg, enable_linear_ref=p["enable_linear_ref"]), None),
         StepSpec("geoareas_enrichment", "Geo-Areas Enrichment", 

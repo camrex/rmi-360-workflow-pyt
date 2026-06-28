@@ -28,7 +28,7 @@
 #   - AWS Secret Access Key {secret_access_key} (String): Your AWS secret key. Will be stored securely in the keyring.
 #
 # Notes:
-#   - Stores both key and secret under the service name in config["copy_to_aws"]["keychain_service_name"].
+#   - Stores both key and secret under the service name in config["aws"]["keyring_service_name"].
 #   - Raises runtime error if parameters are missing or storage fails.
 #   - Ensure config file and keyring are properly configured for secure operations.
 # =============================================================================
@@ -76,7 +76,8 @@ class SetAWSKeyringCredentialsTool(object):
             cfg = ConfigManager.from_file(messages=messages)
             logger = cfg.get_logger()
 
-            service_name = cfg.get("copy_to_aws.keychain_service_name", "rmi_s3")
+            # Must match the reader (aws_utils.get_aws_credentials): aws.keyring_service_name.
+            service_name = cfg.get("aws.keyring_service_name", "rmi_s3")
             access_key_id = parameters[0].valueAsText
             secret_access_key = parameters[1].valueAsText
 

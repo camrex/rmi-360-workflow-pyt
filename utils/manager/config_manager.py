@@ -63,10 +63,13 @@ from utils.validators import (
     deploy_lambda_monitor_validator,
     delivery_subset_validator,
     copy_to_aws_validator,
-    generate_oid_service_validator
+    generate_oid_service_validator,
+    corridor_thinning_validator
 )
 
-SUPPORTED_SCHEMA_VERSIONS = {"1.3.1", "1.3.2", "1.3.3"}
+# 1.4.0 consolidated aws + secured_storage (clean break). Older configs must be
+# upgraded (use the config editor's Upgrade) before the toolbox will load them.
+SUPPORTED_SCHEMA_VERSIONS = {"1.4.0"}
 
 
 class ConfigManager:
@@ -396,7 +399,8 @@ class ConfigManager:
         "deploy_lambda_monitor": deploy_lambda_monitor_validator.validate,
         "delivery_subset": delivery_subset_validator.validate,
         "copy_to_aws": copy_to_aws_validator.validate,
-        "generate_oid_service": generate_oid_service_validator.validate
+        "generate_oid_service": generate_oid_service_validator.validate,
+        "corridor_thinning": corridor_thinning_validator.validate
     }
 
     def validate_tool_config(self, tool: str):

@@ -90,13 +90,14 @@ def resolve_session(auth_mode: Optional[str], service_name: str = "rmi_s3"):
         except ImportError:
             raise RuntimeError("auth_mode=keyring but \"keyring\" is not installed. pip install keyring") from None
 
-        ak = keyring.get_password(service_name, "AWS_ACCESS_KEY_ID")
-        sk = keyring.get_password(service_name, "AWS_SECRET_ACCESS_KEY")
+        # Item names must match the Set AWS Keyring tool / aws_utils (lowercase).
+        ak = keyring.get_password(service_name, "aws_access_key_id")
+        sk = keyring.get_password(service_name, "aws_secret_access_key")
 
         if not ak or not sk:
             raise RuntimeError(
                 f"Missing AWS credentials in keyring '{service_name}'. "
-                "Run keyring.set_password('rmi_s3','AWS_ACCESS_KEY_ID',...) and SECRET_ACCESS_KEY."
+                "Store them with the Set AWS Keyring tool (toolbox) or keyring.set_password."
             )
         return boto3.Session(aws_access_key_id=ak, aws_secret_access_key=sk)
 

@@ -381,6 +381,31 @@ class Process360Workflow(object):
         distance_filter_action_param.value = "flag"
         params.append(distance_filter_action_param)
 
+        # 12b) Thinning Mode (post = current default; pre = manifest-driven)
+        thinning_mode_param = arcpy.Parameter(
+            displayName="Thinning Mode",
+            name="thinning_mode",
+            datatype="GPString",
+            parameterType="Optional",
+            direction="Input",
+        )
+        if thinning_mode_param.filter is not None:
+            thinning_mode_param.filter.list = ["post", "pre"]
+        thinning_mode_param.value = "post"
+        params.append(thinning_mode_param)
+
+        # 12c) Corridor Manifest CSV (used only in pre-thin mode)
+        corridor_manifest_param = arcpy.Parameter(
+            displayName="Corridor Manifest CSV (pre-thin)",
+            name="corridor_manifest_path",
+            datatype="DEFile",
+            parameterType="Optional",
+            direction="Input",
+        )
+        if corridor_manifest_param.filter is not None:
+            corridor_manifest_param.filter.list = ["csv"]
+        params.append(corridor_manifest_param)
+
         # 13) Enable Linear Referencing
         enable_linear_ref_param = arcpy.Parameter(
             displayName="Enable Linear Referencing",
@@ -539,7 +564,7 @@ class Process360Workflow(object):
                     project_base=project_folder.valueAsText if project_folder and project_folder.valueAsText else None,
                     messages=None,
                 )
-                default_raw = cfg.get("aws.s3_bucket_raw", cfg.get("aws.s3_bucket")) if cfg else None
+                default_raw = cfg.get("aws.s3_bucket_raw", cfg.get("aws.s3_bucket_panos_unsecured")) if cfg else None
                 if default_raw:
                     raw_s3_bucket.value = default_raw
             except Exception:
@@ -830,7 +855,8 @@ class Process360Workflow(object):
         paths = cfg.paths
 
         # --- Runtime roots & project directory ---
-        local_root = cfg.get("runtime.local_root")
+        # config.yaml wins; fall back to the RMI_LOCAL_ROOT environment variable.
+        local_root = cfg.get("runtime.local_root") or os.getenv("RMI_LOCAL_ROOT")
         if not local_root:
             raise ValueError(
                 "Missing 'runtime.local_root' in configuration. "
@@ -915,7 +941,7 @@ class Process360Workflow(object):
 
         else:  # AWS
             raw_s3_bucket = (raw_s3_bucket_param.valueAsText if raw_s3_bucket_param else None) or cfg.get(
-                "aws.s3_bucket_raw", cfg.get("aws.s3_bucket")
+                "aws.s3_bucket_raw", cfg.get("aws.s3_bucket_panos_unsecured")
             )
             project_key = project_key_param.valueAsText if project_key_param else None
             if not raw_s3_bucket or not project_key:

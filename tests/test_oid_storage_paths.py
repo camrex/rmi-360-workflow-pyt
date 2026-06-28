@@ -18,7 +18,7 @@ class DummyCfg:
 
 def test_build_oid_object_key_legacy_mode():
     cfg = DummyCfg({
-        "secured_storage.enabled": False,
+        "aws.secured_delivery.enabled": False,
         "aws.s3_bucket_folder": "proj-slug",
         "project.slug": "proj-slug",
     })
@@ -27,10 +27,10 @@ def test_build_oid_object_key_legacy_mode():
 
 def test_build_oid_image_path_secured_mode():
     cfg = DummyCfg({
-        "secured_storage.enabled": True,
-        "secured_storage.s3_bucket_folder": "proj-slug",
-        "secured_storage.s3_bucket": "secured-bucket",
-        "secured_storage.region": "us-east-2",
+        "aws.secured_delivery.enabled": True,
+        "aws.s3_bucket_folder": "proj-slug",
+        "aws.s3_bucket_panos_secured": "secured-bucket",
+        "aws.region": "us-east-2",
         "project.slug": "proj-slug",
     })
     assert build_oid_image_path(cfg, "img.jpg") == "$virtualCacheDirectory:proj-slug/img.jpg"
@@ -38,8 +38,8 @@ def test_build_oid_image_path_secured_mode():
 
 def test_resolve_oid_target_bucket_secured_mode():
     cfg = DummyCfg({
-        "secured_storage.enabled": True,
-        "secured_storage.s3_bucket": "secured-bucket",
-        "aws.s3_bucket": "legacy-bucket",
+        "aws.secured_delivery.enabled": True,
+        "aws.s3_bucket_panos_secured": "secured-bucket",
+        "aws.s3_bucket_panos_unsecured": "legacy-bucket",
     })
     assert resolve_oid_target_bucket(cfg, secured_mode=True) == "secured-bucket"

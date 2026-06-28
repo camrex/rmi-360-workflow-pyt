@@ -121,7 +121,7 @@ def build_progress_json(cfg: ConfigManager, expected_total, now=None):
     }
 
     cloud_info = {
-        "bucket": cfg.get("aws.s3_bucket"),
+        "bucket": cfg.get("aws.s3_bucket_panos_unsecured"),
         "prefix": resolve_expression(cfg.get("aws.s3_bucket_folder"), cfg),
         "region": cfg.get("aws.region")
     }
@@ -266,7 +266,7 @@ def setup_schedule_and_target(cfg, events_client, lambda_client, expected_total)
 
     project_config = {
         "project_slug": cfg.get("project.slug"),
-        "bucket": cfg.get("aws.s3_bucket"),
+        "bucket": cfg.get("aws.s3_bucket_panos_unsecured"),
         "prefix": f"{cfg.get('project.number')}/",
         "expected_total": expected_total
     }
@@ -309,7 +309,7 @@ def deploy_lambda_monitor(cfg: ConfigManager):
     region = cfg.get("aws.region")
     role_arn = cfg.get("aws.lambda_role_arn")
     slug = cfg.get("project.slug")
-    bucket = cfg.get("aws.s3_bucket")
+    bucket = cfg.get("aws.s3_bucket_panos_unsecured")
 
     # Load credentials from keyring or config and verify AWS credentials
     try:

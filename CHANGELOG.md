@@ -6,6 +6,87 @@ All notable changes to this project will be documented in this file.
 
 > **📝 Maintenance Note**: Please update this CHANGELOG with significant changes, new features, bug fixes, and breaking changes. Follow the existing format with clear categories (Added, Changed, Fixed, Removed, etc.).
 
+## [Unreleased]
+
+Schema bumped **1.3.3 → 1.4.0** across this set of work. The runtime accepts **only
+`1.4.0`** (clean break); upgrade older `config.yaml` files with the new Config Editor.
+
+### Added
+
+#### Config Editor (standalone)
+
+- New **`config_editor/`** app: a comment-preserving (`ruamel.yaml` round-trip)
+  `config.yaml` editor with a webview UI and a stdlib dev server. The form is derived
+  directly from `config.sample.yaml` via self-describing annotations
+  (`# @section:`, `@choices[...]`, `@secret`, `@widget[...]`, `@when[path=v]`,
+  `@repeatable @itemlabel[...]`), so the schema stays single-sourced.
+- Profiles (e.g. `rmi_valuation`) overlay org defaults onto the sample; an **Upgrade**
+  action migrates older configs forward (rename/remove rules in `core/migrations.py`).
+- **Check AWS** validates the credential configuration before save: resolves
+  `auth_mode` (instance | keyring | config), confirms the source is populated, runs a
+  live STS `get_caller_identity`, and probes that the configured S3 buckets exist.
+  **Set AWS Keyring** writes credentials to the OS keyring only (never to disk/preview).
+- Runs in its own isolated `.venv` (boto3/keyring) so it never touches the ArcGIS Pro
+  Python environment.
+
+#### OID Maintenance toolbox
+
+- New **`rmi_360_oid_maintenance.pyt`** toolbox for out-of-band maintenance of an
+  already-published OID: Rewrite ImagePaths, Sync OID S3 Objects, Migrate OID Storage
+  (orchestrator), Validate ImagePath Reachability, and Audit OID vs S3. All mutating
+  tools default to **Dry Run**.
+- Backing primitives in `utils/shared/oid_storage_migration.py`; ImagePath forms and
+  key layout centralized in `utils/shared/oid_storage_paths.py` (single source of truth
+  shared by publishing, upload, and migration). Because object keys are identical across
+  delivery modes (`{prefix}/{filename}`), legacy↔secured migration is a key-for-key
+  bucket copy plus an ImagePath rewrite — no re-upload, reversible.
+
+#### Corridor Thinning (Pre-Thin)
+
+- New **`rmi_360_corridor_thinning.pyt`** toolbox: granular, QC-gated pre-thinning
+  stage tools (Create Panorama Points, Calculate Mileposts, Calculate Sequence,
+  Detect Reversals, Thin to Interval, QC Sequence, Find Gaps, QC Thinning, Export
+  Manifest, plus an optional chained orchestrator). Ported from validated standalone
+  scripts (project 26-150); logic preserved, parameters exposed.
+- Backing logic under `utils/corridor/` with `units.py` (WKID-aware threshold math,
+  filename identity parsing, arcpy-free anchor-reset core for testability).
+- `thinning_mode: post|pre` config switch and `corridor_thinning` config section; new
+  `corridor_thinning_validator`.
+
+#### Manifest-sourced fields
+
+- `custom_fields` entries may be populated from the corridor manifest via a
+  `manifest_field` key (joined by image Name) with an optional `default` — e.g. a
+  per-image parallel `track`. `linear_ref_fields` accept `manifest_field` so MP_Pre /
+  MP_Num can come from the manifest in pre-thin mode, and `corridor_thinning.manifest.mp_num_source`
+  (`relocate` | `manifest`) controls how MP_Num is derived.
+
+### Changed
+
+- **AWS / secured storage consolidated** into one `aws` block (schema **1.4.0**, clean
+  break): three clearly-named buckets (`s3_bucket_raw`, `s3_bucket_panos_unsecured`,
+  `s3_bucket_panos_secured`), a single `aws.region` with optional per-bucket overrides,
+  and `aws.secured_delivery.{enabled, cloud_store_name}`. See SCHEMA_CHANGELOG for the
+  full key mapping.
+- **Add Images To OID** is now manifest-aware: with a corridor manifest (or
+  `thinning_mode: pre`), only the manifest's kept images are added (matched by
+  filename). Default all-images behavior is unchanged.
+- **Process360Workflow** gains `Thinning Mode` + `Corridor Manifest CSV` params; the
+  post-thin `Filter Distance Spacing` step auto-skips in pre mode.
+
+### Removed
+
+- The deprecated `aws.keyring_aws` flag — `auth_mode` is now the single switch for
+  credential resolution. The Config Editor's Upgrade strips the key from older configs.
+
+### Notes
+
+- Default `thinning_mode: post` preserves the existing workflow exactly.
+- Reversal *resolution* remains designed-but-not-built (Detect Reversals is
+  report-only).
+- End-to-end secured-storage serving on Enterprise 12.0 remains blocked by Esri
+  Case #04187998; legacy public-URL mode is the supported interim path.
+
 ## [v1.3.3] - 2026-05-30 - Secured Storage and Sequence Ordering
 
 ### Feature Highlights

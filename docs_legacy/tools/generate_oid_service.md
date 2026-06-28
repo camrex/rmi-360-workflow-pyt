@@ -10,15 +10,15 @@ Publishes an Oriented Imagery Dataset using ArcGIS Pro's oriented imagery servic
 
 Before publish, the tool copies the input OID and rewrites `ImagePath` based on delivery mode:
 
-- Legacy mode (`secured_storage.enabled: false`): public S3 URL
-- Secured mode (`secured_storage.enabled: true`): `$virtualCacheDirectory:<key>`
+- Legacy mode (`aws.secured_delivery.enabled: false`): public S3 URL
+- Secured mode (`aws.secured_delivery.enabled: true`): `$virtualCacheDirectory:<key>`
 
 Object keys are generated using the same shared helper used by `copy_to_aws`, preventing drift between uploaded keys and ImagePath values.
 
 ## Inputs
 
 - OID feature class
-- Config values from `portal`, `aws`, and optional `secured_storage`
+- Config values from `portal` and `aws` (including the `aws.secured_delivery` sub-block)
 
 ## Outputs
 
@@ -48,16 +48,14 @@ portal:
   summary: "'Oriented Imagery for ' + config.project.number"
 
 aws:
-  s3_bucket: "<YOUR_S3_BUCKET_NAME>"
   region: "<YOUR_AWS_S3_REGION>"
   s3_bucket_folder: "config.project.slug"
-
-secured_storage:
-  enabled: false
-  cloud_store_name: "<CLOUD_STORE_NAME>"
-  s3_bucket: "<YOUR_SECURED_S3_BUCKET_NAME>"
-  region: "<YOUR_AWS_S3_REGION>"
-  s3_bucket_folder: "config.project.slug"
+  s3_bucket_panos_unsecured: "<YOUR_S3_BUCKET_NAME>"
+  s3_bucket_panos_secured: "<YOUR_SECURED_S3_BUCKET_NAME>"
+  s3_bucket_panos_secured_region: null   # optional override; null -> aws.region
+  secured_delivery:
+    enabled: false
+    cloud_store_name: "<CLOUD_STORE_NAME>"
 ```
 
 ## Validation
@@ -68,11 +66,11 @@ Checks include:
 
 - Portal config structure (`project_folder`, tags, summary)
 - AWS folder expression resolves
-- If secured mode is enabled, validates secured storage bucket/region/folder settings
+- If secured mode is enabled, validates `aws.s3_bucket_panos_secured` and `aws.secured_delivery.cloud_store_name`
 
 ## Notes
 
 - This tool does not upload images. Run Copy to AWS first.
 - Secured mode requires matching cloud store setup in ArcGIS Enterprise publish workflow.
-- In secured mode, publish now passes `virtual_cache_directory` from `secured_storage.cloud_store_name`.
+- In secured mode, publish now passes `virtual_cache_directory` from `aws.secured_delivery.cloud_store_name`.
 - ArcGIS Enterprise 12.0 secured-storage serving remains blocked by Esri Case #04187998.

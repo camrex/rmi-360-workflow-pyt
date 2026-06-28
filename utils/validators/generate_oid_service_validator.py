@@ -76,20 +76,18 @@ def validate(cfg: "ConfigManager") -> bool:
                                          expected_type=str):
         error_count += 1
 
-    secured = cfg.get("secured_storage", {})
+    secured = cfg.get("aws.secured_delivery", {})
     if secured:
-        if not validate_type(secured, "secured_storage", dict, cfg):
+        if not validate_type(secured, "aws.secured_delivery", dict, cfg):
             error_count += 1
         else:
-            if "enabled" in secured and not validate_type(secured.get("enabled"), "secured_storage.enabled", bool, cfg):
+            if "enabled" in secured and not validate_type(secured.get("enabled"), "aws.secured_delivery.enabled", bool, cfg):
                 error_count += 1
 
             if secured.get("enabled", False):
-                for key in ("s3_bucket", "region", "s3_bucket_folder", "cloud_store_name"):
-                    if not validate_type(secured.get(key), f"secured_storage.{key}", str, cfg):
-                        error_count += 1
-                if not try_resolve_config_expression(secured.get("s3_bucket_folder"), "secured_storage.s3_bucket_folder", cfg,
-                                                     expected_type=str):
+                if not validate_type(cfg.get("aws.s3_bucket_panos_secured"), "aws.s3_bucket_panos_secured", str, cfg):
+                    error_count += 1
+                if not validate_type(secured.get("cloud_store_name"), "aws.secured_delivery.cloud_store_name", str, cfg):
                     error_count += 1
 
                 if error_count == 0 and not validate_secured_storage_deployment(cfg):

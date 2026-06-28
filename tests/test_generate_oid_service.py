@@ -56,8 +56,8 @@ def test_update_oid_image_paths(monkeypatch):
     dummy_logger = MagicMock()
     cfg = MagicMock()
     cfg.get.side_effect = lambda key, default=None: {
-        "secured_storage.enabled": False,
-        "aws.s3_bucket": "bucket",
+        "aws.secured_delivery.enabled": False,
+        "aws.s3_bucket_panos_unsecured": "bucket",
         "aws.region": "region",
         "aws.s3_bucket_folder": "folder",
         "project.slug": "proj",

@@ -52,7 +52,9 @@ def get_aws_credentials(cfg: "ConfigManager") -> Tuple[str, str]:
         RuntimeError: If required credentials are missing.
     """
     logger = cfg.get_logger()
-    use_keyring = cfg.get("aws.keyring_aws", False)
+    # auth_mode is the single source of truth for how credentials resolve.
+    auth_mode = str(cfg.get("aws.auth_mode", "config")).lower()
+    use_keyring = auth_mode == "keyring"
     service_name = cfg.get("aws.keyring_service_name", "rmi_s3")
     if use_keyring:
         access_key = keyring.get_password(service_name, "aws_access_key_id")
@@ -125,7 +127,7 @@ def get_boto3_session(cfg):
 def validate_s3_bucket_access(cfg: "ConfigManager", bucket: Optional[str] = None) -> Session:
     """Verify AWS auth and target S3 bucket access before starting upload-dependent work."""
     logger = cfg.get_logger()
-    bucket = bucket or cfg.get("aws.s3_bucket")
+    bucket = bucket or cfg.get("aws.s3_bucket_panos_unsecured")
 
     if not bucket:
         logger.error("AWS S3 bucket is not configured.", indent=2, error_type=RuntimeError)

@@ -6,6 +6,7 @@ from .build_oid_schema_validator import *
 from .calculate_oid_attributes_validator import *
 from .common_validators import *
 from .copy_to_aws_validator import *
+from .corridor_thinning_validator import *
 from .correct_gps_outliers_validator import *
 from .create_oid_validator import *
 from .deploy_lambda_monitor_validator import *
@@ -28,6 +29,7 @@ __all__ = [
     "calculate_oid_attributes_validator",
     "common_validators",
     "copy_to_aws_validator",
+    "corridor_thinning_validator",
     "correct_gps_outliers_validator",
     "create_oid_validator",
     "deploy_lambda_monitor_validator",
