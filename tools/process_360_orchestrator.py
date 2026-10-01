@@ -10,11 +10,19 @@
 #
 # Description:
 #   Orchestrates the full end-to-end Mosaic 360 image processing pipeline within ArcGIS Pro.
-#   Supports both Local and AWS-based execution environments. The tool determines which reel
-#   folders to process—either from local project directories or from an S3 bucket—and runs a
-#   configurable series of workflow steps including image rendering, OID creation, enrichment,
-#   geolocation, AWS copy, and service publishing. Progress and results are tracked
-#   in a persistent report JSON for dashboarding and audit.
+#   Supports both Local and AWS-based execution environments and runs a configurable series of
+#   workflow steps including (optional) image stitching, OID creation, enrichment, geolocation,
+#   AWS copy, and service publishing. Progress and results are tracked in a persistent report
+#   JSON for dashboarding and audit.
+#
+#   Stitching (the Mosaic Processor step) is OPTIONAL. Two supported entry points:
+#     1) Stitch-in-tool: start at "Run Mosaic Processor". The tool resolves/stages reel folders
+#        (from <project_folder>/reels in Local mode, or an S3 bucket in AWS mode) and stitches
+#        them before continuing.
+#     2) Pre-stitched: start at "Create OID" or "Add Images to OID". The reel-discovery params
+#        (Source Mode, Raw S3 Bucket, Project Key, Reels to Process, Staging Folder) are unused
+#        and disabled; no <project>/reels folder or runtime.local_root is required. Images are
+#        read from cfg.paths.original (recursively), optionally restricted to a corridor manifest.
 #
 # File Location:      /tools/process_360_orchestrator.py
 #
@@ -35,18 +43,20 @@
 #
 # Parameters:
 #   - Config File {config_file} (File): Optional override for the default config.yaml path.
-#   - Source Mode {source_mode} (String): Select processing environment: Local | AWS.
-#   - Project Folder {project_folder} (Folder): Root project directory (required in both Local and AWS modes).
-#   - Raw S3 Bucket {raw_s3_bucket} (String): S3 bucket name containing raw 360 data (AWS mode).
-#   - Project Key {project_key} (String): Selected project folder in the raw S3 bucket (AWS mode).
-#   - Reels to Process {reels_to_process} (Multivalue String): Reel folders to process; if none selected, all reels are used.
-#   - Staging Folder {staging_folder} (Folder): Optional local folder where reels are staged for processing.
-#   - Start From Step {start_step} (String): Step label to begin from; earlier steps are skipped.
+#   - Source Mode {source_mode} (String): Select processing environment: Local | AWS. [Mosaic Processor step only]
+#   - Project Folder {project_folder} (Folder): Root project directory (required in all modes; the project/config base).
+#   - Raw S3 Bucket {raw_s3_bucket} (String): S3 bucket name containing raw 360 data. [AWS + Mosaic Processor step only]
+#   - Project Key {project_key} (String): Selected project folder in the raw S3 bucket. [AWS + Mosaic Processor step only]
+#   - Reels to Process {reels_to_process} (Multivalue String): Reel folders to stitch; if none selected, all reels are used. [Mosaic Processor step only]
+#   - Staging Folder {staging_folder} (Folder): Optional local folder where reels are staged for stitching. [Mosaic Processor step only]
+#   - Start From Step {start_step} (String): Step label to begin from; earlier steps are skipped. Start at "Create OID"/"Add Images to OID" for pre-stitched projects.
 #   - OID Dataset - Input {oid_fc_input} (Feature Class): Existing Oriented Imagery Dataset (OID) to update.
 #   - OID Dataset - Output {oid_fc_output} (Feature Class): Output OID (used only when creating a new dataset).
 #   - Enable Smooth GPS {enable_smooth_gps} (Boolean): Enables smoothing and correction of GPS data.
-#   - Enable Distance Filter {enable_distance_filter} (Boolean): Enables distance-based spacing filter to remove time-captured images.
+#   - Enable Distance Filter {enable_distance_filter} (Boolean): Enables distance-based spacing filter to remove time-captured images. [post-thin only]
 #   - Distance Filter Action {distance_filter_action} (String): Action for distance filter - "flag" or "remove".
+#   - Thinning Mode {thinning_mode} (String): "post" (filter after building OID) or "pre" (add only manifest-kept images).
+#   - Corridor Manifest CSV {corridor_manifest_path} (File): Pre-thin manifest; restricts Add Images to the kept set (filename-keyed).
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
@@ -57,12 +67,24 @@
 #   - Generate HTML Report {generate_report} (Boolean): Whether to generate a visual report at the end.
 #
 # Notes:
-#   - New "Source Mode" logic (Local vs AWS) replaces legacy stage_from_s3/s3_reels_prefix parameters.
-#   - Local mode assumes reels are under <project_folder>/reels.
-#   - AWS mode lists projects/reels directly from the S3 bucket and stages selected reels locally.
-#   - Reels are always processed from a local folder—either directly (Local) or via staging (AWS).
+#   - Stitching is OPTIONAL. Reels are only resolved/staged when the run includes the
+#     "Run Mosaic Processor" step (i.e. Start From Step is "Run Mosaic Processor" or unset).
+#     Starting at a later step skips all reel discovery/staging — no <project>/reels folder
+#     and no runtime.local_root are required.
+#   - "Source Mode" logic (Local vs AWS) replaces legacy stage_from_s3/s3_reels_prefix params,
+#     and applies only when stitching in-tool: Local reads <project_folder>/reels; AWS lists
+#     projects/reels from the S3 bucket and stages selected reels locally.
+#   - Pre-stitched images are read from cfg.paths.original recursively, so subdivision subfolders
+#     (e.g. panos/original/<subdivision>/...) are supported. In pre-thin mode the corridor
+#     manifest restricts which images are added, keyed on the (globally unique) filename.
 #   - The tool maintains persistent JSON-based reporting and supports resumable workflows.
 #   - Ensure all Core Utils and config files are synchronized for consistent behavior.
+#
+# TODO:
+#   - Update the "Run Mosaic Processor" step (utils/mosaic_processor.py) to match the current
+#     Mosaic Processor CLI/behavior. The in-tool stitching path may be out of date with recent
+#     processor changes (args/flags, calibration/GRP handling, output layout) that have not yet
+#     been implemented here. Validate against the live processor before relying on stitch-in-tool.
 # =============================================================================
 
 from typing import Optional, Any, Callable, Dict, List, cast
@@ -540,21 +562,33 @@ class Process360Workflow(object):
         # 1) Local vs AWS
         is_aws = (source_mode.valueAsText == "AWS") if source_mode and source_mode.valueAsText else False
 
+        # Reels/staging/source-mode are inputs to the Mosaic Processor step ONLY. When the
+        # run starts after that step (a pre-stitched project starting at Create OID or Add
+        # Images), disable the reel-discovery params so the dialog reflects that they have
+        # no effect. An unselected start step is treated as "mosaic will run" (neutral
+        # default) until the user picks a later step.
+        ss_label = start_step.valueAsText if start_step else None
+        ss_name = self._step_label_to_name.get(ss_label, "") if ss_label and ss_label != "--SELECT STEP--" else ""
+        mosaic_will_run = (ss_name == "") or (ss_name == "run_mosaic_processor")
+
         # Always enable Project Folder (required in both modes)
         if project_folder:
             project_folder.enabled = True
 
+        if source_mode:
+            source_mode.enabled = mosaic_will_run
+
         if raw_s3_bucket:
-            raw_s3_bucket.enabled = is_aws
+            raw_s3_bucket.enabled = is_aws and mosaic_will_run
 
         if project_key:
-            project_key.enabled = is_aws
+            project_key.enabled = is_aws and mosaic_will_run
             # ArcPy may expose `filter` as None depending on parameter/UI state.
             if project_key.filter is not None:
                 project_key.filter.list = []
 
         if staging_folder:
-            staging_folder.enabled = True
+            staging_folder.enabled = mosaic_will_run
 
         # Seed raw bucket from config (lightweight)
         if is_aws and raw_s3_bucket and not raw_s3_bucket.valueAsText:
@@ -580,9 +614,12 @@ class Process360Workflow(object):
 
         # 3) Populate Reels multiselect
         if reels_param:
+            reels_param.enabled = mosaic_will_run
             if reels_param.filter is not None:
                 reels_param.filter.list = []
-            if not is_aws:
+            if not mosaic_will_run:
+                pass  # reels have no effect when starting after Mosaic; leave list empty
+            elif not is_aws:
                 base = project_folder.valueAsText if project_folder else None
                 try:
                     if base and self.os_mod.path.isdir(base):
@@ -744,8 +781,14 @@ class Process360Workflow(object):
             if project_folder:
                 project_folder.clearMessage()
 
-        # Local nicety: warn if <project>\reels missing
-        if project_folder and project_folder.valueAsText and not is_aws:
+        # Reels/staging/AWS-staging inputs only matter when the Mosaic Processor step
+        # runs. A pre-stitched run (start step after Mosaic) needs none of them, so skip
+        # their warnings/errors entirely. An unselected start step is neutral (mosaic
+        # assumed to run) until the user picks a later step.
+        mosaic_will_run = (step == "") or (step == "run_mosaic_processor")
+
+        # Local nicety: warn if <project>\reels missing (only when Mosaic will run)
+        if mosaic_will_run and project_folder and project_folder.valueAsText and not is_aws:
             try:
                 reels_root = self.os_mod.path.join(project_folder.valueAsText, "reels")
                 if not self.os_mod.path.isdir(reels_root):
@@ -753,8 +796,8 @@ class Process360Workflow(object):
             except Exception:
                 pass
 
-        # AWS: require raw bucket and project key
-        if is_aws:
+        # AWS: require raw bucket and project key (only when staging reels for Mosaic)
+        if is_aws and mosaic_will_run:
             if raw_s3_bucket:
                 if not (raw_s3_bucket.valueAsText and raw_s3_bucket.valueAsText.strip()):
                     raw_s3_bucket.setErrorMessage("⚠️ Please specify the Raw S3 Bucket (e.g., rmi-360-raw).")
@@ -765,14 +808,19 @@ class Process360Workflow(object):
                     project_key.setErrorMessage("⚠️ Please select a Project Key from the Raw S3 Bucket.")
                 else:
                     project_key.clearMessage()
+        else:
+            if raw_s3_bucket:
+                raw_s3_bucket.clearMessage()
+            if project_key:
+                project_key.clearMessage()
 
-        # Reels selection: non-blocking note (empty => ALL)
+        # Reels selection: non-blocking note (empty => ALL); only when Mosaic will run
         if reels_param:
             reels_param.clearMessage()
             basics_ok = (not is_aws and bool(project_folder and project_folder.valueAsText)) or (
                 is_aws and bool(raw_s3_bucket and raw_s3_bucket.valueAsText and project_key and project_key.valueAsText)
             )
-            if basics_ok:
+            if mosaic_will_run and basics_ok:
                 selected = (reels_param.valueAsText or "").strip()
                 if not selected:
                     reels_param.setWarningMessage("ℹ️ No reels selected — the tool will process ALL reels in the source.")
@@ -854,32 +902,47 @@ class Process360Workflow(object):
         logger = cfg.get_logger(messages)
         paths = cfg.paths
 
-        # --- Runtime roots & project directory ---
-        # config.yaml wins; fall back to the RMI_LOCAL_ROOT environment variable.
-        local_root = cfg.get("runtime.local_root") or os.getenv("RMI_LOCAL_ROOT")
-        if not local_root:
-            raise ValueError(
-                "Missing 'runtime.local_root' in configuration. "
-                "Specify it in config.yaml or set the RMI_LOCAL_ROOT environment variable."
+        # --- Resolve input reels (Mosaic Processor input only) ---
+        # The Mosaic Processor step (step 1) is the ONLY consumer of staged reels.
+        # Stitching is now typically performed OUTSIDE this tool, so only resolve and
+        # stage reels when the run actually includes run_mosaic_processor. When it does
+        # not, skip the entire reels machinery: no runtime.local_root requirement, no
+        # staging cleanup, and no abort on a missing <project>/reels folder. This lets a
+        # pre-stitched project start at "Create OID" or "Add Images to OID".
+        mosaic_will_run = early_start_step is None or early_start_step == "run_mosaic_processor"
+
+        if not mosaic_will_run:
+            p["input_reels_folder"] = None
+            logger.info(
+                "Skipping reels staging/resolution — Mosaic Processor is not in this run "
+                f"(starting from '{early_start_step}'; stitching handled externally).",
+                indent=1,
             )
+        else:
+            # --- Runtime roots & project directory ---
+            # config.yaml wins; fall back to the RMI_LOCAL_ROOT environment variable.
+            local_root = cfg.get("runtime.local_root") or os.getenv("RMI_LOCAL_ROOT")
+            if not local_root:
+                raise ValueError(
+                    "Missing 'runtime.local_root' in configuration. "
+                    "Specify it in config.yaml or set the RMI_LOCAL_ROOT environment variable."
+                )
 
-        # New structure: D:/Process360_Data/projects/{project_key}/
-        project_key_value = cfg.get("project.slug", "project")
-        project_dir = Path(local_root) / "projects" / project_key_value
-        project_dir.mkdir(parents=True, exist_ok=True)
+            # New structure: D:/Process360_Data/projects/{project_key}/
+            project_key_value = cfg.get("project.slug", "project")
+            project_dir = Path(local_root) / "projects" / project_key_value
+            project_dir.mkdir(parents=True, exist_ok=True)
 
-        # Resolve staging location and reels root under project directory
-        staging_override = (
-            Path(pmap["staging_folder"].valueAsText) if pmap.get("staging_folder") and pmap["staging_folder"].valueAsText else None
-        )
-        work_project_dir = staging_override if staging_override else project_dir  # .../projects/<slug>
-        reels_root = work_project_dir / "reels"
-        reels_root.mkdir(parents=True, exist_ok=True)
+            # Resolve staging location and reels root under project directory
+            staging_override = (
+                Path(pmap["staging_folder"].valueAsText) if pmap.get("staging_folder") and pmap["staging_folder"].valueAsText else None
+            )
+            work_project_dir = staging_override if staging_override else project_dir  # .../projects/<slug>
+            reels_root = work_project_dir / "reels"
+            reels_root.mkdir(parents=True, exist_ok=True)
 
-        # Clear staging folder only when starting from run_mosaic_processor
-        # This prevents old reels from previous runs from being processed when user selects different reels
-        # Skip cleanup if starting from later steps (user may want to preserve existing staging)
-        if early_start_step is None or early_start_step == "run_mosaic_processor":
+            # Clear staging folder so a fresh reel selection isn't mixed with old reels.
+            # (We only reach this branch when starting from run_mosaic_processor.)
             logger.info("Clearing staging folder to ensure fresh reel selection...", indent=1)
             import shutil
             for item in reels_root.iterdir():
@@ -894,73 +957,71 @@ class Process360Workflow(object):
                     logger.error(f"Failed to clear staging folder - cannot remove {item.name}: {e}", indent=2)
                     logger.error("Aborting workflow to prevent processing unintended reels.", indent=1)
                     return
-        else:
-            logger.info(f"Skipping staging cleanup (starting from '{early_start_step}' - preserving existing reels)", indent=1)
 
-        # ----------- Resolve reels locally based on Source Mode -----------
-        source_mode = (source_mode_param.valueAsText if source_mode_param else "Local") or "Local"
-        selected_reels = _parse_multi(pmap.get("reels_to_process"))
+            # ----------- Resolve reels locally based on Source Mode -----------
+            source_mode = (source_mode_param.valueAsText if source_mode_param else "Local") or "Local"
+            selected_reels = _parse_multi(pmap.get("reels_to_process"))
 
-        if source_mode == "Local":
-            project_folder = pmap["project_folder"].valueAsText if pmap.get("project_folder") else None
-            if not project_folder:
-                logger.error("Project Folder is required for Local mode.", indent=1)
-                return
+            if source_mode == "Local":
+                project_folder = pmap["project_folder"].valueAsText if pmap.get("project_folder") else None
+                if not project_folder:
+                    logger.error("Project Folder is required for Local mode.", indent=1)
+                    return
 
-            project_folder_path = Path(project_folder).resolve()
-            project_reels = project_folder_path / "reels"
-            
-            # Skip reorganization only when source reels and destination reels are the exact same folder.
-            if project_reels.resolve() == reels_root.resolve():
-                logger.info("Using existing project folder structure (no reorganization needed)", indent=1)
-                # Reels are already in the right place - nothing to copy
-            elif not project_reels.is_dir():
-                logger.error(f"Local reels folder not found: {project_reels}", indent=1)
-                return
-            else:
-                # Need to symlink/copy reels to staging area
-                logger.info(f"Organizing reels from {project_folder} to {work_project_dir}", indent=1)
-                if selected_reels:
-                    for r in selected_reels:
-                        src = project_reels / r
-                        dst = reels_root / r
-                        if not src.is_dir():
-                            logger.warning(f"Skipping missing reel folder: {src}", indent=1)
-                            continue
-                        self._symlink_or_copy(src, dst, logger=logger)
+                project_folder_path = Path(project_folder).resolve()
+                project_reels = project_folder_path / "reels"
+
+                # Skip reorganization only when source reels and destination reels are the exact same folder.
+                if project_reels.resolve() == reels_root.resolve():
+                    logger.info("Using existing project folder structure (no reorganization needed)", indent=1)
+                    # Reels are already in the right place - nothing to copy
+                elif not project_reels.is_dir():
+                    logger.error(f"Local reels folder not found: {project_reels}", indent=1)
+                    return
                 else:
-                    # No selection → include all subfolders in <project>\reels
-                    for name in os.listdir(project_reels):
-                        src = project_reels / name
-                        if src.is_dir():
-                            dst = reels_root / name
+                    # Need to symlink/copy reels to staging area
+                    logger.info(f"Organizing reels from {project_folder} to {work_project_dir}", indent=1)
+                    if selected_reels:
+                        for r in selected_reels:
+                            src = project_reels / r
+                            dst = reels_root / r
+                            if not src.is_dir():
+                                logger.warning(f"Skipping missing reel folder: {src}", indent=1)
+                                continue
                             self._symlink_or_copy(src, dst, logger=logger)
+                    else:
+                        # No selection → include all subfolders in <project>\reels
+                        for name in os.listdir(project_reels):
+                            src = project_reels / name
+                            if src.is_dir():
+                                dst = reels_root / name
+                                self._symlink_or_copy(src, dst, logger=logger)
 
-            # Downstream expects a local folder that CONTAINS reel folders
-            p["input_reels_folder"] = str(reels_root)
+                # Downstream expects a local folder that CONTAINS reel folders
+                p["input_reels_folder"] = str(reels_root)
 
-        else:  # AWS
-            raw_s3_bucket = (raw_s3_bucket_param.valueAsText if raw_s3_bucket_param else None) or cfg.get(
-                "aws.s3_bucket_raw", cfg.get("aws.s3_bucket_panos_unsecured")
-            )
-            project_key = project_key_param.valueAsText if project_key_param else None
-            if not raw_s3_bucket or not project_key:
-                logger.error("Raw S3 Bucket and Project Key are required for AWS mode.", indent=1)
-                return
+            else:  # AWS
+                raw_s3_bucket = (raw_s3_bucket_param.valueAsText if raw_s3_bucket_param else None) or cfg.get(
+                    "aws.s3_bucket_raw", cfg.get("aws.s3_bucket_panos_unsecured")
+                )
+                project_key = project_key_param.valueAsText if project_key_param else None
+                if not raw_s3_bucket or not project_key:
+                    logger.error("Raw S3 Bucket and Project Key are required for AWS mode.", indent=1)
+                    return
 
-            logger.info(f"Staging reels from s3://{raw_s3_bucket}/{project_key}/reels/ → {work_project_dir}", indent=1)
-            staged_root = stage_reels(
-                bucket=raw_s3_bucket,
-                project_key=project_key.strip().strip("/"),
-                reels=selected_reels or None,  # None => all reels
-                local_project_dir=work_project_dir,  # ensures projects/<slug>/reels/<reel>/...
-                max_workers=16,
-                skip_if_exists=True,  # don't re-download existing files
-                logger=logger,  # Pass logger for progress tracking
-            )
+                logger.info(f"Staging reels from s3://{raw_s3_bucket}/{project_key}/reels/ → {work_project_dir}", indent=1)
+                staged_root = stage_reels(
+                    bucket=raw_s3_bucket,
+                    project_key=project_key.strip().strip("/"),
+                    reels=selected_reels or None,  # None => all reels
+                    local_project_dir=work_project_dir,  # ensures projects/<slug>/reels/<reel>/...
+                    max_workers=16,
+                    skip_if_exists=True,  # don't re-download existing files
+                    logger=logger,  # Pass logger for progress tracking
+                )
 
-            # stage_reels returns <local_project_dir>/reels
-            p["input_reels_folder"] = str(staged_root)
+                # stage_reels returns <local_project_dir>/reels
+                p["input_reels_folder"] = str(staged_root)
 
         # ----------- Orchestrator flow -----------
         logger.custom("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~", indent=0, emoji="🚀")
@@ -1040,17 +1101,22 @@ class Process360Workflow(object):
         else:
             logger.warning("Skipping OID stats: OID path is missing or invalid.", indent=1)
 
-        # Count reel folders under the resolved local input path
-        try:
-            reel_folders = [
-                f
-                for f in self.os_mod.listdir(p["input_reels_folder"])
-                if self.os_mod.path.isdir(self.os_mod.path.join(p["input_reels_folder"], f))
-            ]
-            report_data["metrics"]["reel_count"] = len(reel_folders)
-        except Exception as e:
+        # Count reel folders under the resolved local input path (only meaningful when
+        # reels were staged for the Mosaic Processor; pre-stitched runs have no reels).
+        input_reels_folder = p.get("input_reels_folder")
+        if input_reels_folder:
+            try:
+                reel_folders = [
+                    f
+                    for f in self.os_mod.listdir(input_reels_folder)
+                    if self.os_mod.path.isdir(self.os_mod.path.join(input_reels_folder, f))
+                ]
+                report_data["metrics"]["reel_count"] = len(reel_folders)
+            except Exception as e:
+                report_data["metrics"]["reel_count"] = "—"
+                logger.warning(f"Failed to count reel folders: {e}", indent=1)
+        else:
             report_data["metrics"]["reel_count"] = "—"
-            logger.warning(f"Failed to count reel folders: {e}", indent=1)
 
         # Folder stats, elapsed, report generation
         try:
