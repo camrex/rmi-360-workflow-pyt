@@ -123,6 +123,23 @@ it with `ITRF2014`. It is never guessed: if it is missing, the conversion stops.
   get_frame_transformer("ITRF2014")    # raises if no time-dependent Helmert is available
   ```
 
+## Verification against NGS
+
+`tests/test_geoid_reference_values.py` checks the conversion against numbers
+computed by NOAA/NGS's own tools rather than PROJ, at project-area points (IL,
+KC) plus Denver and Fernandina Beach, for ITRF2014 (two epochs) and ITRF2020:
+
+- frame shift: **HTDP 3.6.0** (official Windows build, menu 4 "transform
+  positions", output frame NAD_83(2011), same input/output date);
+- geoid height N: the **NGS GEOID18 web service**
+  (`https://geodesy.noaa.gov/api/geoid/ght?lat=..&lon=..&model=14`).
+
+PROJ agrees with HTDP to 1–2 mm and the full ITRF → NAVD88 result agrees with
+`h + dh(HTDP) − N(NGS)` within 8 mm. Re-run these tests after any ArcGIS Pro /
+PROJ upgrade; if they fail, PROJ is selecting a different operation. To extend
+or regenerate the values, follow the provenance notes at the top of the test
+file.
+
 ## Reprocessing existing OIDs
 
 Two generations of OIDs need repair:
