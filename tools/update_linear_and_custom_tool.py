@@ -30,6 +30,8 @@
 #   - Route ID Field {route_id_field} (Field): Field in the centerline that uniquely identifies each route.
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): If checked, computes MP_Pre and MP_Num via Locate Features Along Routes.
 #   - Config File {config_file} (File): Path to the project config.yaml file with custom field logic.
+#   - Corridor Manifest CSV {manifest_path} (File): Optional pre-thin manifest; drives MP_Pre/MP_Num and
+#     SequenceOrder. Blank = corridor_thinning.manifest.path from config when thinning_mode is "pre".
 #
 # Notes:
 #   - Linear referencing can be toggled independently of custom attribute updates.
@@ -119,6 +121,19 @@ class UpdateLinearAndCustomTool(object):
         )
         params.append(config_param)
 
+        # Corridor manifest (pre-thin mode). Drives MP_Pre/MP_Num and SequenceOrder.
+        # Blank = corridor_thinning.manifest.path from config when thinning_mode is "pre".
+        manifest_param = arcpy.Parameter(
+            displayName="Corridor Manifest CSV (optional)",
+            name="manifest_path",
+            datatype="DEFile",
+            parameterType="Optional",
+            direction="Input"
+        )
+        if manifest_param.filter is not None:
+            manifest_param.filter.list = ["csv"]
+        params.append(manifest_param)
+
         return params
 
     def execute(self, parameters, messages):
@@ -128,6 +143,7 @@ class UpdateLinearAndCustomTool(object):
         route_id_field = parameters[3].valueAsText
         enable_linear_ref = parameters[4].value if parameters[4].value is not None else True
         config_file = parameters[5].valueAsText
+        manifest_path = parameters[6].valueAsText if len(parameters) > 6 else None
 
         cfg = ConfigManager.from_file(
             path=config_file or None,
@@ -140,5 +156,6 @@ class UpdateLinearAndCustomTool(object):
             oid_fc_path=oid_fc,
             centerline_fc=centerline_fc,
             route_id_field=route_id_field,
-            enable_linear_ref=enable_linear_ref
+            enable_linear_ref=enable_linear_ref,
+            manifest_path=manifest_path or None,
         )

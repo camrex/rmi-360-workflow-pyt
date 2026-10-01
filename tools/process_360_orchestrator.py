@@ -56,7 +56,8 @@
 #   - Enable Distance Filter {enable_distance_filter} (Boolean): Enables distance-based spacing filter to remove time-captured images. [post-thin only]
 #   - Distance Filter Action {distance_filter_action} (String): Action for distance filter - "flag" or "remove".
 #   - Thinning Mode {thinning_mode} (String): "post" (filter after building OID) or "pre" (add only manifest-kept images).
-#   - Corridor Manifest CSV {corridor_manifest_path} (File): Pre-thin manifest; restricts Add Images to the kept set (filename-keyed).
+#   - Corridor Manifest CSV {corridor_manifest_path} (File): Pre-thin manifest; restricts Add Images to the kept set (filename-keyed)
+#     and drives Track, MP_Pre/MP_Num and SequenceOrder. Blank = corridor_thinning.manifest.path from config when in pre mode.
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
@@ -96,7 +97,7 @@ import os
 from utils.manager.config_manager import ConfigManager
 from utils.generate_report import generate_report_from_json
 from utils.step_runner import run_steps
-from utils.build_step_funcs import build_step_funcs, get_step_order
+from utils.build_step_funcs import MANIFEST_STEPS, build_step_funcs, get_step_order, resolve_run_manifest
 from utils.shared.gather_metrics import collect_oid_metrics, summarize_oid_metrics
 from utils.shared.folder_stats import folder_stats
 from utils.shared.aws_utils import validate_s3_bucket_access
@@ -1047,6 +1048,31 @@ class Process360Workflow(object):
             logger.warning(f"Invalid start_step '{start_step}' provided. Falling back to default '{step_order[0]}'.", indent=1)
             start_step = step_order[0]
         start_index = step_order.index(start_step)
+
+        # Resolve the corridor manifest ONCE so Add Images, Update Linear and
+        # SequenceOrder all join against the same file (the step lambdas read p lazily).
+        manifest_steps_run = any(
+            step_order.index(s) >= start_index for s in MANIFEST_STEPS if s in step_order
+        )
+        run_manifest = resolve_run_manifest(p, cfg)
+        if run_manifest:
+            if manifest_steps_run and not Path(run_manifest).is_file():
+                logger.error(f"Corridor manifest not found: {run_manifest}",
+                             error_type=FileNotFoundError, indent=1)
+            if str(p.get("thinning_mode") or "").lower() != "pre":
+                logger.info("A corridor manifest applies, so this run is treated as pre-thin "
+                            "(Thinning Mode = pre).", indent=1)
+            p["corridor_manifest_path"] = run_manifest
+            p["thinning_mode"] = "pre"
+            if manifest_steps_run:
+                logger.info(f"Corridor manifest for this run (Add Images, Update Linear, "
+                            f"SequenceOrder): {run_manifest}", indent=1)
+        elif str(p.get("thinning_mode") or "").lower() == "pre" and manifest_steps_run:
+            logger.error(
+                "Thinning Mode is 'pre' but no corridor manifest was given: set Corridor Manifest "
+                "CSV in the dialog or corridor_thinning.manifest.path in the config.",
+                error_type=ValueError, indent=1,
+            )
 
         if p.get("enable_copy_to_aws", False):
             copy_step_index = step_order.index("copy_to_aws") if "copy_to_aws" in step_order else None

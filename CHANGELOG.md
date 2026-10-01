@@ -48,6 +48,20 @@ Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 ### Fixed
 
+- **Dialog corridor manifest only reached Add Images**: the orchestrator's Corridor
+  Manifest CSV restricted Add Images (and set Track), but Update Linear and
+  SequenceOrder read only `corridor_thinning.manifest.path` from config — so with the
+  config path blank, MP_Pre/MP_Num silently fell back to unconstrained nearest-route
+  Locate (wrong subdivision at convergence zones) and SequenceOrder ignored the
+  manifest. The orchestrator now resolves the manifest **once** (dialog CSV wins; else
+  the config path when the dialog *or* config Thinning Mode is `pre`) and passes it to
+  every manifest step; a resolved manifest makes the run pre-thin. A `pre` run whose
+  manifest steps will execute but has no manifest now stops with an error. The
+  standalone Update Linear tool gains an optional Corridor Manifest CSV parameter.
+- **Misleading manifest zero-match error**: a join that matched no OID image always
+  said "must run BEFORE Rename Images". It now says which case applies — ImagePath
+  could not be parsed, names look already renamed (step order), or names are original
+  capture names missing from the manifest (wrong manifest/project).
 - **Maintenance tools showed no output in the GP dialog**: `ConfigManager` creates its
   `LogManager` with `messages=None`, so tools calling `cfg.get_logger()` bare logged
   only to stdout + `process_log.txt`. All `rmi_360_oid_maintenance` tools now bind the

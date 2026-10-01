@@ -39,6 +39,7 @@ __all__ = [
     "load_manifest_attr_map",
     "resolve_manifest_path",
     "populate_oid_fields_from_manifest",
+    "explain_manifest_zero_match",
 ]
 
 # spec = (oid_field_name, manifest_column, default, field_type)
@@ -91,6 +92,42 @@ def resolve_manifest_path(cfg: "ConfigManager", explicit: Optional[str] = None) 
     return None
 
 
+def explain_manifest_zero_match(cfg: "ConfigManager", image_paths: Sequence, attr_map: dict) -> str:
+    """Diagnose why NO OID image matched the manifest, from a sample of ImagePaths.
+
+    A zero match has distinct causes that need different fixes, so say which one:
+      - ImagePaths that yield no filename -> a path-parsing problem;
+      - names that don't look like original capture names -> Rename Images likely
+        already ran (manifest joins key on the ORIGINAL filename);
+      - original-looking names that simply aren't listed -> wrong manifest/project.
+    """
+    from utils.corridor.units import compile_identity_regex
+
+    sample = [p for p in image_paths if p][:3]
+    if not sample:
+        return "The OID has no ImagePath values to join on."
+    names = [extract_filename_from_image_path(p) for p in sample]
+    if not any(names):
+        return (
+            f"Could not parse an image filename from the OID ImagePath (e.g. {sample[0]!r}) — "
+            "this is a path-parsing problem, not step order."
+        )
+    regex = compile_identity_regex(cfg.get("corridor_thinning.filename_regex"))
+    example_key = next(iter(attr_map), None)
+    manifest_hint = f" (manifest example: {example_key!r})" if example_key else " (manifest has no rows)"
+    shown = next(n for n in names if n)
+    if not any(n and regex.search(n) for n in names):
+        return (
+            f"OID image names don't look like original capture names (e.g. {shown!r}){manifest_hint}. "
+            "If Rename Images already ran, manifest joins must run BEFORE it — check step order."
+        )
+    return (
+        f"OID image names look like original capture names (e.g. {shown!r}) but none are in the "
+        f"manifest{manifest_hint}. Check that the manifest belongs to this project and its "
+        "Name/Path column."
+    )
+
+
 def populate_oid_fields_from_manifest(
     cfg: "ConfigManager",
     oid_fc_path: str,
@@ -136,9 +173,12 @@ def populate_oid_fields_from_manifest(
     # than silently writing defaults/nulls over every row.
     total = 0
     matched = 0
+    sample_paths = []
     with arcpy.da.SearchCursor(oid_fc_path, ["ImagePath"]) as cursor:
         for (image_path,) in cursor:
             total += 1
+            if len(sample_paths) < 3:
+                sample_paths.append(image_path)
             filename = extract_filename_from_image_path(image_path)
             if filename and filename.lower() in attr_map:
                 matched += 1
@@ -146,7 +186,7 @@ def populate_oid_fields_from_manifest(
     if total and matched == 0:
         logger.error(
             f"None of {total:,} OID image name(s) matched the manifest for field(s) {target_fields}. "
-            "Manifest joins must run BEFORE Rename Images — check step order or the manifest path.",
+            + explain_manifest_zero_match(cfg, sample_paths, attr_map),
             error_type=RuntimeError, indent=1,
         )
     if total and matched < total:
