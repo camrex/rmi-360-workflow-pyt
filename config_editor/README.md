@@ -49,6 +49,26 @@ become path prompts.
 pytest config_editor/tests/           # 42 tests (core + fields + api)
 ```
 
+## Build a standalone exe
+
+PyInstaller (in the editor venv) builds a single-file windowed exe — no Python
+needed on the target machine, only the WebView2 runtime (preinstalled on
+Win10/11).
+
+```bash
+# from the toolbox root
+config_editor/.venv/Scripts/python -m PyInstaller config_editor/packaging/config_editor.spec \
+    --noconfirm --distpath config_editor/dist --workpath config_editor/build/work
+```
+
+Output: `config_editor/dist/RMI360ConfigEditor.exe` (~50 MB; `dist/` and
+`build/` are gitignored). The spec bundles the web UI, bundled profiles,
+`configs/config.sample.yaml`, and `utils/manager/config_manager.py` at their
+toolbox-relative positions, so `core/paths.py` resolves unchanged when frozen.
+**The sample config and schema versions are frozen at build time** — rebuild the
+exe whenever `config.sample.yaml` or the supported schema versions change. User
+profiles (`~/.rmi360/config_profiles/`) still load live from disk.
+
 ## Status
 
 Headless **core** + **field metadata** + **pywebview GUI** are built. Core and API

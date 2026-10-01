@@ -12,3 +12,4 @@ keyring              # AWS keyring check; optional — check degrades to a warni
 
 # Dev / test
 pytest
+pyinstaller       # builds the standalone exe (see packaging/config_editor.spec)
