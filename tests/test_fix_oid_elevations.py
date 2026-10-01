@@ -204,8 +204,88 @@ def test_service_identity_strips_aws_suffix():
     assert foe._service_identity(r"E:\proj\a26150.gdb\a26150_aws") == ("a26150", True)
 
 
+def test_import_error_aborts_without_writes(monkeypatch, mock_cfg, logger):
+    def raising(*a, **kw):
+        raise ImportError("No module named 'pyproj'")
+
+    monkeypatch.setattr(foe, "ellipsoidal_to_orthometric", raising)
+    _setup_arcpy(monkeypatch, [(1, -93.6, 42.0, 1000.0)])
+    monkeypatch.setattr(
+        foe.arcpy.da, "UpdateCursor",
+        lambda fc, flds: pytest.fail("must not write when pyproj is missing"),
+    )
+
+    assert foe.fix_oid_elevations(mock_cfg, "oid_fc", dry_run=False) is None
+    assert logger.error.called
+
+
+def _preflight_env(monkeypatch, image_paths, bucket="b", region="us-east-1"):
+    monkeypatch.setattr(foe, "is_secured_storage_enabled", lambda cfg: False)
+    monkeypatch.setattr(foe, "resolve_oid_target_bucket", lambda cfg, secured_mode: bucket)
+    monkeypatch.setattr(foe, "resolve_oid_target_region", lambda cfg, secured_mode: region)
+    monkeypatch.setattr(foe.arcpy, "Exists", lambda fc: True)
+    monkeypatch.setattr(
+        foe.arcpy.da, "SearchCursor", lambda fc, flds: FakeCursor([(p,) for p in image_paths])
+    )
+
+
+def test_preflight_passes_for_prepared_aws_copy(monkeypatch, mock_cfg):
+    _preflight_env(monkeypatch, ["https://b.s3.us-east-1.amazonaws.com/p/img_1.jpg"])
+    assert foe._preflight_republish(mock_cfg, "a_aws", is_aws_copy=True) == []
+
+
+def test_preflight_flags_local_paths_in_aws_copy(monkeypatch, mock_cfg):
+    _preflight_env(monkeypatch, [r"I:\panos\final\img_1.jpg", r"\\srv\share\img_2.jpg"])
+    problems = foe._preflight_republish(mock_cfg, "a_aws", is_aws_copy=True)
+    assert any("LOCAL" in p for p in problems)
+    # A source OID legitimately carries local paths (they are rewritten on copy).
+    assert foe._preflight_republish(mock_cfg, "a", is_aws_copy=False) == []
+
+
+def test_preflight_flags_missing_bucket_and_bad_config(monkeypatch, mock_cfg):
+    _preflight_env(monkeypatch, ["img_1.jpg"], bucket=None)
+    mock_cfg.validate.side_effect = ValueError("portal.project_folder missing")
+    problems = foe._preflight_republish(mock_cfg, "a", is_aws_copy=False)
+    assert any("validation" in p for p in problems)
+    assert any("bucket/region" in p for p in problems)
+
+
+def test_republish_preflight_failure_deletes_nothing(monkeypatch, mock_cfg, logger):
+    monkeypatch.setattr(foe, "_preflight_republish", lambda cfg, fc, aws: ["boom"])
+    monkeypatch.setattr(
+        foe, "_delete_existing_service_items",
+        lambda *a: pytest.fail("must not delete when preflight fails"),
+    )
+    monkeypatch.setattr(
+        "utils.generate_oid_service.generate_oid_service",
+        lambda **kw: pytest.fail("must not publish when preflight fails"),
+    )
+
+    foe.republish_oid_service(mock_cfg, r"E:\proj\a26150.gdb\a26150")
+    assert logger.error.called
+
+
+def test_republish_publish_failure_reports_deleted_items(monkeypatch, mock_cfg, logger):
+    monkeypatch.setattr(foe, "_preflight_republish", lambda cfg, fc, aws: [])
+    monkeypatch.setattr(
+        foe, "_delete_existing_service_items",
+        lambda gis, name, log: [("a26150", "Feature Service", "abc123", "")],
+    )
+
+    def failing(**kw):
+        raise RuntimeError("publish blew up")
+
+    monkeypatch.setattr("utils.generate_oid_service.generate_oid_service", failing)
+
+    with pytest.raises(RuntimeError):
+        foe.republish_oid_service(mock_cfg, r"E:\proj\a26150.gdb\a26150")
+    messages = " ".join(str(c.args[0]) for c in logger.error.call_args_list)
+    assert "abc123" in messages and "unavailable" in messages
+
+
 def test_republish_aws_copy_publishes_directly(monkeypatch, mock_cfg):
-    monkeypatch.setattr(foe, "_delete_existing_service_items", lambda gis, name, log: 1)
+    monkeypatch.setattr(foe, "_preflight_republish", lambda cfg, fc, aws: [])
+    monkeypatch.setattr(foe, "_delete_existing_service_items", lambda gis, name, log: [("a26150", "x", "1", "")])
     captured = {}
     monkeypatch.setattr(
         "utils.generate_oid_service.generate_oid_service",
@@ -220,7 +300,8 @@ def test_republish_aws_copy_publishes_directly(monkeypatch, mock_cfg):
 
 
 def test_republish_source_uses_standard_flow(monkeypatch, mock_cfg):
-    monkeypatch.setattr(foe, "_delete_existing_service_items", lambda gis, name, log: 0)
+    monkeypatch.setattr(foe, "_preflight_republish", lambda cfg, fc, aws: [])
+    monkeypatch.setattr(foe, "_delete_existing_service_items", lambda gis, name, log: [])
     captured = {}
     monkeypatch.setattr(
         "utils.generate_oid_service.generate_oid_service",

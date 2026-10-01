@@ -97,6 +97,9 @@ class OIDFixElevationsTool:
             path=p["config_file"],  # may be None
             project_base=p["project_folder"],
             messages=messages,
+            # Repairs OIDs built BEFORE the geoid fix, whose project configs are
+            # usually still on an older schema (1.3.x / 1.4.0).
+            require_supported_version=False,
         )
         # Bind the GP message sink so the util's log lines show in the tool dialog
         # (ConfigManager's own LogManager is created with messages=None).

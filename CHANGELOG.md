@@ -38,6 +38,9 @@ Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
   offset) to NAVD88 per row, rebuilds `CameraOrientation`, preserves the pre-offset
   ellipsoidal source in `Z_Ellipsoidal`, and optionally republishes the hosted service
   with overwrite (deletes the previous portal items, then reruns Generate OID Service).
+  A read-only preflight (publish config validation, bucket/region/cloud store,
+  ImagePath sanity) runs first and aborts **before anything is deleted**; deleted
+  item ids are logged so a failed publish can be recovered.
   Accepts the source OID or the published `*_aws` copy — an `*_aws` input republishes
   directly under the un-suffixed service name without re-copy/ImagePath rewrite
   (`generate_oid_service` gained optional `service_name`/`prepare_copy` args, defaults

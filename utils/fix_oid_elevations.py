@@ -43,6 +43,7 @@ __all__ = [
     "ElevationFixResult",
 ]
 
+import re
 from dataclasses import dataclass, field
 
 import arcpy
@@ -50,6 +51,15 @@ import arcpy
 from utils.manager.config_manager import ConfigManager
 from utils.calculate_oid_attributes import ELLIPSOIDAL_Z_FIELD, _safe_float
 from utils.shared.geoid_transform import GeoidTransformError, ellipsoidal_to_orthometric
+from utils.shared.oid_storage_paths import (
+    extract_filename_from_image_path,
+    is_secured_storage_enabled,
+    resolve_oid_target_bucket,
+    resolve_oid_target_region,
+)
+
+# Drive-letter or UNC path — a LOCAL ImagePath, i.e. not yet in delivery form.
+_LOCAL_PATH_RE = re.compile(r"^(?:[A-Za-z]:[\\/]|\\\\)")
 
 
 @dataclass
@@ -139,6 +149,12 @@ def fix_oid_elevations(cfg: ConfigManager, oid_fc: str, dry_run: bool = True):
         logger.error(f"Geoid conversion failed — nothing written: {e}",
                      error_type=GeoidTransformError, indent=1)
         return None
+    except ImportError as e:
+        logger.error(
+            f"pyproj is required for the geoid conversion but could not be imported — "
+            f"nothing written: {e}", error_type=ImportError, indent=1
+        )
+        return None
 
     z_fixed = z_navd88 + z_offset
     result.fixed = len(oids)
@@ -224,11 +240,56 @@ def _service_identity(oid_fc: str) -> tuple:
     return oid_name, False
 
 
-def _delete_existing_service_items(gis, service_name: str, logger) -> int:
-    """Delete portal items left by a previous publish of ``service_name`` (the
-    hosted Feature Service and its Oriented Imagery Layer item). Exact-title,
-    owner-scoped match only. Returns the number of items deleted."""
-    deleted = 0
+def _preflight_republish(cfg: ConfigManager, oid_fc: str, is_aws_copy: bool) -> list:
+    """Check everything Generate OID Service needs BEFORE any portal item is deleted.
+
+    The overwrite has to delete the old items first (portal rejects a duplicate
+    service name), so a publish failure after that point leaves no service at all.
+    This catches the predictable causes up front. Returns a list of problems;
+    empty means OK to proceed. Read-only.
+    """
+    problems = []
+    try:
+        cfg.validate(tool="generate_oid_service")
+    except Exception as e:
+        problems.append(f"Config fails Generate OID Service validation: {e}")
+
+    secured = is_secured_storage_enabled(cfg)
+    if not (resolve_oid_target_bucket(cfg, secured_mode=secured)
+            and resolve_oid_target_region(cfg, secured_mode=secured)):
+        problems.append("No target bucket/region resolves from the config (aws.*).")
+    if secured and not str(cfg.get("aws.secured_delivery.cloud_store_name", "")).strip():
+        problems.append("Secured delivery is enabled but aws.secured_delivery.cloud_store_name is empty.")
+
+    if not arcpy.Exists(oid_fc):
+        problems.append(f"OID does not exist: {oid_fc}")
+        return problems
+
+    rows = unparseable = local = 0
+    with arcpy.da.SearchCursor(oid_fc, ["ImagePath"]) as cursor:
+        for (image_path,) in cursor:
+            rows += 1
+            if not image_path or not extract_filename_from_image_path(image_path):
+                unparseable += 1
+            elif is_aws_copy and _LOCAL_PATH_RE.match(image_path):
+                local += 1
+    if rows == 0:
+        problems.append("OID has no rows to publish.")
+    if unparseable:
+        problems.append(f"{unparseable:,} row(s) have an empty or unparseable ImagePath.")
+    if local:
+        problems.append(
+            f"{local:,} ImagePath(s) in the *_aws copy are still LOCAL paths — it is not a "
+            "prepared delivery copy. Republish from the source OID instead."
+        )
+    return problems
+
+
+def _find_existing_service_items(gis, service_name: str, logger) -> list:
+    """Portal items left by a previous publish of ``service_name`` (the hosted
+    Feature Service and its Oriented Imagery Layer item). Exact-title,
+    owner-scoped match only. Returns ``[(item, item_type), ...]``."""
+    found = []
     me = gis.users.me.username
     for item_type in ("Oriented Imagery Layer", "Feature Service"):
         try:
@@ -238,18 +299,28 @@ def _delete_existing_service_items(gis, service_name: str, logger) -> int:
         except Exception as e:
             logger.warning(f"Portal search for existing {item_type} failed: {e}", indent=2)
             continue
-        for item in hits:
-            if item.title != service_name:
-                continue
-            try:
-                item.delete()
-                deleted += 1
-                logger.info(f"Deleted existing portal item: {item.title} ({item_type})", indent=2)
-            except Exception as e:
-                logger.error(
-                    f"Failed to delete existing portal item '{item.title}' ({item_type}): {e}",
-                    error_type=RuntimeError, indent=2
-                )
+        found.extend((item, item_type) for item in hits if item.title == service_name)
+    return found
+
+
+def _delete_existing_service_items(gis, service_name: str, logger) -> list:
+    """Delete the items found by ``_find_existing_service_items``. Logs each
+    item's id and URL so a failed republish can be traced/recovered. Returns
+    ``[(title, item_type, id, url), ...]`` for the deleted items."""
+    deleted = []
+    for item, item_type in _find_existing_service_items(gis, service_name, logger):
+        ident = (item.title, item_type, getattr(item, "id", "?"), getattr(item, "url", None) or "")
+        try:
+            item.delete()
+        except Exception as e:
+            already = "; ".join(f"{t} ({ty}) id={i}" for t, ty, i, _ in deleted) or "none"
+            logger.error(
+                f"Failed to delete existing portal item '{item.title}' ({item_type}): {e}. "
+                f"Already deleted: {already}. Nothing was published.",
+                error_type=RuntimeError, indent=2
+            )
+        deleted.append(ident)
+        logger.info(f"Deleted existing portal item: {ident[0]} ({item_type}) id={ident[2]} {ident[3]}", indent=2)
     return deleted
 
 
@@ -265,28 +336,25 @@ def preview_service_overwrite(cfg: ConfigManager, oid_fc: str) -> None:
             f"Input is a prepared *_aws delivery copy — it would be published "
             f"directly (no re-copy/ImagePath rewrite) as service '{service_name}'.", indent=2
         )
+    problems = _preflight_republish(cfg, oid_fc, is_aws_copy)
+    if problems:
+        logger.warning("Republish preflight would FAIL (nothing would be deleted):", indent=2)
+        for problem in problems:
+            logger.warning(f"  - {problem}", indent=3)
+    else:
+        logger.info("Republish preflight passed.", indent=2)
+
     try:
         gis = GIS("pro")
-        me = gis.users.me.username
     except Exception as e:
         logger.warning(f"Republish preview unavailable (no portal connection): {e}", indent=2)
         return
 
-    found = []
-    for item_type in ("Oriented Imagery Layer", "Feature Service"):
-        try:
-            hits = gis.content.search(
-                query=f'title:"{service_name}" AND owner:{me}', item_type=item_type, max_items=25
-            )
-        except Exception as e:
-            logger.warning(f"Republish preview search failed for {item_type}: {e}", indent=2)
-            continue
-        found.extend((item.title, item_type) for item in hits if item.title == service_name)
-
+    found = _find_existing_service_items(gis, service_name, logger)
     if found:
         logger.info(f"Republish would DELETE {len(found)} portal item(s), then publish '{service_name}':", indent=2)
-        for title, item_type in found:
-            logger.info(f"  - {title} ({item_type})", indent=3)
+        for item, item_type in found:
+            logger.info(f"  - {item.title} ({item_type}) id={getattr(item, 'id', '?')}", indent=3)
     else:
         logger.info(f"Republish would publish '{service_name}' fresh (no existing portal items found).", indent=2)
 
@@ -294,8 +362,10 @@ def preview_service_overwrite(cfg: ConfigManager, oid_fc: str) -> None:
 def republish_oid_service(cfg: ConfigManager, oid_fc: str) -> None:
     """Republish the OID as a hosted service, overwriting a previous publish.
 
-    Removes the existing portal items for this OID's service name (exact title
-    match, owned by the signed-in user), then publishes:
+    Runs a read-only preflight first and aborts — deleting nothing — if the
+    publish would predictably fail. Then removes the existing portal items for
+    this OID's service name (exact title match, owned by the signed-in user;
+    portal rejects a duplicate service name, so they must go first) and publishes:
     - source OID input: standard Generate OID Service flow (duplicate to *_aws,
       rewrite ImagePaths, publish). NOTE: this regenerates the *_aws copy from
       the source — if the published copy was thinned/subset separately, fix and
@@ -315,6 +385,17 @@ def republish_oid_service(cfg: ConfigManager, oid_fc: str) -> None:
     logger.custom(f"Republishing OID service '{service_name}' (overwrite)...", emoji="🌐", indent=1)
     if is_aws_copy:
         logger.info("Input is a prepared *_aws delivery copy — publishing it directly.", indent=2)
+
+    problems = _preflight_republish(cfg, oid_fc, is_aws_copy)
+    if problems:
+        for problem in problems:
+            logger.error(f"Preflight: {problem}", indent=2)
+        logger.error(
+            "Republish aborted before deleting anything — the existing service is untouched.",
+            error_type=RuntimeError, indent=1
+        )
+        return
+
     try:
         gis = GIS("pro")
     except Exception as e:
@@ -323,9 +404,20 @@ def republish_oid_service(cfg: ConfigManager, oid_fc: str) -> None:
         return
 
     deleted = _delete_existing_service_items(gis, service_name, logger)
-    if deleted == 0:
+    if not deleted:
         logger.info(f"No existing portal items named '{service_name}' found — publishing fresh.", indent=2)
 
-    generate_oid_service(
-        cfg=cfg, oid_fc=oid_fc, service_name=service_name, prepare_copy=not is_aws_copy
-    )
+    try:
+        generate_oid_service(
+            cfg=cfg, oid_fc=oid_fc, service_name=service_name, prepare_copy=not is_aws_copy
+        )
+    except Exception:
+        if deleted:
+            logger.error(
+                f"Publish FAILED after the previous '{service_name}' items were deleted — the "
+                "service is currently unavailable. Deleted: "
+                + "; ".join(f"{t} ({ty}) id={i}" for t, ty, i, _ in deleted)
+                + ". Fix the error above, then re-run this tool with Republish (already-fixed "
+                "rows are skipped) or run Generate OID Service on this OID.", indent=1
+            )
+        raise
