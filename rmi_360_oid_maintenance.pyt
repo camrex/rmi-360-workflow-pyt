@@ -26,6 +26,8 @@
 #   Diagnostics:
 #     20 Validate ImagePath Reachability
 #     21 Audit OID vs S3
+#   Secured Storage Testing:
+#     30 Deploy Secured Test Set        (subset -> cross-region sync -> publish; dry run)
 #
 # Notes:
 #   - All mutating tools default to DRY RUN.
@@ -140,6 +142,7 @@ OIDSyncS3ObjectsTool = _load_tool_class("oid_sync_s3_objects_tool.py", "OIDSyncS
 OIDMigrateStorageTool = _load_tool_class("oid_migrate_storage_tool.py", "OIDMigrateStorageTool")
 OIDValidateReachabilityTool = _load_tool_class("oid_validate_reachability_tool.py", "OIDValidateReachabilityTool")
 OIDAuditStorageTool = _load_tool_class("oid_audit_storage_tool.py", "OIDAuditStorageTool")
+OIDDeploySecuredTestSetTool = _load_tool_class("deploy_secured_test_set_tool.py", "OIDDeploySecuredTestSetTool")
 
 
 class Toolbox(object):
@@ -152,4 +155,5 @@ class Toolbox(object):
             OIDMigrateStorageTool,
             OIDValidateReachabilityTool,
             OIDAuditStorageTool,
+            OIDDeploySecuredTestSetTool,
         ]

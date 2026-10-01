@@ -124,7 +124,7 @@ class ConfigManager:
 
     @classmethod
     def from_file(cls, path: Optional[str] = None, project_base: Optional[Union[str, Path]] = None, *,
-                  messages: Optional[list] = None) -> "ConfigManager":
+                  messages: Optional[list] = None, require_supported_version: bool = True) -> "ConfigManager":
         """
                   Load a YAML configuration file, validate its schema version, and initialize a ConfigManager.
 
@@ -166,12 +166,17 @@ class ConfigManager:
                 lm.error(error_msg, error_type=ValueError)
                 raise ValueError(error_msg)
 
-            # Validate schema version
+            # Validate schema version. The unattended pipeline requires an exact match,
+            # but out-of-band maintenance tools (e.g. secured-storage deploy/migration)
+            # legitimately operate on OLDER, already-deployed projects — they can opt out
+            # with require_supported_version=False and get a warning instead of a hard stop.
             version = config.get("schema_version")
             if version not in SUPPORTED_SCHEMA_VERSIONS:
-                error_msg = f"⚠️ Expected schema_version {SUPPORTED_SCHEMA_VERSIONS}, got {version}"
-                lm.error(error_msg, error_type=RuntimeError)
-                raise RuntimeError(error_msg)
+                msg = f"⚠️ Expected schema_version {SUPPORTED_SCHEMA_VERSIONS}, got {version}"
+                if require_supported_version:
+                    lm.error(msg, error_type=RuntimeError)
+                    raise RuntimeError(msg)
+                lm.warning(f"{msg} — continuing anyway (older config; some newer keys may be absent).")
 
             if config.get("debug_messages", False):
                 lm.debug(f"Loaded config from {config['__source__']}")
