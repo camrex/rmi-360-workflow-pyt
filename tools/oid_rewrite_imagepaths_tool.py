@@ -92,7 +92,8 @@ class OIDRewriteImagePathsTool:
             project_base=p["project_folder"],
             messages=messages,
         )
-        logger = cfg.get_logger()
+        # Bind the GP message sink so the util's log lines show in the tool dialog.
+        logger = cfg.get_logger(messages)
 
         target_secured = p["target_mode"].strip().lower() == "secured"
         dry_run = str_to_bool(p.get("dry_run", "true"))
