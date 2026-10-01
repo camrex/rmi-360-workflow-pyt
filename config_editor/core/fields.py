@@ -366,24 +366,55 @@ def _coerce_scalar(value: Any, ftype: str) -> Any:
     return value
 
 
+def _iter_collections(schema: Dict[str, Any]):
+    """Yield every @repeatable collection node."""
+    def _rec(nodes):
+        for n in nodes:
+            if n["kind"] == "collection":
+                yield n
+            elif n["kind"] == "group":
+                yield from _rec(n["children"])
+    yield from _rec(schema["sections"])
+
+
+def _get_at(values: Any, dotted: str) -> Any:
+    """Value at a dotted path, or None when any segment is missing."""
+    cur = values
+    for part in dotted.split("."):
+        cur = cur.get(part) if isinstance(cur, dict) else None
+        if cur is None:
+            return None
+    return cur
+
+
 def coerce_values(values: Mapping[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
-    """Return a copy of ``values`` with every concrete numeric field coerced to its
+    """Return a copy of ``values`` with every numeric field coerced to its
     schema-declared type. Web forms submit text widgets as strings, so a numeric
     field whose default looked non-numeric (placeholder) would otherwise be written
     as a quoted string and fail the runtime config validator (e.g.
-    ``spatial_ref.pcs_horizontal_wkid: must be int, got str``)."""
+    ``spatial_ref.pcs_horizontal_wkid: must be int, got str``). Covers concrete
+    fields and the fields of every entry in a @repeatable collection (typed by
+    the collection's item template, e.g. ``custom_fields.<name>.length``)."""
     import copy
 
     out = copy.deepcopy(dict(values))
     for fnode in iter_fields(schema):
         if fnode["type"] not in ("int", "float"):
             continue
-        parts = fnode["path"].split(".")
-        cur: Any = out
-        for part in parts[:-1]:
-            cur = cur.get(part) if isinstance(cur, dict) else None
-            if cur is None:
-                break
-        if isinstance(cur, dict) and parts[-1] in cur:
-            cur[parts[-1]] = _coerce_scalar(cur[parts[-1]], fnode["type"])
+        parent_path, _, leaf = fnode["path"].rpartition(".")
+        parent = _get_at(out, parent_path) if parent_path else out
+        if isinstance(parent, dict) and leaf in parent:
+            parent[leaf] = _coerce_scalar(parent[leaf], fnode["type"])
+
+    for coll in _iter_collections(schema):
+        numeric = {t["key"]: t["type"] for t in coll["item_template"] if t["type"] in ("int", "float")}
+        entries = _get_at(out, coll["path"])
+        if not numeric or not isinstance(entries, dict):
+            continue
+        for entry in entries.values():
+            if not isinstance(entry, dict):
+                continue
+            for key, ftype in numeric.items():
+                if key in entry:
+                    entry[key] = _coerce_scalar(entry[key], ftype)
     return out

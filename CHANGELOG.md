@@ -48,6 +48,12 @@ Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 ### Fixed
 
+- **Config Editor saved invalid configs silently**: Save now asks "Save anyway?" when
+  validation reports errors (warnings still never block); work-in-progress saves remain
+  possible, just not unnoticed.
+- **Config Editor wrote quoted numbers inside repeatable sections**: numeric coercion
+  now also covers every entry of a `@repeatable` collection, typed by its item template
+  (e.g. `custom_fields.<name>.length: "8"` is saved as `8`).
 - **Maintenance tools showed no output in the GP dialog**: `ConfigManager` creates its
   `LogManager` with `messages=None`, so tools calling `cfg.get_logger()` bare logged
   only to stdout + `process_log.txt`. All `rmi_360_oid_maintenance` tools now bind the
