@@ -158,11 +158,11 @@ def check_sufficient_disk_space(
     # back to the source-image drive if the renamed path can't be resolved.
     drive_root: Optional[str] = None
     try:
-        drive_root = Path(str(cfg.paths.renamed)).anchor
+        drive_root = Path(str(cfg.paths.renamed)).resolve().anchor
     except Exception:
         drive_root = None
     if not drive_root:
-        drive_root = Path(os.path.dirname(sample_path)).anchor
+        drive_root = Path(os.path.dirname(sample_path)).resolve().anchor
     free_space = disk_usage_func(drive_root).free
 
     logger.debug(f"Disk check drive: {drive_root}", indent=1)

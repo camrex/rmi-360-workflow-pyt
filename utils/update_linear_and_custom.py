@@ -662,7 +662,7 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
     track_order = cfg.get("sequence_order.track_order", []) or []
     descending_prefixes = set(cfg.get("sequence_order.descending_prefixes", []) or [])
     null_milepost_position = (cfg.get("sequence_order.null_milepost_position", "end") or "end").lower()
-    regex = compile_identity_regex(cfg.get("sequence_order.filename_regex"))
+    regex = compile_identity_regex(cfg.get("corridor_thinning.filename_regex"))
 
     # --- Mode 1: manifest-driven (consume corridor sub_order) ---
     # Join on the ORIGINAL filename; this runs before Rename Images so ImagePath
