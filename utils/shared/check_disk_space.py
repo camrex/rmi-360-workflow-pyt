@@ -9,9 +9,11 @@
 # Last Updated:        2025-10-30
 #
 # Description:
-#   Estimates required disk space using the size of the base imagery folder (original),
-#   applies a configurable buffer ratio, and compares it against available space on the drive.
-#   Prevents out-of-space failures during image-intensive steps in the pipeline.
+#   Estimates required disk space from the images the OID actually references (i.e.
+#   exactly what Rename copies — the manifest's kept set in pre-thin mode, NOT the full
+#   source 'original' folder), applies a configurable buffer ratio, and compares it
+#   against free space on the renamed-output drive. Prevents out-of-space failures
+#   during image-intensive steps in the pipeline.
 #
 # File Location:        /utils/check_disk_space.py
 # Called By:            tools/enhance_images_tool.py, tools/rename_images_tool.py
@@ -118,41 +120,54 @@ def check_sufficient_disk_space(
     # Dependency injection for testability
     cursor_factory = cursor_factory or (lambda fc, fields: arcpy.da.SearchCursor(fc, fields))
     disk_usage_func = disk_usage_func or shutil.disk_usage
-    folder_size_func = folder_size_func or get_folder_size
 
-    # Get one valid ImagePath from the FC
+    # Size ONLY the images the OID actually references — i.e. exactly what Rename
+    # copies. In pre-thin (manifest) mode the OID holds just the kept set, while the
+    # source `original/` folder holds the FULL un-thinned set; sizing the folder would
+    # over-estimate by the thinning ratio and falsely fail this check.
+    total_bytes = 0
+    counted = 0
+    missing = 0
+    sample_path: Optional[str] = None
     with cursor_factory(oid_fc, ["ImagePath"]) as cursor:
-        image_path = next((row[0] for row in cursor if row[0]), None)
+        for row in cursor:
+            image_path = row[0]
+            if not image_path:
+                continue
+            if sample_path is None:
+                sample_path = image_path
+            try:
+                total_bytes += os.path.getsize(image_path)
+                counted += 1
+            except OSError:
+                missing += 1
 
-    if not isinstance(image_path, str) or not image_path:
-        logger.error(f"No valid ImagePath found in the OID feature class: {oid_fc}", error_type=ValueError, indent=1)
-        raise ValueError(f"No valid ImagePath found in the OID feature class: {oid_fc}")
-
-    # Determine target folder from ImagePath
-    target_dir = os.path.dirname(image_path)
-    drive_root = Path(target_dir).anchor
-
-    original_folder = cfg.get("image_output.folders.original", "original").lower()
-
-    base_dir = find_base_dir(target_dir, original_folder)
-
-    if not isinstance(base_dir, str) or not base_dir:
+    if counted == 0:
         logger.error(
-            f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}",
+            f"No readable image files referenced by the OID feature class: {oid_fc}",
             error_type=ValueError, indent=1)
-        raise ValueError(f"ImagePath does not include '{original_folder}' folder. Path: {target_dir}")
+        raise ValueError(f"No readable image files referenced by the OID feature class: {oid_fc}")
+    if missing:
+        logger.warning(
+            f"{missing:,} OID ImagePath(s) were not found on disk while sizing; "
+            "the estimate excludes them.", indent=1)
 
-    if not os.path.exists(base_dir):
-        logger.error(f"Base folder not found: {base_dir}", error_type=FileNotFoundError, indent=1)
+    estimated_required = int(total_bytes * buffer_ratio)
 
-    folder_size = folder_size_func(base_dir, cfg)
-    estimated_required = int(folder_size * buffer_ratio)
+    # Free space is needed where Rename WRITES the copies (cfg.paths.renamed); fall
+    # back to the source-image drive if the renamed path can't be resolved.
+    drive_root: Optional[str] = None
+    try:
+        drive_root = Path(str(cfg.paths.renamed)).anchor
+    except Exception:
+        drive_root = None
+    if not drive_root:
+        drive_root = Path(os.path.dirname(sample_path)).anchor
     free_space = disk_usage_func(drive_root).free
 
-    logger.debug(f"Checking disk space on drive: {drive_root}", indent=1)
-    logger.debug(f"Checking space in folder: {base_dir}", indent=1)
-    logger.debug(f"Base folder size (used): {folder_size / 1e9:.2f} GB", indent=1)
-    logger.debug(f"Estimated required: {estimated_required / 1e9:.2f} GB (with buffer)", indent=1)
+    logger.debug(f"Disk check drive: {drive_root}", indent=1)
+    logger.debug(f"OID images sized: {counted:,} ({total_bytes / 1e9:.2f} GB)", indent=1)
+    logger.debug(f"Estimated required: {estimated_required / 1e9:.2f} GB (x{buffer_ratio} buffer)", indent=1)
     logger.debug(f"Available: {free_space / 1e9:.2f} GB", indent=1)
 
     if free_space < estimated_required:

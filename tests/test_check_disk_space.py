@@ -120,18 +120,15 @@ def test_disk_space_check_success(monkeypatch):
             def __enter__(self_): return iter([[r"C:/foo/bar/original/xyz.jpg"]])
             def __exit__(self_, exc_type, exc_val, exc_tb): return None
         return DummyCursor()
-    # Simulate folder size and disk usage
-    def fake_folder_size(path, cfg): return 100
+    # New behavior: required size = sum of the OID ImagePath file sizes (mock getsize)
     class DummyDisk:
         free = 200
     def fake_disk_usage(drive): return DummyDisk()
-    # Simulate folder exists
-    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("os.path.getsize", lambda path: 100)   # one image -> 100 bytes; x1.1 = 110 < 200
     assert check_sufficient_disk_space(
         "dummy_fc", cfg,
         cursor_factory=fake_cursor,
         disk_usage_func=fake_disk_usage,
-        folder_size_func=fake_folder_size
     ) is True
 
 def test_disk_space_check_disabled():
@@ -162,17 +159,15 @@ def test_disk_space_insufficient(monkeypatch):
             def __enter__(self_): return iter([[r"C:/foo/bar/original/xyz.jpg"]])
             def __exit__(self_, exc_type, exc_val, exc_tb): return None
         return DummyCursor()
-    def fake_folder_size(path, cfg): return 100
     class DummyDisk:
-        free = 100  # Not enough!
+        free = 100  # need 100 bytes x 2.0 buffer = 200 > 100 -> insufficient
     def fake_disk_usage(drive): return DummyDisk()
-    monkeypatch.setattr("os.path.exists", lambda path: True)
+    monkeypatch.setattr("os.path.getsize", lambda path: 100)
     with pytest.raises(RuntimeError):
         check_sufficient_disk_space(
             "dummy_fc", cfg,
             cursor_factory=fake_cursor,
             disk_usage_func=fake_disk_usage,
-            folder_size_func=fake_folder_size
         )
 
 def test_no_valid_image_path(monkeypatch):
@@ -192,36 +187,20 @@ def test_no_valid_image_path(monkeypatch):
             folder_size_func=lambda x, y: 1
         )
 
-def test_base_dir_not_found(monkeypatch):
+def test_all_images_missing(monkeypatch):
+    # ImagePaths present but none size-able on disk -> nothing counted -> ValueError
     logger = DummyLogger()
-    cfg = DummyConfigManager(logger=logger, config={"image_output.folders.original": "original"})
+    cfg = DummyConfigManager(logger=logger, config={"disk_space.check_enabled": True})
     def fake_cursor(fc, fields):
         class DummyCursor:
-            def __enter__(self_): return iter([[r"C:/foo/bar/xyz.jpg"]])
+            def __enter__(self_): return iter([[r"C:/foo/bar/original/missing.jpg"]])
             def __exit__(self_, exc_type, exc_val, exc_tb): return None
         return DummyCursor()
-    monkeypatch.setattr("os.path.exists", lambda path: True)
+    def boom(path): raise OSError("not found")
+    monkeypatch.setattr("os.path.getsize", boom)
     with pytest.raises(ValueError):
         check_sufficient_disk_space(
             "dummy_fc", cfg,
             cursor_factory=fake_cursor,
             disk_usage_func=lambda x: type("Dummy", (), {"free": 1000})(),
-            folder_size_func=lambda x, y: 1
-        )
-
-def test_base_dir_does_not_exist(monkeypatch):
-    logger = DummyLogger()
-    cfg = DummyConfigManager(logger=logger, config={"image_output.folders.original": "original"})
-    def fake_cursor(fc, fields):
-        class DummyCursor:
-            def __enter__(self_): return iter([[r"C:/foo/bar/original/xyz.jpg"]])
-            def __exit__(self_, exc_type, exc_val, exc_tb): return None
-        return DummyCursor()
-    monkeypatch.setattr("os.path.exists", lambda path: False)
-    with pytest.raises(FileNotFoundError):
-        check_sufficient_disk_space(
-            "dummy_fc", cfg,
-            cursor_factory=fake_cursor,
-            disk_usage_func=lambda x: type("Dummy", (), {"free": 1000})(),
-            folder_size_func=lambda x, y: 1
         )
