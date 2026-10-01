@@ -29,7 +29,7 @@
 #   Secured Storage Testing:
 #     30 Deploy Secured Test Set        (subset -> cross-region sync -> publish; dry run)
 #   Vertical Datum Repair:
-#     40 Fix OID Elevations             (ellipsoidal -> NAVD88 via GEOID18; optional
+#     40 Fix OID Elevations             (frame shift + GEOID18 -> NAVD88; fixes 1.5.0 OIDs; optional
 #                                        service republish w/ overwrite; dry run)
 #
 # Notes:
