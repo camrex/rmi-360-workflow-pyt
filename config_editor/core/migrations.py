@@ -22,7 +22,11 @@ CONSOLIDATE_AWS = [
     {"op": "remove", "path": "aws.keyring_aws"},
 ]
 
-# All known rules, in apply order. (Single milestone today; append future ones.)
+# 1.5.0 — additive: spatial_ref.geoid_correction (enabled/model). No rename/remove
+# rules needed — the Upgrade's skeleton merge fills the new keys from the sample's
+# defaults (enabled: true, model: GEOID18) and adopts the sample's schema_version.
+
+# All known rules, in apply order. (Append future milestones' rules here.)
 ALL_RULES: List[dict] = CONSOLIDATE_AWS
 
 

@@ -69,7 +69,10 @@ from utils.validators import (
 
 # 1.4.0 consolidated aws + secured_storage (clean break). Older configs must be
 # upgraded (use the config editor's Upgrade) before the toolbox will load them.
-SUPPORTED_SCHEMA_VERSIONS = {"1.4.0"}
+# 1.5.0 added spatial_ref.geoid_correction (ellipsoidal -> NAVD88 camera heights).
+# Additive with code defaults, but versioned so every config explicitly carries
+# the geoid flags — the conversion changes the Z values written to the OID.
+SUPPORTED_SCHEMA_VERSIONS = {"1.5.0"}
 
 
 class ConfigManager:

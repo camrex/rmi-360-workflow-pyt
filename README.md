@@ -15,7 +15,7 @@ New: **Corridor Thinning (pre-thin)** — the optional `rmi_360_corridor_thinnin
 
 New: **OID Maintenance** — the `rmi_360_oid_maintenance.pyt` toolbox handles out-of-band upkeep of an already-published OID: rewrite ImagePaths, sync image objects between the unsecured and secured S3 buckets, migrate storage (orchestrated), validate ImagePath reachability, and audit OID vs S3. All mutating tools default to **Dry Run**. See [docs_legacy/tools/oid_maintenance.md](docs_legacy/tools/oid_maintenance.md).
 
-New: **Config Editor** — a standalone, comment-preserving editor for `config.yaml` under [config_editor/](config_editor/). The form is generated from `config.sample.yaml` itself, supports org profiles, migrates older configs forward (clean break to schema **1.4.0**), and includes live **Check AWS** auth/bucket validation and **Set AWS Keyring**. It runs in its own isolated virtual environment, separate from the ArcGIS Pro Python.
+New: **Config Editor** — a standalone, comment-preserving editor for `config.yaml` under [config_editor/](config_editor/). The form is generated from `config.sample.yaml` itself, supports org profiles, migrates older configs forward (clean break to schema **1.5.0**), and includes live **Check AWS** auth/bucket validation and **Set AWS Keyring**. It runs in its own isolated virtual environment, separate from the ArcGIS Pro Python.
 
 *Tested using ArcGIS Pro 3.4.3 and 3.5.4.* Be sure to check that your ArcGIS Pro Python Environment has the dependencies in requirements.txt
 

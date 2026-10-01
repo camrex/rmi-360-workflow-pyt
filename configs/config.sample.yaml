@@ -17,7 +17,7 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.4.0
+schema_version: 1.5.0
 debug_messages: false   # Verbose debug-level logging
 
 # ------------------------------------------------------------------------------
@@ -258,14 +258,23 @@ camera_offset:
 #
 # Reference:
 #   - WKID 4326 = WGS 1984 (horizontal)
-#   - WKID 5703 = WGS 1984 Ellipsoidal Height (vertical)
+#   - WKID 5703 = NAVD88 height, orthometric meters (vertical)
+#
+# The XVN/Point One camera positions carry *ellipsoidal* heights, so
+# geoid_correction converts camera Z to NAVD88 (GEOID18) during the
+# Calculate OID Attributes step; the original ellipsoidal value is preserved
+# in the Z_Ellipsoidal field. GEOID18 covers CONUS only — the step fails
+# loudly for points outside coverage rather than writing unconverted values.
 #
 # @section: Spatial Reference | Coordinate system settings.
 spatial_ref:
   gcs_horizontal_wkid: 4326                         # Geographic — used in OID SRS
-  vcs_vertical_wkid: 5703                           # Vertical — Ellipsoidal (GPS)
+  vcs_vertical_wkid: 5703                           # Vertical — NAVD88 orthometric (matches Terrain3D)
   pcs_horizontal_wkid: "config.project.local_proj_wkid"  # Projected — for footprint projection
   transformation: null                              # Manually set geographic transformation, if desired, otherwise ArcGIS Pro will pick
+  geoid_correction:
+    enabled: true                                   # Convert camera Z from ellipsoidal to NAVD88 (recommended: true)
+    model: "GEOID18"                                # Geoid model; GEOID18 = CONUS. Only GEOID18 is supported currently.
 
 # --------------------------------------------------------------------
 # ⚙️ EXECUTABLE PATHS
