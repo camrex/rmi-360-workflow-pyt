@@ -137,5 +137,19 @@ def validate(cfg: "ConfigManager") -> bool:
                         error_type=ConfigValidationError
                     )
                     error_count += 1
+            # source_frame: checked when present. Absence is caught where it matters
+            # (the conversion step / Fix OID Elevations), so maintenance tools can still
+            # load older configs and take the frame as a tool parameter.
+            source_frame = geoid_cfg.get("source_frame")
+            if source_frame is not None:
+                from utils.shared.geoid_transform import SOURCE_FRAMES
+                if str(source_frame).strip().upper() not in SOURCE_FRAMES:
+                    logger.error(
+                        f"spatial_ref.geoid_correction.source_frame '{source_frame}' is not supported "
+                        f"(supported: {', '.join(SOURCE_FRAMES)}). POLARIS mount point = ITRF2014; "
+                        "POLARIS_LOCAL = NAD83_2011.",
+                        error_type=ConfigValidationError
+                    )
+                    error_count += 1
 
     return error_count == 0

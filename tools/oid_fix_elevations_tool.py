@@ -3,19 +3,24 @@
 # -----------------------------------------------------------------------------
 # Tool Name:          OIDFixElevationsTool
 # Toolbox Context:    rmi_360_oid_maintenance.pyt
-# Version:            1.0.0
+# Version:            1.1.0
 # Author:             RMI Valuation, LLC
 #
 # Description:
-#   Repairs an existing OID whose camera heights are ellipsoidal (built before
-#   the geoid conversion): converts Z to NAVD88 orthometric (GEOID18) in place,
-#   preserves the original in Z_Ellipsoidal, and optionally republishes the
+#   Repairs an existing OID whose camera heights are not correct NAVD88: rows
+#   built before the geoid conversion (ellipsoidal) get the full conversion
+#   (source frame -> NAD83(2011) at the capture epoch -> GEOID18); rows converted
+#   under schema 1.5.0 without the reference-frame step get Z raised by the frame
+#   shift (~1 m for POLARIS/ITRF2014). The original ellipsoidal value stays in
+#   Z_Ellipsoidal, the applied frame/epoch is recorded in Z_Frame, and the tool
+#   optionally republishes the
 #   hosted service (deleting the previous portal items first). Accepts either
 #   the source OID or the published *_aws delivery copy — an *_aws input is
 #   republished directly under the un-suffixed service name (no re-copy or
 #   ImagePath rewrite). Fix the copy that backs the published service; the two
 #   are independent datasets. The images and their S3 objects are untouched.
-#   Idempotent — rows already carrying a populated Z_Ellipsoidal are skipped.
+#   Idempotent — rows whose Z_Frame already matches the Source Frame are skipped;
+#   a Z_Frame from a different frame refuses the run.
 #   Defaults to DRY RUN.
 #
 # Core Utils:
@@ -27,6 +32,7 @@ import arcpy
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.arcpy_utils import str_to_bool
+from utils.shared.geoid_transform import SOURCE_FRAMES
 from utils.fix_oid_elevations import (
     fix_oid_elevations,
     preview_service_overwrite,
@@ -36,11 +42,13 @@ from utils.fix_oid_elevations import (
 
 class OIDFixElevationsTool:
     def __init__(self):
-        self.label = "40 - Fix OID Elevations (Ellipsoidal -> NAVD88)"
+        self.label = "40 - Fix OID Elevations (-> NAVD88)"
         self.description = (
-            "Converts camera Z values of an existing OID from ellipsoidal to NAVD88 "
-            "orthometric height (GEOID18), preserving the original in Z_Ellipsoidal, "
-            "and optionally republishes the hosted service (overwrite). Dry run by default."
+            "Brings camera Z values of an existing OID to NAVD88 orthometric height: "
+            "source frame -> NAD83(2011) at the capture epoch, then GEOID18. Fixes OIDs "
+            "never converted and OIDs converted without the reference-frame step, records "
+            "the frame in Z_Frame, and optionally republishes the hosted service "
+            "(overwrite). Dry run by default."
         )
         self.canRunInBackground = False
         self.category = "Vertical Datum Repair"
@@ -70,6 +78,19 @@ class OIDFixElevationsTool:
             direction="Input",
         )
 
+        # Older project configs (schema < 1.6.0) carry no source_frame; this
+        # supplies it. Blank = spatial_ref.geoid_correction.source_frame.
+        frame_param = arcpy.Parameter(
+            displayName="Source Frame of camera heights (blank = from config; POLARIS = ITRF2014)",
+            name="source_frame",
+            datatype="GPString",
+            parameterType="Optional",
+            direction="Input",
+        )
+        if frame_param.filter is not None:
+            frame_param.filter.type = "ValueList"
+            frame_param.filter.list = list(SOURCE_FRAMES)
+
         dry_run_param = arcpy.Parameter(
             displayName="Dry Run (report only, no writes)",
             name="dry_run",
@@ -88,7 +109,7 @@ class OIDFixElevationsTool:
         )
         republish_param.value = False
 
-        return [oid_param, project_param, config_param, dry_run_param, republish_param]
+        return [oid_param, project_param, config_param, frame_param, dry_run_param, republish_param]
 
     def execute(self, parameters, messages):
         p = {param.name: param.valueAsText for param in parameters}
@@ -108,7 +129,10 @@ class OIDFixElevationsTool:
         dry_run = str_to_bool(p.get("dry_run", "true"))
         republish = str_to_bool(p.get("republish", "false"))
 
-        result = fix_oid_elevations(cfg=cfg, oid_fc=p["oid_fc"], dry_run=dry_run)
+        result = fix_oid_elevations(
+            cfg=cfg, oid_fc=p["oid_fc"], dry_run=dry_run,
+            source_frame=(p.get("source_frame") or "").strip() or None,
+        )
         if result is None:
             return  # hard failure already logged; nothing was written
 
