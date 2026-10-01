@@ -459,15 +459,23 @@ oid_schema_template:
 #   - enabled: false -> field remains null
 #   - enabled: true  -> values are assigned deterministically across the full OID
 #
-# Ordering mode:
-#   - If Linear Referencing is enabled in the workflow and MP fields are present,
-#     ordering uses grouped MP_Pre + MP_Num.
-#   - Otherwise ordering falls back to AcquisitionDate.
+# Ordering mode (highest priority first):
+#   1. Pre-thin manifest present -> reuse the corridor sub_order (mp_pre + track),
+#      which already breaks same-milepost ties by capture FRAME and run direction.
+#      The kept set's sub_order is non-contiguous (e.g. 1, 6, 11) so it is used only
+#      to SORT, then densely renumbered 1..N in the OID.
+#   2. Linear Referencing enabled (no manifest) -> grouped MP_Pre + MP_Num, with a
+#      (reel_start_ts, frame) capture tie-break for same-milepost clusters.
+#   3. Otherwise -> capture sequence (reel_start_ts, frame), AcquisitionDate fallback.
 #
 # Decision controls:
 #   - prefix_order: explicit group order for MP_Pre values. Any prefixes not listed
 #     are ordered alphabetically after listed prefixes.
-#   - descending_prefixes: prefixes where MP_Num should run high to low.
+#   - track_order: order of parallel-track values within a subdivision (manifest mode).
+#     Main line (empty track) always sorts first; listed tracks follow in order, then
+#     any unlisted tracks. Only relevant for projects with parallel running lines.
+#   - descending_prefixes: prefixes where MP_Num should run high to low (modes 2/3;
+#     in manifest mode direction is already encoded in sub_order).
 #   - null_milepost_position: where null MP_Num rows are placed inside each prefix group.
 # ------------------------------------------------------------------------------
 # @section: Sequence Order | Optional SequenceOrder population for OID navigation.
@@ -478,6 +486,7 @@ sequence_order:
   lr_prefix_field: "MP_Pre"                 # OID prefix field used for grouped ordering
   lr_mile_field: "MP_Num"                   # OID milepost field used for ordering within a group
   prefix_order: []              # Example: ["G", "H", "K", "MH"]
+  track_order: []               # Parallel-track order within a subdivision (manifest mode). Example: ["4"]
   descending_prefixes: []       # Example: ["MH"]
   null_milepost_position: "end"  # Where null-milepost rows sort within a prefix group. @choices[start, end]
 

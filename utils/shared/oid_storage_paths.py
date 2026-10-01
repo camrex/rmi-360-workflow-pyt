@@ -93,6 +93,8 @@ def extract_filename_from_image_path(image_path: str) -> Optional[str]:
       - "$virtualCacheDirectory:<prefix>/<filename>"
       - "https://<bucket>.s3.<region>.amazonaws.com/<prefix>/<filename>"
       - a bare "<prefix>/<filename>" or "<filename>"
+      - a LOCAL filesystem path, e.g. "I:\\...\\<filename>.jpg" (as Add Images sets
+        ImagePath before publishing) — Windows backslashes are handled.
     Returns None when nothing filename-like can be parsed.
     """
     if not isinstance(image_path, str):
@@ -105,6 +107,11 @@ def extract_filename_from_image_path(image_path: str) -> Optional[str]:
     if text.startswith(SECURED_IMAGE_PATH_PREFIX):
         text = text[len(SECURED_IMAGE_PATH_PREFIX):]
 
+    # Normalize Windows backslashes so a LOCAL ImagePath (e.g. I:\...\img.jpg, as set
+    # by Add Images) splits to its basename the same as the URL/key (forward-slash)
+    # forms. Without this, manifest joins (Track, MP_Pre/MP_Num, SequenceOrder) that
+    # key on the filename match ZERO rows on a backslash path.
+    text = text.replace("\\", "/")
     # Drop scheme/host for URL forms; everything after the last '/' is the filename.
     text = text.split("?", 1)[0].rstrip("/")
     if not text:
