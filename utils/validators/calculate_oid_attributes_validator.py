@@ -115,4 +115,27 @@ def validate(cfg: "ConfigManager") -> bool:
             if not validate_expression_block(block, list(block.keys()), cfg, (int, float), path):
                 error_count += 1
 
+    # ✅ Validate geoid correction settings (ellipsoidal -> NAVD88 conversion)
+    geoid_cfg = cfg.get("spatial_ref.geoid_correction", {})
+    if geoid_cfg:
+        if not validate_type(geoid_cfg, "spatial_ref.geoid_correction", dict, cfg):
+            error_count += 1
+        else:
+            enabled = geoid_cfg.get("enabled", True)
+            if not validate_type(enabled, "spatial_ref.geoid_correction.enabled", bool, cfg):
+                error_count += 1
+            model = geoid_cfg.get("model", "GEOID18")
+            if not validate_type(model, "spatial_ref.geoid_correction.model", str, cfg):
+                error_count += 1
+            else:
+                from utils.shared.geoid_transform import SUPPORTED_GEOID_MODELS
+                if str(model).upper() not in SUPPORTED_GEOID_MODELS:
+                    logger.error(
+                        f"spatial_ref.geoid_correction.model '{model}' is not supported "
+                        f"(supported: {', '.join(sorted(SUPPORTED_GEOID_MODELS))}). "
+                        "GEOID18 covers CONUS only.",
+                        error_type=ConfigValidationError
+                    )
+                    error_count += 1
+
     return error_count == 0

@@ -30,7 +30,7 @@ def test_consolidate_aws_upgrade():
     assert "s3_bucket" not in aws                               # old key renamed away
     assert "keyring_aws" not in aws                             # removed
     assert "secured_storage" not in v                          # emptied + pruned
-    assert v["schema_version"] == "1.4.0"                       # adopts current
+    assert v["schema_version"] == "1.5.0"                       # adopts current
 
     renamed = " | ".join(res.report.renamed)
     assert "secured_storage.s3_bucket -> aws.s3_bucket_panos_secured" in renamed
@@ -39,8 +39,8 @@ def test_consolidate_aws_upgrade():
 
 def test_upgrade_on_current_config_is_noop_for_renames():
     # A config already on the new schema should not gain stray keys from the rules.
-    current = {"schema_version": "1.4.0", "aws": {"s3_bucket_panos_unsecured": "b"}}
-    res = migrate.upgrade(current, rules=migrations.rules_for("1.4.0"))
+    current = {"schema_version": "1.5.0", "aws": {"s3_bucket_panos_unsecured": "b"}}
+    res = migrate.upgrade(current, rules=migrations.rules_for("1.5.0"))
     v = config_io.extract_values(res.config)
     assert v["aws"]["s3_bucket_panos_unsecured"] == "b"
     assert "secured_storage" not in v

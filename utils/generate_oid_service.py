@@ -140,10 +140,18 @@ def ensure_portal_folder(gis, portal_folder, logger):
         logger.error(f"Portal folder check failed due to unexpected error: {e}", indent=2, error_type=RuntimeError)
 
 
-def generate_oid_service(cfg: ConfigManager, oid_fc: str):
+def generate_oid_service(cfg: ConfigManager, oid_fc: str, service_name: str = None, prepare_copy: bool = True):
     """
     Duplicates an Oriented Imagery Dataset, updates image paths to AWS S3 URLs, and publishes it as a hosted Oriented
     Imagery Service on ArcGIS Online.
+
+    Args:
+        cfg: Validated configuration manager.
+        oid_fc: OID feature class to publish from.
+        service_name: Optional service name override; defaults to the FC basename.
+        prepare_copy: When True (default), duplicate to *_aws and rewrite ImagePaths
+            to delivery form. Pass False when oid_fc already IS a prepared delivery
+            copy (e.g. republishing a fixed *_aws FC) — it is published directly.
     """
     logger = cfg.get_logger()
     cfg.validate(tool="generate_oid_service")
@@ -170,21 +178,29 @@ def generate_oid_service(cfg: ConfigManager, oid_fc: str):
     # Derive output AWS OID path
     oid_gdb = os.path.dirname(oid_fc)
     oid_name = os.path.splitext(os.path.basename(oid_fc))[0]
-    aws_oid_name = f"{oid_name}_aws"
-    aws_oid_fc = os.path.join(oid_gdb, aws_oid_name)
 
-    # Step 1: Duplicate the OID feature class
-    if arcpy.Exists(aws_oid_fc):
-        logger.info(f"Overwriting existing AWS OID: {aws_oid_fc}", indent=2)
-        arcpy.management.Delete(str(aws_oid_fc))
-    arcpy.management.Copy(str(oid_fc), str(aws_oid_fc))
-    logger.info(f"Duplicated OID to: {aws_oid_fc}", indent=2)
+    if prepare_copy:
+        aws_oid_name = f"{oid_name}_aws"
+        aws_oid_fc = os.path.join(oid_gdb, aws_oid_name)
 
-    # Step 2: Update ImagePath values
-    update_oid_image_paths(aws_oid_fc, cfg, logger)
+        # Step 1: Duplicate the OID feature class
+        if arcpy.Exists(aws_oid_fc):
+            logger.info(f"Overwriting existing AWS OID: {aws_oid_fc}", indent=2)
+            arcpy.management.Delete(str(aws_oid_fc))
+        arcpy.management.Copy(str(oid_fc), str(aws_oid_fc))
+        logger.info(f"Duplicated OID to: {aws_oid_fc}", indent=2)
+
+        # Step 2: Update ImagePath values
+        update_oid_image_paths(aws_oid_fc, cfg, logger)
+    else:
+        # oid_fc already carries delivery-form ImagePaths — publish it as-is.
+        aws_oid_fc = oid_fc
+        logger.info(f"Publishing prepared delivery OID directly (no copy/rewrite): {aws_oid_fc}", indent=2)
 
     # Step 3: Assemble service metadata
-    service_name, portal_folder, share_with, add_footprint, tags_str, summary = assemble_service_metadata(cfg, oid_name)
+    service_name, portal_folder, share_with, add_footprint, tags_str, summary = assemble_service_metadata(
+        cfg, service_name or oid_name
+    )
 
     # Step 4: Check/create portal folder
     try:

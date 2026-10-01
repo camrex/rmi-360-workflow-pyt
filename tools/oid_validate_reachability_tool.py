@@ -91,7 +91,8 @@ class OIDValidateReachabilityTool:
             project_base=p["project_folder"],
             messages=messages,
         )
-        logger = cfg.get_logger()
+        # Bind the GP message sink so the util's log lines show in the tool dialog.
+        logger = cfg.get_logger(messages)
 
         mode = (p.get("mode_override") or "auto").strip().lower()
         secured_mode = None if mode == "auto" else (mode == "secured")

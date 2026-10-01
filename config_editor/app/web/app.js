@@ -509,11 +509,15 @@ async function doPreview() {
 }
 
 async function doSave() {
-  await doValidate();
-  const path = await api().save_dialog("config.yaml");
-  if (!path) return;
-  const res = await api().save(state.values, path);
-  if (res.ok) { state.dirty = false; setMeta(); setStatus(`Saved ${res.path}`, "ok"); }
+  try {
+    await doValidate();  // refreshes the issues panel; warnings never block saving
+    const path = await api().save_dialog("config.yaml");
+    if (!path) { setStatus("Save cancelled.", ""); return; }
+    const res = await api().save(state.values, path);
+    if (res.ok) { state.dirty = false; setMeta(); setStatus(`Saved ${res.path}`, "ok"); }
+  } catch (e) {
+    setStatus("Save failed: " + (e && e.message ? e.message : e), "err");
+  }
 }
 
 // ---- bootstrap -------------------------------------------------------------

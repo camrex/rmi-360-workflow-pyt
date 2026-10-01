@@ -24,7 +24,11 @@ def _jsonable(value: Any) -> Any:
 class ConfigEditorAPI:
     def __init__(self, skeleton_path: Optional[Path] = None, window=None):
         self.skeleton_path = Path(skeleton_path) if skeleton_path else paths.sample_config_path()
-        self.window = window  # pywebview window, set by main.py for dialogs
+        # Underscore-private: pywebview serializes every PUBLIC attribute of the
+        # js_api object recursively; exposing the window drags the whole native
+        # WinForms object graph in and hangs the bridge (infinite recursion on
+        # Rectangle.Empty.Empty…), freezing the UI at startup.
+        self._window = window  # pywebview window, set by main.py for dialogs
 
     # --- schema & profiles --------------------------------------------------
     def get_schema(self) -> Dict[str, Any]:
@@ -92,31 +96,42 @@ class ConfigEditorAPI:
         }
 
     # --- preview / save -----------------------------------------------------
+    def _coerced(self, values: Dict[str, Any]) -> Dict[str, Any]:
+        """Coerce numeric fields to their schema-declared types before render/save.
+        Text widgets submit strings, so this keeps e.g. WKIDs written as ints."""
+        schema = fields.build_form_schema(self.skeleton_path)
+        return fields.coerce_values(values, schema)
+
     def preview(self, values: Dict[str, Any]) -> str:
         """Live YAML preview: values rendered through the comment-preserving skeleton."""
         return config_io.dump_yaml_str(
-            config_io.render_from_skeleton(values, self.skeleton_path, replace_paths=self._replace_paths())
+            config_io.render_from_skeleton(self._coerced(values), self.skeleton_path, replace_paths=self._replace_paths())
         )
 
     def save(self, values: Dict[str, Any], path: str) -> Dict[str, Any]:
         """Render values onto the skeleton (comments preserved) and write to ``path``."""
-        cfg = config_io.render_from_skeleton(values, self.skeleton_path, replace_paths=self._replace_paths())
+        cfg = config_io.render_from_skeleton(self._coerced(values), self.skeleton_path, replace_paths=self._replace_paths())
         config_io.dump_yaml(cfg, path)
         return {"ok": True, "path": str(path)}
 
     # --- dialogs (thin; require a window) -----------------------------------
     def open_dialog(self) -> Optional[str]:
-        if self.window is None:
+        if self._window is None:
             return None
         import webview
-        result = self.window.create_file_dialog(
-            webview.OPEN_DIALOG, file_types=("YAML (*.yaml;*.yml)", "All files (*.*)"))
+        result = self._window.create_file_dialog(
+            webview.FileDialog.OPEN, file_types=("YAML (*.yaml;*.yml)", "All files (*.*)"))
         return result[0] if result else None
 
     def save_dialog(self, suggested: str = "config.yaml") -> Optional[str]:
-        if self.window is None:
+        if self._window is None:
             return None
         import webview
-        return self.window.create_file_dialog(
-            webview.SAVE_DIALOG, save_filename=suggested,
-            file_types=("YAML (*.yaml;*.yml)", "All files (*.*)")) or None
+        # create_file_dialog returns a tuple of paths (even for SAVE); some
+        # platforms return a bare string. Always hand the UI a single string.
+        result = self._window.create_file_dialog(
+            webview.FileDialog.SAVE, save_filename=suggested,
+            file_types=("YAML (*.yaml;*.yml)", "All files (*.*)"))
+        if not result:
+            return None
+        return result[0] if isinstance(result, (list, tuple)) else str(result)

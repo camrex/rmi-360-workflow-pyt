@@ -26,11 +26,18 @@
 #   Diagnostics:
 #     20 Validate ImagePath Reachability
 #     21 Audit OID vs S3
+#   Secured Storage Testing:
+#     30 Deploy Secured Test Set        (subset -> cross-region sync -> publish; dry run)
+#   Vertical Datum Repair:
+#     40 Fix OID Elevations             (ellipsoidal -> NAVD88 via GEOID18; optional
+#                                        service republish w/ overwrite; dry run)
 #
 # Notes:
 #   - All mutating tools default to DRY RUN.
-#   - Service (re)publishing is NOT done here -- use "Generate OID Service" in the
-#     main workflow toolbox against the migrated *_secured / *_legacy copy.
+#   - Storage-migration service (re)publishing is NOT done here -- use "Generate OID
+#     Service" in the main workflow toolbox against the migrated *_secured / *_legacy
+#     copy. (Fix OID Elevations optionally republishes, since its whole point is
+#     repairing an already-published dataset in place.)
 # =============================================================================
 
 import sys
@@ -140,6 +147,8 @@ OIDSyncS3ObjectsTool = _load_tool_class("oid_sync_s3_objects_tool.py", "OIDSyncS
 OIDMigrateStorageTool = _load_tool_class("oid_migrate_storage_tool.py", "OIDMigrateStorageTool")
 OIDValidateReachabilityTool = _load_tool_class("oid_validate_reachability_tool.py", "OIDValidateReachabilityTool")
 OIDAuditStorageTool = _load_tool_class("oid_audit_storage_tool.py", "OIDAuditStorageTool")
+OIDDeploySecuredTestSetTool = _load_tool_class("deploy_secured_test_set_tool.py", "OIDDeploySecuredTestSetTool")
+OIDFixElevationsTool = _load_tool_class("oid_fix_elevations_tool.py", "OIDFixElevationsTool")
 
 
 class Toolbox(object):
@@ -152,4 +161,6 @@ class Toolbox(object):
             OIDMigrateStorageTool,
             OIDValidateReachabilityTool,
             OIDAuditStorageTool,
+            OIDDeploySecuredTestSetTool,
+            OIDFixElevationsTool,
         ]

@@ -10,6 +10,11 @@
 #   @choices[a, b, c] : strict dropdown (value must be one of these).
 #   @secret           : password widget; keep out of plaintext.
 #   @widget[textarea|number|text|list] : force a widget (type is otherwise inferred).
+#   @type[int|float|str|bool] : force the field type (overrides inference). Use when
+#                   the documented default is a non-numeric placeholder but the field
+#                   is really numeric (e.g. local_proj_wkid: <YOUR_PROJECT_WKID>), so
+#                   the GUI uses a number widget and the value is saved/coerced as a
+#                   number — not a quoted string the runtime validator would reject.
 #   Section header: a line  `# @section: Title | one-line description`  immediately
 #                   above a top-level key (raw-scanned at column 0).
 # Tags are stripped from the displayed help text.
@@ -28,6 +33,7 @@ from config_editor.core.config_io import load_yaml
 
 _TAG_CHOICES = re.compile(r"@choices\[([^\]]*)\]")
 _TAG_WIDGET = re.compile(r"@widget\[(\w+)\]")
+_TAG_TYPE = re.compile(r"@type\[(\w+)\]")
 _TAG_SECRET = re.compile(r"@secret\b")
 _TAG_REPEATABLE = re.compile(r"@repeatable\b")
 _TAG_ITEMLABEL = re.compile(r"@itemlabel\[(\w+)\]")
@@ -65,6 +71,9 @@ def _parse_inline_tags(comment: str) -> Tuple[str, Dict[str, Any]]:
     w = _TAG_WIDGET.search(comment)
     if w:
         meta["widget"] = w.group(1)
+    t = _TAG_TYPE.search(comment)
+    if t:
+        meta["type"] = t.group(1)
     if _TAG_SECRET.search(comment):
         meta["secret"] = True
     if _TAG_REPEATABLE.search(comment):
@@ -79,7 +88,7 @@ def _parse_inline_tags(comment: str) -> Tuple[str, Dict[str, Any]]:
                         "values": [v.strip() for v in vals.split(",") if v.strip()]}
 
     help_text = comment
-    for rx in (_TAG_CHOICES, _TAG_WIDGET, _TAG_SECRET, _TAG_REPEATABLE, _TAG_ITEMLABEL, _TAG_WHEN):
+    for rx in (_TAG_CHOICES, _TAG_WIDGET, _TAG_TYPE, _TAG_SECRET, _TAG_REPEATABLE, _TAG_ITEMLABEL, _TAG_WHEN):
         help_text = rx.sub("", help_text)
     return help_text.strip(" \t-—|"), meta
 
@@ -178,7 +187,10 @@ def _label(key: str) -> str:
 def _field_node(cm: Mapping, key: str, path: str, value: Any,
                 overrides: Dict[str, dict]) -> Dict[str, Any]:
     help_text, tagmeta = _parse_inline_tags(_eol_comment(cm, key))
-    ftype = _infer_type(value)
+    # Type is inferred from the sample default, but an explicit @type[int|float|...]
+    # tag wins — needed when the documented default is a non-numeric placeholder
+    # (e.g. local_proj_wkid: <YOUR_PROJECT_WKID>) yet the field is really numeric.
+    ftype = tagmeta.get("type") or _infer_type(value)
     widget = _widget_for(ftype, value)
     choices = tagmeta.get("choices")
     strict = False
@@ -322,3 +334,56 @@ def iter_fields(schema: Dict[str, Any]):
             elif n["kind"] == "group":
                 yield from _rec(n["children"])
     yield from _rec(schema["sections"])
+
+
+# --- value coercion (safety net before render/save) --------------------------
+def _coerce_scalar(value: Any, ftype: str) -> Any:
+    """Coerce a single value to the schema-declared scalar type. A value that
+    cannot be parsed (e.g. an unfilled ``<PLACEHOLDER>``) is returned unchanged so
+    structural placeholder warnings still fire downstream."""
+    if value is None or isinstance(value, bool):
+        return value  # never coerce booleans into ints
+    if ftype == "int":
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        if isinstance(value, str):
+            try:
+                return int(value.strip())
+            except ValueError:
+                return value
+        return value
+    if ftype == "float":
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value.strip())
+            except ValueError:
+                return value
+        return value
+    return value
+
+
+def coerce_values(values: Mapping[str, Any], schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of ``values`` with every concrete numeric field coerced to its
+    schema-declared type. Web forms submit text widgets as strings, so a numeric
+    field whose default looked non-numeric (placeholder) would otherwise be written
+    as a quoted string and fail the runtime config validator (e.g.
+    ``spatial_ref.pcs_horizontal_wkid: must be int, got str``)."""
+    import copy
+
+    out = copy.deepcopy(dict(values))
+    for fnode in iter_fields(schema):
+        if fnode["type"] not in ("int", "float"):
+            continue
+        parts = fnode["path"].split(".")
+        cur: Any = out
+        for part in parts[:-1]:
+            cur = cur.get(part) if isinstance(cur, dict) else None
+            if cur is None:
+                break
+        if isinstance(cur, dict) and parts[-1] in cur:
+            cur[parts[-1]] = _coerce_scalar(cur[parts[-1]], fnode["type"])
+    return out

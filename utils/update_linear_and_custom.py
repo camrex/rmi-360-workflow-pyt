@@ -31,9 +31,11 @@ __all__ = ["update_linear_and_custom"]
 
 import arcpy
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 
 from utils.manager.config_manager import ConfigManager
+from utils.corridor.units import compile_identity_regex, parse_run_frame
 from utils.shared.expression_utils import resolve_expression
 from utils.shared.manifest_fields import (
     load_manifest_attr_map,
@@ -553,7 +555,7 @@ def update_linear_and_custom(
         )
         populate_oid_fields_from_manifest(cfg, oid_fc_path, specs, manifest_path, logger)
 
-    assign_sequence_order(cfg, oid_fc_path, enable_linear_ref, logger)
+    assign_sequence_order(cfg, oid_fc_path, enable_linear_ref, logger, manifest_path=manifest_path)
 
 
 def _parse_datetime_sort_key(value):
@@ -579,12 +581,68 @@ def _resolve_prefix_rank(prefix: str, ordered_prefixes: list[str]) -> tuple[int,
     return (len(ordered_prefixes), normalized)
 
 
-def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_ref: bool, logger) -> None:
+def _track_rank(track, track_order: list[str]) -> tuple:
+    """Sortable rank for a parallel-track value within a subdivision. Main line
+    (null/empty/_main) ALWAYS sorts first; then an explicit
+    ``sequence_order.track_order`` (listed tracks in order, unlisted after), or
+    numeric tracks ascending when no order is configured."""
+    t = "" if track in (None, "", "_main") else str(track).strip()
+    if t == "":
+        return (0, -1, "")  # main line always first
+    if track_order:
+        return (1, track_order.index(t), t) if t in track_order else (2, len(track_order), t)
+    try:
+        return (1, int(float(t)), t)
+    except (ValueError, TypeError):
+        return (2, 0, t)
+
+
+def _to_int_or_none(value):
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _capture_sort_key(filename: Optional[str], regex) -> tuple:
+    """Capture-sequence tie-break: ``(reel_start_ts, reel, frame)`` parsed from the
+    ORIGINAL filename. Frame is the clean, high-resolution sequence signal that
+    disambiguates same-milepost clusters where AcquisitionDate (reel-granular,
+    1-second resolution) ties. Unparseable names sort last, together."""
+    run, frame = parse_run_frame(filename or "", regex)
+    if run is None:
+        return ("~", "~", 1 << 62)
+    reel, ts = run
+    return (ts, reel, frame if frame is not None else 1 << 62)
+
+
+def _write_sequence(oid_fc_path, sequence_field, sequence_by_oid, mode, logger) -> None:
+    """Write the densely-renumbered SequenceOrder, only touching changed rows."""
+    updated = 0
+    with arcpy.da.UpdateCursor(oid_fc_path, ["OID@", sequence_field]) as cursor:
+        for oid, existing in cursor:
+            desired = sequence_by_oid.get(oid)
+            if desired is None or existing == desired:
+                continue
+            cursor.updateRow([oid, desired])
+            updated += 1
+    logger.success(
+        f"Assigned {sequence_field} for {updated} row(s) using {mode} ordering.", indent=1
+    )
+
+
+def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_ref: bool, logger,
+                          manifest_path: Optional[str] = None) -> None:
     """Populate SequenceOrder when enabled by config.
 
-    SequenceOrder remains null when disabled. Ordering behavior:
-      - LR enabled: grouped by MP_Pre, sorted by MP_Num within group.
-      - LR disabled: sorted by AcquisitionDate only.
+    SequenceOrder remains null when disabled. Ordering priority:
+      1. Manifest (pre-thin): reuse the corridor's frame-tie-broken ``sub_order``
+         (partitioned by ``mp_pre`` + ``track``). The kept set's ``sub_order`` is
+         NON-CONTIGUOUS after thinning (e.g. 1, 6, 11, 16, …), so it is used only as
+         the sort key and densely RENUMBERED to a contiguous 1..N in the OID.
+      2. LR enabled (no manifest): grouped by MP_Pre, sorted by MP_Num within group,
+         then by capture sequence (reel_start_ts, frame) to break same-milepost ties.
+      3. LR disabled (no manifest): capture sequence (reel_start_ts, frame).
     """
     sequence_cfg = cfg.get("sequence_order", {})
     if not sequence_cfg.get("enabled", False):
@@ -601,32 +659,83 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
     prefix_field = cfg.get("sequence_order.lr_prefix_field", cfg.get("oid_schema_template.linear_ref_fields.route_identifier.name", "MP_Pre"))
     mile_field = cfg.get("sequence_order.lr_mile_field", cfg.get("oid_schema_template.linear_ref_fields.route_measure.name", "MP_Num"))
     ordered_prefixes = cfg.get("sequence_order.prefix_order", []) or []
+    track_order = cfg.get("sequence_order.track_order", []) or []
     descending_prefixes = set(cfg.get("sequence_order.descending_prefixes", []) or [])
     null_milepost_position = (cfg.get("sequence_order.null_milepost_position", "end") or "end").lower()
+    regex = compile_identity_regex(cfg.get("corridor_thinning.filename_regex"))
 
+    # --- Mode 1: manifest-driven (consume corridor sub_order) ---
+    # Join on the ORIGINAL filename; this runs before Rename Images so ImagePath
+    # still carries the source name. sub_order is the corridor's authoritative,
+    # frame-tie-broken order — we only use it to SORT, then renumber 1..N.
+    if manifest_path and Path(manifest_path).is_file():
+        attr = load_manifest_attr_map(manifest_path, ["mp_pre", "track", "sub_order"], logger)
+        man_rows = []
+        total = matched = 0
+        with arcpy.da.SearchCursor(oid_fc_path, ["OID@", "ImagePath"]) as cursor:
+            for oid, image_path in cursor:
+                total += 1
+                filename = extract_filename_from_image_path(image_path) if image_path else None
+                rec = attr.get(filename.lower()) if filename else None
+                if rec:
+                    matched += 1
+                man_rows.append({"oid": oid, "rec": rec})
+
+        if matched == 0:
+            logger.warning(
+                "SequenceOrder: manifest present but no OID image matched (the join keys on the "
+                "ORIGINAL filename and must run before Rename Images). Falling back to LR/capture ordering.",
+                indent=1,
+            )
+        else:
+            if matched < total:
+                logger.info(
+                    f"SequenceOrder manifest match: {matched:,}/{total:,} OID image(s); "
+                    "unmatched rows sort last.",
+                    indent=1,
+                )
+
+            def man_sort_key(item):
+                rec = item["rec"]
+                if not rec:  # unmatched → end, stable by OID
+                    return (1, (len(ordered_prefixes), ""), (9, 0, ""), float("inf"), item["oid"])
+                pr = _resolve_prefix_rank(rec.get("mp_pre", ""), ordered_prefixes)
+                tr = _track_rank(rec.get("track", ""), track_order)
+                so = _to_int_or_none(rec.get("sub_order"))
+                return (0, pr, tr, so if so is not None else float("inf"), item["oid"])
+
+            ordered_rows = sorted(man_rows, key=man_sort_key)
+            sequence_by_oid = {entry["oid"]: i for i, entry in enumerate(ordered_rows, start=1)}
+            _write_sequence(oid_fc_path, sequence_field, sequence_by_oid,
+                            "manifest sub_order (renumbered)", logger)
+            return
+
+    # --- Modes 2 & 3: no manifest ---
     use_lr_ordering = bool(enable_linear_ref and prefix_field in available_fields and mile_field in available_fields)
     if enable_linear_ref and not use_lr_ordering:
         logger.warning(
-            f"SequenceOrder LR ordering requested, but required fields are missing ({prefix_field}, {mile_field}). Falling back to acquisition datetime ordering.",
+            f"SequenceOrder LR ordering requested, but required fields are missing ({prefix_field}, {mile_field}). Falling back to capture-sequence ordering.",
             indent=1,
         )
 
-    search_fields = ["OID@", acquisition_field]
+    search_fields = ["OID@", acquisition_field, "ImagePath"]
     if use_lr_ordering:
         search_fields.extend([prefix_field, mile_field])
 
     rows = []
     with arcpy.da.SearchCursor(oid_fc_path, search_fields) as cursor:
         for row in cursor:
+            filename = extract_filename_from_image_path(row[2]) if row[2] else None
             entry = {
                 "oid": row[0],
                 "acq": row[1],
+                "cap": _capture_sort_key(filename, regex),
                 "prefix": "",
                 "mile": None,
             }
             if use_lr_ordering:
-                entry["prefix"] = "" if row[2] is None else str(row[2]).strip()
-                entry["mile"] = row[3]
+                entry["prefix"] = "" if row[3] is None else str(row[3]).strip()
+                entry["mile"] = row[4]
             rows.append(entry)
 
     if not rows:
@@ -644,7 +753,9 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
         # lr_sort_key rule: NULL mileposts map to +/-infinity from
         # null_milepost_position, and descending_prefixes only negates finite
         # mile_sort values. For descending prefixes, NULL mileposts still remain
-        # at the configured null_milepost_position (they are not inverted).
+        # at the configured null_milepost_position (they are not inverted). The
+        # capture key (reel_start_ts, frame) breaks same-milepost ties before the
+        # coarser AcquisitionDate fallback.
         def lr_sort_key(item):
             prefix = item["prefix"]
             prefix_rank = _resolve_prefix_rank(prefix, ordered_prefixes)
@@ -669,27 +780,17 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
                 prefix_rank,
                 null_rank,
                 mile_sort,
+                item["cap"],
                 _parse_datetime_sort_key(item["acq"]),
                 item["oid"],
             )
 
         ordered_rows = sorted(rows, key=lr_sort_key)
+        mode = "LR-aware (frame tie-break)"
     else:
-        ordered_rows = sorted(rows, key=lambda item: (_parse_datetime_sort_key(item["acq"]), item["oid"]))
+        ordered_rows = sorted(rows, key=lambda item: (item["cap"], _parse_datetime_sort_key(item["acq"]), item["oid"]))
+        mode = "capture-sequence"
 
     sequence_by_oid = {entry["oid"]: i for i, entry in enumerate(ordered_rows, start=1)}
-
-    updated = 0
-    with arcpy.da.UpdateCursor(oid_fc_path, ["OID@", sequence_field]) as cursor:
-        for oid, existing in cursor:
-            desired = sequence_by_oid.get(oid)
-            if desired is None or existing == desired:
-                continue
-            cursor.updateRow([oid, desired])
-            updated += 1
-
-    logger.success(
-        f"Assigned {sequence_field} for {updated} row(s) using {'LR-aware' if use_lr_ordering else 'acquisition datetime'} ordering.",
-        indent=1,
-    )
+    _write_sequence(oid_fc_path, sequence_field, sequence_by_oid, mode, logger)
 

@@ -3,16 +3,19 @@
 # -----------------------------------------------------------------------------
 # Purpose:             Enriches Oriented Imagery Dataset features with camera orientation, reel, and Z attributes
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.1.0
+# Version:             1.2.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-13
-# Last Updated:        2025-05-15
+# Last Updated:        2026-07-17
 #
 # Description:
 #   Applies default and derived values to fields in an OID feature class, including
 #   orientation, SRS, reel, and frame info. Incorporates validation against a field
-#   registry and adjusts Z-values using configured camera offsets. Validates field-of-view
-#   defaults and integrates reel_info.json metadata if available.
+#   registry and adjusts Z-values using configured camera offsets. Converts camera
+#   heights from WGS84/ITRF ellipsoidal to NAVD88 orthometric (GEOID18) so the Z
+#   values match the OID's vertical CRS (EPSG:5703) and Terrain3D elevation source,
+#   preserving the original ellipsoidal value in the Z_Ellipsoidal field. Validates
+#   field-of-view defaults and integrates reel_info.json metadata if available.
 #
 # File Location:        /utils/calculate_oid_attributes.py
 # Validator:            /utils/validators/calculate_oid_attributes_validator.py
@@ -29,7 +32,7 @@
 #   - Skips processing if OID is empty or missing required fields
 # =============================================================================
 
-__all__ = ["enrich_oid_attributes"]
+__all__ = ["enrich_oid_attributes", "convert_heights_to_navd88", "ELLIPSOIDAL_Z_FIELD"]
 
 import arcpy
 import re
@@ -39,6 +42,12 @@ from typing import Optional, Tuple
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import load_field_registry
+from utils.shared.geoid_transform import GeoidTransformError, ellipsoidal_to_orthometric
+
+# Field that preserves the original ellipsoidal Z (m) after geoid conversion.
+# Added at runtime (like QCFlag); a populated value marks the row's SHAPE@Z as
+# already NAVD88, making the conversion idempotent across re-runs.
+ELLIPSOIDAL_Z_FIELD = "Z_Ellipsoidal"
 
 
 def _safe_float(value, default=0.0) -> float:
@@ -146,12 +155,91 @@ def extract_frame_from_filename(image_path: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
+def convert_heights_to_navd88(cfg: ConfigManager, oid_fc_path: str, logger) -> Optional[dict]:
+    """Batch-convert camera Z values from ellipsoidal (WGS84/ITRF) to NAVD88 orthometric.
+
+    The XVN/Point One chain only outputs ellipsoidal heights, so the Z values the
+    Esri Add Images step reads from EXIF are ellipsoidal — while the OID's vertical
+    CRS (EPSG:5703) and Terrain3D elevation source are NAVD88 orthometric. This
+    converts the whole Z column in one vectorized pyproj call (GEOID18 by default).
+
+    Idempotent: the original ellipsoidal Z is preserved in ``Z_Ellipsoidal`` (added
+    here if missing), and rows where that field is already populated are re-derived
+    from it rather than converted twice. Horizontal coordinates are never changed.
+
+    Returns:
+        Mapping ``{objectid: (z_navd88, z_ellipsoidal)}`` on success, or None on
+        failure (missing grid, out-of-coverage points, implausible separations) —
+        callers must treat None as a hard stop, never write unconverted heights.
+    """
+    geoid_model = str(cfg.get("spatial_ref.geoid_correction.model", "GEOID18"))
+
+    if ELLIPSOIDAL_Z_FIELD not in {f.name for f in arcpy.ListFields(oid_fc_path)}:
+        arcpy.management.AddField(
+            oid_fc_path, ELLIPSOIDAL_Z_FIELD, "DOUBLE",
+            field_alias="Ellipsoidal Z (WGS84, m)"
+        )
+
+    oids, lons, lats, z_src = [], [], [], []
+    already_converted = 0
+    with arcpy.da.SearchCursor(
+        oid_fc_path, ["OID@", "SHAPE@X", "SHAPE@Y", "SHAPE@Z", ELLIPSOIDAL_Z_FIELD]
+    ) as cursor:
+        for oid, x, y, z, z_ellip in cursor:
+            if x is None or y is None or (z is None and z_ellip is None):
+                continue
+            if z_ellip is not None:
+                already_converted += 1
+            oids.append(oid)
+            lons.append(x)
+            lats.append(y)
+            # A populated Z_Ellipsoidal means this row was converted before —
+            # re-derive from the preserved original instead of converting twice.
+            z_src.append(z_ellip if z_ellip is not None else z)
+
+    if not oids:
+        logger.warning("No rows with usable geometry found for geoid conversion.", indent=1)
+        return {}
+
+    try:
+        z_navd88, separation = ellipsoidal_to_orthometric(lons, lats, z_src, model=geoid_model)
+    except GeoidTransformError as e:
+        logger.error(f"Geoid conversion failed: {e}", error_type=GeoidTransformError, indent=1)
+        return None
+    except ImportError as e:
+        logger.error(
+            f"pyproj is required for the geoid conversion but could not be imported: {e}",
+            error_type=ImportError, indent=1
+        )
+        return None
+
+    if already_converted:
+        logger.info(
+            f"{already_converted:,} row(s) already had {ELLIPSOIDAL_Z_FIELD} populated; "
+            "re-derived NAVD88 from the preserved ellipsoidal values.", indent=1
+        )
+    logger.info(
+        f"Converted {len(oids):,} camera height(s) to NAVD88 via {geoid_model}: "
+        f"ellipsoidal Z [{min(z_src):.2f}, {max(z_src):.2f}] m -> "
+        f"NAVD88 Z [{z_navd88.min():.2f}, {z_navd88.max():.2f}] m "
+        f"(geoid separation N: min {separation.min():.2f}, "
+        f"mean {separation.mean():.2f}, max {separation.max():.2f} m).", indent=1
+    )
+
+    return {
+        oid: (float(h), float(src))
+        for oid, h, src in zip(oids, z_navd88, z_src)
+    }
+
+
 def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool = True) -> None:
     """
     Enriches an Oriented Imagery Dataset with derived and default attribute values.
 
-    This function updates the specified OID feature class by setting default values for camera parameters, adjusting Z
-    coordinates by camera offset if requested, and populating orientation, spatial reference, reel, and frame fields.
+    This function updates the specified OID feature class by setting default values for camera parameters, converting
+    camera heights from ellipsoidal to NAVD88 orthometric (unless spatial_ref.geoid_correction.enabled is false),
+    adjusting Z coordinates by camera offset if requested, and populating orientation, spatial reference, reel, and
+    frame fields.
     Reel and frame numbers are extracted from image paths or associated metadata files. Field of view values are
     validated against expected defaults. The function is typically used after adding images to the dataset.
     """
@@ -174,6 +262,22 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
     h_wkid = cfg.get("spatial_ref.gcs_horizontal_wkid", 4326)
     v_wkid = cfg.get("spatial_ref.vcs_vertical_wkid", 5703)
 
+    # Ellipsoidal -> NAVD88 orthometric conversion (default on). The XVN/Point One
+    # heights are ellipsoidal; the OID vertical CRS (5703) and Terrain3D are
+    # orthometric, so unconverted Z would sit ~8-33 m low across CONUS.
+    apply_geoid = bool(cfg.get("spatial_ref.geoid_correction.enabled", True))
+    navd88_by_oid = None
+    if apply_geoid:
+        navd88_by_oid = convert_heights_to_navd88(cfg, oid_fc_path, logger)
+        if navd88_by_oid is None:
+            # Hard stop — never write ellipsoidal heights labeled as NAVD88.
+            return
+    else:
+        logger.warning(
+            "Geoid correction disabled (spatial_ref.geoid_correction.enabled=false): "
+            f"camera Z values remain ellipsoidal but are labeled vertical WKID {v_wkid} (NAVD88).",
+            indent=1
+        )
 
     pitch = registry.get("CameraPitch", {}).get("oid_default", 90)
     roll = registry.get("CameraRoll", {}).get("oid_default", 0)
@@ -198,6 +302,9 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
 
     for fdef in schema_cfg.get("mosaic_fields", {}).values():
         fields.append(fdef["name"])
+
+    if navd88_by_oid is not None:
+        fields.append(ELLIPSOIDAL_Z_FIELD)
 
     # Deduplicate in case of overlap
     fields = list(dict.fromkeys(fields))
@@ -234,6 +341,14 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
                 except KeyError:
                     logger.warning(f"Missing SHAPE@X/Y/Z fields on row {i}, skipping row.", indent=2)
                     continue
+
+                z_ellipsoidal = None
+                if navd88_by_oid is not None:
+                    converted = navd88_by_oid.get(row[field_to_index["OID@"]])
+                    if converted is None:
+                        logger.warning(f"No geoid-converted Z for row {i}, skipping row.", indent=2)
+                        continue
+                    z, z_ellipsoidal = converted
                 adjusted_z = z + z_offset if adjust_z else z
 
                 heading = row[field_to_index["CameraHeading"]] if "CameraHeading" in field_to_index else None
@@ -271,6 +386,8 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
                     row[field_to_index["Z"]] = adjusted_z
                 if "SHAPE@Z" in field_to_index:
                     row[field_to_index["SHAPE@Z"]] = adjusted_z
+                if z_ellipsoidal is not None and ELLIPSOIDAL_Z_FIELD in field_to_index:
+                    row[field_to_index[ELLIPSOIDAL_Z_FIELD]] = z_ellipsoidal
                 if "SRS" in field_to_index:
                     row[field_to_index["SRS"]] = f"{h_wkid},{v_wkid}"
                 if "CameraHeight" in field_to_index:

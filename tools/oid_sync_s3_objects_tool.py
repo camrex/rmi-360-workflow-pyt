@@ -112,7 +112,8 @@ class OIDSyncS3ObjectsTool:
             project_base=p["project_folder"],
             messages=messages,
         )
-        logger = cfg.get_logger()
+        # Bind the GP message sink so the util's log lines show in the tool dialog.
+        logger = cfg.get_logger(messages)
 
         legacy_bucket = resolve_oid_target_bucket(cfg, secured_mode=False)
         secured_bucket = resolve_oid_target_bucket(cfg, secured_mode=True)

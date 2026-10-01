@@ -4,7 +4,7 @@ from config_editor.core import paths, validate
 
 def test_read_supported_versions_from_source():
     versions = validate.read_supported_versions()
-    assert "1.4.0" in versions          # the current (clean-break) version
+    assert "1.5.0" in versions          # the current (clean-break) version
 
 
 def _sample_values():

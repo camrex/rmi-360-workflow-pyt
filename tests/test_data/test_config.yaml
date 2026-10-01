@@ -1,6 +1,6 @@
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.4.0
+schema_version: 1.5.0
 debug_messages: true
 
 # NEW RUNTIME CONFIG
@@ -200,9 +200,12 @@ camera_offset:
 #
 spatial_ref:
   gcs_horizontal_wkid: 4326                         # Geographic — used in OID SRS
-  vcs_vertical_wkid: 5703                           # Vertical — Ellipsoidal (GPS)
+  vcs_vertical_wkid: 5703                           # Vertical — NAVD88 orthometric (matches Terrain3D)
   pcs_horizontal_wkid: "config.project.local_proj_wkid"  # Projected — for footprint projection
   transformation: null                              # Manually set geographic transformation, if desired, otherwise ArcGIS Pro will pick
+  geoid_correction:
+    enabled: true                                   # Convert camera Z from ellipsoidal to NAVD88
+    model: "GEOID18"                                # Geoid model; GEOID18 = CONUS
 
 # --------------------------------------------------------------------
 # ⚙️ EXECUTABLE PATHS

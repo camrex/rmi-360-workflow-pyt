@@ -31,6 +31,14 @@
 #   - .cfg file support is reserved for future implementation
 #   - Output is auto-padded to 6-digit frame numbers post-render
 #
+# TODO:
+#   - This wrapper may be out of date with the current Mosaic Processor. Stitching is now
+#     commonly done outside the toolbox, so in-tool stitching has not been exercised against
+#     recent processor versions. Review and update against the live CLI: argument/flag changes,
+#     calibration/GRP handling, .cfg support, the three-stage sequence, and output layout/naming
+#     (downstream Add Images keys on the filename, so naming changes matter). Validate end-to-end
+#     before relying on the "Run Mosaic Processor" orchestrator step.
+#
 # =============================================================================
 import os
 import subprocess
