@@ -8,10 +8,48 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-Schema bumped **1.3.3 → 1.4.0** across this set of work. The runtime accepts **only
-`1.4.0`** (clean break); upgrade older `config.yaml` files with the new Config Editor.
+Schema bumped **1.3.3 → 1.4.0 → 1.5.0** across this set of work. The runtime accepts
+**only `1.5.0`** (clean break); upgrade older `config.yaml` files with the new Config
+Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
+`spatial_ref.geoid_correction` for the NAVD88 camera-height conversion.)
 
 ### Added
+
+#### Ellipsoidal → NAVD88 camera-height conversion (vertical datum fix)
+
+- The XVN/Point One chain outputs **ellipsoidal** heights, but the OID's vertical CRS
+  (EPSG:5703) and Terrain3D elevation source are **NAVD88 orthometric** — camera Z was
+  ~8–33 m low across CONUS. The **Calculate OID Attributes** step now converts camera Z
+  to NAVD88 via **GEOID18** (`utils/shared/geoid_transform.py`, pyproj 4979→6349,
+  vectorized; Z only — horizontal 4326 untouched, vertical WKID 5703 unchanged and now
+  correct).
+- Config-gated via `spatial_ref.geoid_correction` (`enabled`, default true; `model`,
+  GEOID18/CONUS only) — **schema 1.5.0** (additive; the editor's Upgrade fills the new
+  keys from sample defaults). The pyproj operation is **pinned to the GEOID18 grid**
+  (`us_noaa_g2018u0.tif`) and fails hard when the grid is missing, when points fall
+  outside coverage, or when the applied separation is implausible — unconverted heights
+  are never written. Original ellipsoidal Z is preserved in the runtime-added
+  `Z_Ellipsoidal` field, which also makes the conversion idempotent across re-runs.
+- See `docs/geoid_conversion.md` for environment/offline-grid setup and how to
+  reprocess OIDs built before this fix (their Z values must be recomputed — relabeling
+  alone does not fix the numbers).
+- New maintenance tool **`40 - Fix OID Elevations`** (`rmi_360_oid_maintenance.pyt`):
+  repairs already-built OIDs in place — converts stored Z (ellipsoidal + lever-arm
+  offset) to NAVD88 per row, rebuilds `CameraOrientation`, preserves the pre-offset
+  ellipsoidal source in `Z_Ellipsoidal`, and optionally republishes the hosted service
+  with overwrite (deletes the previous portal items, then reruns Generate OID Service).
+  Accepts the source OID or the published `*_aws` copy — an `*_aws` input republishes
+  directly under the un-suffixed service name without re-copy/ImagePath rewrite
+  (`generate_oid_service` gained optional `service_name`/`prepare_copy` args, defaults
+  unchanged). Dry run by default with a full change summary; images/S3 objects untouched.
+
+### Fixed
+
+- **Maintenance tools showed no output in the GP dialog**: `ConfigManager` creates its
+  `LogManager` with `messages=None`, so tools calling `cfg.get_logger()` bare logged
+  only to stdout + `process_log.txt`. All `rmi_360_oid_maintenance` tools now bind the
+  ArcGIS message sink via `cfg.get_logger(messages)` (the idiom Deploy Secured Test Set
+  already used), so dry-run summaries and progress lines appear in the tool dialog.
 
 #### Config Editor (standalone)
 
