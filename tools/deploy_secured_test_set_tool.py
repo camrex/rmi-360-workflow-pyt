@@ -91,7 +91,7 @@ class OIDDeploySecuredTestSetTool:
         )
 
         source_bucket = arcpy.Parameter(
-            displayName="Source Bucket Override (blank = aws.s3_bucket_panos_unsecured)",
+            displayName="Source Bucket Override (blank = auto-detect from the OID's ImagePaths)",
             name="source_bucket",
             datatype="GPString",
             parameterType="Optional",
@@ -184,6 +184,9 @@ class OIDDeploySecuredTestSetTool:
             csn.setErrorMessage("Cloud Store Name is required when Publish Service is enabled.")
         elif csn:
             csn.clearMessage()
+        tc = p.get("test_count")
+        if tc and tc.value is not None and int(tc.value) < 1:
+            tc.setErrorMessage("Test Set Size must be at least 1.")
 
     def execute(self, parameters, messages):
         p = {param.name: param.valueAsText for param in parameters}

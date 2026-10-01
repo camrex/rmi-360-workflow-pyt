@@ -105,8 +105,17 @@ def _ensure_bucket(s3, bucket: str, region: str, logger, dry_run: bool) -> str:
         s3.head_bucket(Bucket=bucket)
         logger.info(f"Test bucket already exists: {bucket}", indent=2)
         return "exists"
-    except Exception:
-        pass
+    except Exception as e:
+        # Only a genuine "not found" means create. A 403 (exists but owned by
+        # another account / no permission) or a network error must not fall
+        # through to create_bucket.
+        code = str(getattr(e, "response", {}).get("Error", {}).get("Code", ""))
+        if code not in ("404", "NoSuchBucket", "NotFound"):
+            msg = f"Cannot access test bucket '{bucket}' ({code or type(e).__name__}): {e}"
+            if dry_run:
+                logger.warning(f"[DRY RUN] {msg}", indent=2)
+                return "inaccessible"
+            raise RuntimeError(msg) from e
     if dry_run:
         logger.info(f"[DRY RUN] Would create bucket '{bucket}' in {region}.", indent=2)
         return "would_create"
@@ -289,6 +298,8 @@ def deploy_secured_test_set(
 
     if not test_bucket:
         raise ValueError("test_bucket is required.")
+    if test_count < 1:
+        raise ValueError(f"test_count must be at least 1 (got {test_count}).")
     key_prefix = (key_prefix or resolve_oid_key_prefix(cfg) or "").strip().strip("/")
     # Auto-detect the source bucket from the OID's ImagePath form (secured vs public)
     # unless explicitly overridden — so a us-east-2 SECURED OID resolves to the
@@ -333,8 +344,15 @@ def deploy_secured_test_set(
     # 5) Publish (requires a registered cloud store) — else emit registration values.
     published = None
     if publish:
+        incomplete = sync["failed"] + sync["no_key"]
         if not cloud_store_name:
             logger.warning("publish=True but cloud_store_name not provided; skipping publish.", indent=2)
+        elif incomplete and not dry_run:
+            # Publishing now would reference images missing from the test bucket.
+            logger.warning(
+                f"Skipping publish: {incomplete} image(s) were not synced "
+                f"(failed {sync['failed']}, no-key {sync['no_key']}). Fix and re-run.", indent=2
+            )
         else:
             published = _publish(cfg, test_oid_fc, cloud_store_name, share_with, logger, dry_run)
     else:
