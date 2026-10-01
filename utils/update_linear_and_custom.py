@@ -77,7 +77,7 @@ def _build_intended_route_map(cfg: ConfigManager, oid_fc_path: str, manifest_pat
     attr_map = load_manifest_attr_map(manifest_path, [intended_col], logger)
     col = intended_col.lower()
     out: dict = {}
-    total = 0
+    total = matched = 0
     sample_paths = []
     with arcpy.da.SearchCursor(oid_fc_path, ["OID@", "ImagePath"]) as cursor:
         for oid, image_path in cursor:
@@ -86,9 +86,18 @@ def _build_intended_route_map(cfg: ConfigManager, oid_fc_path: str, manifest_pat
                 sample_paths.append(image_path)
             filename = extract_filename_from_image_path(image_path)
             rec = attr_map.get(filename.lower()) if filename else None
+            if rec is not None:
+                matched += 1
             if rec and rec.get(col):
                 out[f"OID_{oid}"] = rec[col]
-    if total and not out:
+    if total and matched and not out:
+        # Names joined fine — the manifest's intended-route column is blank/missing.
+        logger.error(
+            f"{matched:,} of {total:,} OID image(s) matched the manifest, but none has a value in "
+            f"its '{intended_col}' column — check the manifest's columns/data.",
+            error_type=RuntimeError, indent=1,
+        )
+    elif total and not out:
         logger.error(
             f"No OID image name matched the manifest (of {total:,}) for linear relocation. "
             + explain_manifest_zero_match(cfg, sample_paths, attr_map),
