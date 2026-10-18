@@ -47,6 +47,23 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
   (`generate_oid_service` gained optional `service_name`/`prepare_copy` args, defaults
   unchanged). Dry run by default with a full change summary; images/S3 objects untouched.
 
+#### Report image scripts
+
+- `scripts/report_images/`: a GUI that cuts flat perspective views from 360 panoramas
+  for valuation reports (by milepost in the filename, every Nth image, or all; ffmpeg or
+  OpenCV backend). Brought in from a standalone folder that was never in version control,
+  with these fixes:
+  - **ffmpeg output was stretched ~23% vertically**: `v_fov` was `hfov / 2.35` and
+    `scale=` then forced the size; it is now derived from the output aspect ratio and
+    `v360` renders at the target size, matching the OpenCV backend's geometry.
+  - The GUI no longer needs numpy/OpenCV/SciPy to start (imported only for the OpenCV
+    backend), so the ffmpeg backend runs in the ArcGIS Pro env.
+  - Yaw above 180° (e.g. 270) no longer makes ffmpeg fail; it is wrapped into −180…180.
+  - The OpenCV backend reports a failed image write instead of counting it as processed.
+  - A duplicate "Process Every:" label no longer shows in every mode.
+- README: `scripts/` added to the repository structure, plus a Standalone Scripts table
+  covering every helper in `scripts/`.
+
 ### Fixed
 
 - **NAVD88 camera heights about 1 m too low (missing reference-frame shift)**: the
