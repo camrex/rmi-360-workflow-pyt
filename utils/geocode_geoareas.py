@@ -46,8 +46,7 @@ __all__ = [
 
 import arcpy
 import os
-from typing import Dict, List, Optional, Union, Callable, Any, Tuple
-from pathlib import Path
+from typing import Dict, List, Optional, Callable, Any, Tuple
 
 from utils.shared.arcpy_utils import validate_fields_exist
 

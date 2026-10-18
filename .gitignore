@@ -39,6 +39,10 @@ report/*.json
 configs/config.yaml
 /templates/exiftool/geolocation500.config
 
+# Private directory (configs, credentials, test data)
+private/
+private/**
+
 # IDE & OS
 .vscode/
 .DS_Store
