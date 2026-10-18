@@ -8,10 +8,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-Schema bumped **1.3.3 → 1.4.0 → 1.5.0** across this set of work. The runtime accepts
-**only `1.5.0`** (clean break); upgrade older `config.yaml` files with the new Config
-Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
-`spatial_ref.geoid_correction` for the NAVD88 camera-height conversion.)
+Schema bumped **1.3.3 → 1.4.0 → 1.5.0 → 1.6.0** across this set of work. The runtime
+accepts **only `1.6.0`** (clean break); upgrade older `config.yaml` files with the new
+Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
+`spatial_ref.geoid_correction` for the NAVD88 camera-height conversion; 1.6.0 = additive
+`spatial_ref.geoid_correction.source_frame` for the reference-frame shift.)
 
 ### Added
 
@@ -48,6 +49,29 @@ Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 ### Fixed
 
+- **NAVD88 camera heights about 1 m too low (missing reference-frame shift)**: the
+  pinned GEOID18 operation is a bare grid shift that treats its input as NAD83(2011),
+  but the XVN's heights are in the frame of its RTK corrections — Point One mount point
+  `POLARIS` = **ITRF2014** at the current epoch. Moving ITRF2014 → NAD83(2011) raises
+  heights by ~+1.06–1.11 m in IL/KC (~+0.9 m west, ~+1.5 m southeast), so every OID
+  converted under 1.5.0 has cameras that much too low. Calculate OID Attributes now runs
+  a **frame step first**: source frame → NAD83(2011) at each row's capture epoch (from
+  `AcquisitionDate`) via PROJ's time-dependent Helmert, pinned to an operation with
+  `helmert` + `t_epoch` — PROJ's WGS 84 → NAD83(2011) operation is a zero-shift
+  placeholder, so `WGS84` is treated as ITRF2020. It fails hard on a missing operation,
+  a missing `AcquisitionDate`, or any shift that is non-finite or outside 0.1–3 m.
+  - New config key `spatial_ref.geoid_correction.source_frame` (`ITRF2014` default,
+    `ITRF2020`, `NAD83_2011`, `WGS84`) — **schema 1.6.0**; never guessed when absent.
+  - New runtime field **`Z_Frame`** records the applied frame/epoch
+    (e.g. `ITRF2014@2026.051`), so OIDs converted without the shift are identifiable.
+  - **Tool 40 (Fix OID Elevations)** now handles both generations: never-converted rows
+    get the full conversion; rows converted under 1.5.0 (`Z_Ellipsoidal` set, `Z_Frame`
+    empty) get `Z += dh` at their own position/epoch (keeps the built lever-arm offset;
+    `Z_Ellipsoidal` untouched); rows whose `Z_Frame` matches are skipped; a different
+    `Z_Frame` refuses the run. New **Source Frame** parameter covers project configs
+    older than 1.6.0.
+  - Expect camera heights above Terrain3D/lidar to rise by about 1 m after reprocessing;
+    see `docs/geoid_conversion.md` for the spot-check guidance.
 - **Maintenance tools showed no output in the GP dialog**: `ConfigManager` creates its
   `LogManager` with `messages=None`, so tools calling `cfg.get_logger()` bare logged
   only to stdout + `process_log.txt`. All `rmi_360_oid_maintenance` tools now bind the

@@ -17,7 +17,7 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.5.0
+schema_version: 1.6.0
 debug_messages: false   # Verbose debug-level logging
 
 # ------------------------------------------------------------------------------
@@ -260,11 +260,17 @@ camera_offset:
 #   - WKID 4326 = WGS 1984 (horizontal)
 #   - WKID 5703 = NAVD88 height, orthometric meters (vertical)
 #
-# The XVN/Point One camera positions carry *ellipsoidal* heights, so
-# geoid_correction converts camera Z to NAVD88 (GEOID18) during the
-# Calculate OID Attributes step; the original ellipsoidal value is preserved
-# in the Z_Ellipsoidal field. GEOID18 covers CONUS only — the step fails
-# loudly for points outside coverage rather than writing unconverted values.
+# The XVN/Point One camera positions carry *ellipsoidal* heights in the frame
+# of the RTK corrections, so geoid_correction converts camera Z to NAVD88 during
+# the Calculate OID Attributes step: source_frame -> NAD83(2011) at the capture
+# epoch (AcquisitionDate), then GEOID18. The original ellipsoidal value is kept
+# in Z_Ellipsoidal and the applied frame/epoch in Z_Frame. GEOID18 covers CONUS
+# only — the step fails loudly rather than writing unconverted values.
+#
+# source_frame must match the XVN's NTRIP mount point:
+#   - POLARIS (Point One global)     -> ITRF2014  (~+0.9..1.5 m shift in CONUS)
+#   - POLARIS_LOCAL (Point One US)   -> NAD83_2011 (no shift)
+#   - other global/PPP solutions     -> ITRF2020 (WGS84 is treated as ITRF2020)
 #
 # @section: Spatial Reference | Coordinate system settings.
 spatial_ref:
@@ -275,6 +281,7 @@ spatial_ref:
   geoid_correction:
     enabled: true                                   # Convert camera Z from ellipsoidal to NAVD88 (recommended: true)
     model: "GEOID18"                                # Geoid model; GEOID18 = CONUS. Only GEOID18 is supported currently.
+    source_frame: "ITRF2014"                        # Frame of the camera heights (POLARIS = ITRF2014). @choices[ITRF2014, ITRF2020, NAD83_2011, WGS84]
 
 # --------------------------------------------------------------------
 # ⚙️ EXECUTABLE PATHS
