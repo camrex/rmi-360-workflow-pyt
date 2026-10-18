@@ -79,9 +79,10 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
   Locate (wrong subdivision at convergence zones) and SequenceOrder ignored the
   manifest. The orchestrator now resolves the manifest **once** (dialog CSV wins; else
   the config path when the dialog *or* config Thinning Mode is `pre`) and passes it to
-  every manifest step; a resolved manifest makes the run pre-thin. A `pre` run whose
-  manifest steps will execute but has no manifest now stops with an error. The
-  standalone Update Linear tool gains an optional Corridor Manifest CSV parameter.
+  every manifest step; a resolved manifest makes the run pre-thin. A run that is `pre`
+  in the dialog *or* the config, whose manifest steps will execute but has no manifest,
+  now stops with an error. The standalone Update Linear tool gains an optional Corridor
+  Manifest CSV parameter.
 - **Misleading manifest zero-match error**: a join that matched no OID image always
   said "must run BEFORE Rename Images". It now says which case applies — ImagePath
   could not be parsed, names look already renamed (step order), or names are original
