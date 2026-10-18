@@ -97,6 +97,11 @@ class StatusTracker:
         self.publish_count = 0
         self._stop = threading.Event()
         self._publisher: Optional[threading.Thread] = None
+        # Publishes are serialized, and an older snapshot is never sent after a newer one,
+        # so a slow in-flight heartbeat can't land after (and overwrite) the final one.
+        self._publish_lock = threading.Lock()
+        self._seq = 0
+        self._published_seq = 0
         self.data = {
             "started_at": now_ts(),
             "phase": "init",
@@ -253,16 +258,23 @@ class StatusTracker:
                 return
 
     def _publish_now(self):
-        """Snapshot under the lock; publish outside it. Never raises."""
+        """Snapshot under the data lock; publish outside it, one at a time, newest wins.
+        Never raises."""
         with self.lock:
+            self._seq += 1
+            seq = self._seq
             self.data["last_update"] = now_ts()
             text = json.dumps(self.data, ensure_ascii=False, indent=2)
-        try:
-            self.publish(text)
-            self.publish_count += 1
-        except Exception as e:  # noqa: BLE001 — a heartbeat must never stop the work
-            if self.publish_error is None:
-                self.publish_error = f"{type(e).__name__}: {e}"
+        with self._publish_lock:
+            if seq <= self._published_seq:
+                return  # a newer snapshot already went out
+            try:
+                self.publish(text)
+                self._published_seq = seq
+                self.publish_count += 1
+            except Exception as e:  # noqa: BLE001 — a heartbeat must never stop the work
+                if self.publish_error is None:
+                    self.publish_error = f"{type(e).__name__}: {e}"
 
     def _flush_if_due(self):
         """Flush JSON if enough time has passed since last flush."""

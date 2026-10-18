@@ -29,7 +29,9 @@ the Lambda upload monitor.)
   versions after a day). Puts are SSE-S3 encrypted, the client has short timeouts,
   and a failed heartbeat is reported once without affecting the upload. A background
   thread publishes on a timer, outside the upload threads, so heartbeats continue
-  during long transfers. It always stops at the end, including on an exception.
+  during long transfers; publishes are serialized so a slow one can't overwrite the
+  final state. It always stops at the end, including on an exception. A resume with
+  nothing left to upload still publishes a final `complete`.
   No setting is needed. `StatusTracker` gained the `publish` hook, `start()` and
   `finish()`.
   See `docs/aws/upload-heartbeat.rst`.

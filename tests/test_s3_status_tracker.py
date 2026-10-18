@@ -76,3 +76,28 @@ def test_no_publish_keeps_local_only_behaviour(tmp_path):
     tr.set_totals(1)
     assert json.loads(status.read_text(encoding="utf-8"))["totals"]["files"] == 1
     assert _heartbeat_threads() == []
+
+
+def test_slow_heartbeat_cannot_land_after_the_final_one():
+    landed = []
+    first = threading.Event()
+
+    def publish(text):
+        if not first.is_set():          # the thread's first (pre-final) heartbeat is slow
+            first.set()
+            time.sleep(0.3)
+        landed.append(json.loads(text)["phase"])
+
+    tr = StatusTracker(None, publish=publish, publish_interval_sec=60)
+    tr.start()
+    first.wait(1)
+    tr.finish("complete", join_timeout_sec=0.01)   # join gives up while the slow PUT runs
+    assert landed[-1] == "complete"
+
+
+def test_older_snapshot_is_never_published_after_a_newer_one():
+    sent = []
+    tr = StatusTracker(None, publish=sent.append)
+    tr._published_seq = 10**9            # pretend a newer snapshot already went out
+    tr._publish_now()
+    assert sent == []

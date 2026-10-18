@@ -392,7 +392,7 @@ class _Progressor:
 
 
 def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, heartbeat_fails=False,
-              progressor_error=None):
+              progressor_error=None, prior_log_keys=()):
     """Run copy_to_aws over ``files`` (relative paths). ``existing`` keys answer HeadObject 200;
     ``raced`` keys pass HeadObject but are refused by the conditional put (412)."""
     src = tmp_path / "renamed"
@@ -409,6 +409,12 @@ def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, h
         cfg.get_progressor.side_effect = progressor_error
     cfg.paths.project_base = tmp_path
     cfg.paths.get_log_file_path.side_effect = lambda name, _cfg: tmp_path / f"{name}.csv"
+    if prior_log_keys:
+        with open(tmp_path / "aws_upload_log.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["timestamp", "local_file", "s3_key", "status", "error", "size_bytes", "duration_sec"])
+            for k in prior_log_keys:
+                w.writerow(["t", "f", k, "uploaded", "", 4, 0.1])
     s3 = MagicMock()
     s3.meta.service_model.operation_model.return_value.input_shape.members = {"IfNoneMatch": object()}
     s3.head_object.side_effect = lambda Bucket, Key: (None if Key in existing else
@@ -538,3 +544,13 @@ def test_heartbeat_thread_stops_when_upload_raises(tmp_path, monkeypatch):
     assert alive == []
     status = json.loads((tmp_path / "aws_upload_status.json").read_text(encoding="utf-8"))
     assert status["phase"] == "error"
+
+
+def test_resume_with_nothing_left_still_publishes_final_heartbeat(tmp_path, monkeypatch):
+    import json
+    result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg", "b.jpg"], extra=HEARTBEAT_CFG,
+                                    prior_log_keys=["RMI1/a.jpg", "RMI1/b.jpg"])
+    assert result["status"] == "completed" and result["skipped_from_log"] == 2
+    assert put_keys == []
+    final = json.loads(_run_copy.heartbeats[-1]["Body"].decode("utf-8"))
+    assert final["phase"] == "complete" and final["meta"]["skipped_from_log"] == 2

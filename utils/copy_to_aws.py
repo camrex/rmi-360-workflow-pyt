@@ -498,18 +498,6 @@ def copy_to_aws(
             upload_tasks.append((file_path, s3_key))
 
     total = len(upload_tasks)
-    if total == 0:
-        logger.custom("No files to upload (all skipped or already uploaded).", indent=1, emoji="❗")
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": len(uploaded_keys),
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "completed"
-        }
 
     # Heartbeat (replaces the Lambda upload monitor): progress JSON to rmi-360-raw/status/{slug}/.
     publish, heartbeat_target = make_heartbeat_publisher(session, cfg)
@@ -527,6 +515,25 @@ def copy_to_aws(
               "skipped_from_log": len(log_rows), "tool": "copy_to_aws"},
     )
     tracker.set_totals(total)
+
+    if total == 0:
+        logger.custom("No files to upload (all skipped or already uploaded).", indent=1, emoji="❗")
+        # Still publish a final heartbeat: it replaces any stale one from an interrupted run.
+        tracker.finish("complete")
+        if tracker.publish_error:
+            logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
+                           f"{tracker.publish_error}.", indent=1)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": len(uploaded_keys),
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "completed"
+        }
+
     tracker.start_group(HEARTBEAT_GROUP, total)
 
     start_time = time.time()
