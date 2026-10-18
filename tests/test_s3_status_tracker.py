@@ -101,3 +101,15 @@ def test_older_snapshot_is_never_published_after_a_newer_one():
     tr._published_seq = 10**9            # pretend a newer snapshot already went out
     tr._publish_now()
     assert sent == []
+
+
+def test_local_write_failure_is_recorded_not_raised(tmp_path, monkeypatch):
+    def locked(*a, **k):
+        raise PermissionError("locked")
+
+    monkeypatch.setattr(tracker_mod, "atomic_write_text", locked)
+    tr = StatusTracker(tmp_path / "status.json")
+    tr.set_totals(1)
+    tr.complete_group("g")
+    tr.finish("complete")
+    assert tr.local_error == "PermissionError: locked"

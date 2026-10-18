@@ -633,12 +633,34 @@ def copy_to_aws(
                     progressor.update(current, label)
                     logger.custom(label, indent=3, emoji="☁️")
                     last = current
+
+        # Summary and report updates come before the final heartbeat, so "complete" is
+        # only published once they have succeeded (an exception here publishes "error").
+        # Write Summary File (aws_upload_summary)
+        summary_stats = calculate_summary(log_rows, total, start_time)
+        write_summary_file(summary_file, summary_stats)
+
+        logger.success(f"Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.", indent=1)
+        if summary_stats['failed'] and not summary_stats['uploaded']:
+            logger.warning("No files were uploaded successfully. Check AWS credentials, bucket name, region, and IAM permissions.", indent=1)
+        logger.custom(f"Log written to: {log_file}", indent=1, emoji="📄")
+        logger.custom(f"Upload summary written to: {summary_file}", indent=1, emoji="📊")
+
+        # Update report_data if passed
+        if report_data is not None:
+            report_data.setdefault("upload", {}).update({
+                "status": "cancelled" if cancel_event.is_set() else "completed",
+                "count": summary_stats['uploaded'],
+                "expected_total": total,
+                "end_time": datetime.now(timezone.utc).isoformat(),
+                "percent_complete": summary_stats['uploaded'] / total * 100 if total else 0
+            })
     except BaseException:
         crashed = True
         raise
     finally:
         # Final heartbeat, also on an exception, so the publisher thread never outlives the upload.
-        tracker.complete_group(HEARTBEAT_GROUP)
+        tracker.complete_group(HEARTBEAT_GROUP)  # local status write failures are non-fatal
         if crashed:
             final_phase = "error"
         elif cancel_event.is_set():
@@ -652,25 +674,8 @@ def copy_to_aws(
             logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
                            f"{tracker.publish_error}. The upload itself was not affected.", indent=1)
 
-    # Write Summary File (aws_upload_summary)
-    summary_stats = calculate_summary(log_rows, total, start_time)
-    write_summary_file(summary_file, summary_stats)
-
-    logger.success(f"Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.", indent=1)
-    if summary_stats['failed'] and not summary_stats['uploaded']:
-        logger.warning("No files were uploaded successfully. Check AWS credentials, bucket name, region, and IAM permissions.", indent=1)
-    logger.custom(f"Log written to: {log_file}", indent=1, emoji="📄")
-    logger.custom(f"Upload summary written to: {summary_file}", indent=1, emoji="📊")
-
-    # Update report_data if passed
-    if report_data is not None:
-        report_data.setdefault("upload", {}).update({
-            "status": "cancelled" if cancel_event.is_set() else "completed",
-            "count": summary_stats['uploaded'],
-            "expected_total": total,
-            "end_time": datetime.now(timezone.utc).isoformat(),
-            "percent_complete": summary_stats['uploaded'] / total * 100 if total else 0
-        })
+    if tracker.local_error:
+        logger.warning(f"The local upload status file could not be written: {tracker.local_error}.", indent=1)
 
     return {
         "uploaded": summary_stats['uploaded'],

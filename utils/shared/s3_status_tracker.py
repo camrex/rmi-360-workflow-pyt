@@ -94,6 +94,7 @@ class StatusTracker:
         self.publish = publish
         self.publish_interval = max(0.01, float(publish_interval_sec))
         self.publish_error: Optional[str] = None
+        self.local_error: Optional[str] = None
         self.publish_count = 0
         self._stop = threading.Event()
         self._publisher: Optional[threading.Thread] = None
@@ -295,5 +296,9 @@ class StatusTracker:
         if not self.status_path:
             return
         self.data["last_update"] = now_ts()
-        atomic_write_text(self.status_path, json.dumps(self.data, ensure_ascii=False, indent=2))
+        try:
+            atomic_write_text(self.status_path, json.dumps(self.data, ensure_ascii=False, indent=2))
+        except OSError as e:  # e.g. the file is locked: never let the local copy fail the work
+            if self.local_error is None:
+                self.local_error = f"{type(e).__name__}: {e}"
         self.last_flush = now_ts()

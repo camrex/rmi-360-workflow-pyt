@@ -392,7 +392,7 @@ class _Progressor:
 
 
 def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, heartbeat_fails=False,
-              progressor_error=None, prior_log_keys=()):
+              progressor_error=None, prior_log_keys=(), on_image_put=None):
     """Run copy_to_aws over ``files`` (relative paths). ``existing`` keys answer HeadObject 200;
     ``raced`` keys pass HeadObject but are refused by the conditional put (412)."""
     src = tmp_path / "renamed"
@@ -427,6 +427,8 @@ def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, h
                 raise _client_error_status("AccessDenied", 403)
             heartbeats.append(kw)
             return
+        if on_image_put is not None:
+            on_image_put(heartbeats)
         put_keys.append(kw["Key"])
         if kw["Key"] in raced:
             raise _client_error_status("PreconditionFailed", 412)
@@ -578,8 +580,15 @@ def test_duplicate_stop_writes_local_error_status(tmp_path, monkeypatch):
 
 
 def test_live_heartbeat_phase_is_uploading(tmp_path, monkeypatch):
-    import json
-    _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG)
+    import json, time
+
+    def hold_until_heartbeat(heartbeats):
+        # Keep the image PUT "in flight" until the publisher thread has sent a heartbeat.
+        deadline = time.time() + 5
+        while not heartbeats and time.time() < deadline:
+            time.sleep(0.01)
+
+    _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG, on_image_put=hold_until_heartbeat)
     phases = [json.loads(b["Body"].decode("utf-8"))["phase"] for b in _run_copy.heartbeats]
     assert phases[0] == "uploading" and phases[-1] == "complete"
 
@@ -603,3 +612,39 @@ def test_unwritable_upload_log_records_error_status(tmp_path, monkeypatch):
     monkeypatch.setattr("builtins.open", real_open)
     status = json.loads((tmp_path / "aws_upload_status.json").read_text(encoding="utf-8"))
     assert status["phase"] == "error"
+
+
+def test_failed_summary_write_publishes_error_not_complete(tmp_path, monkeypatch):
+    import json
+
+    def broken_summary(*a, **k):
+        raise PermissionError("summary locked")
+
+    monkeypatch.setattr(copy_to_aws_mod, "write_summary_file", broken_summary)
+    seen = []
+    try:
+        _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG,
+                  on_image_put=lambda hb: seen.append(hb))
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("expected PermissionError")
+    final = json.loads(seen[0][-1]["Body"].decode("utf-8"))  # same list, filled to the end
+    assert final["phase"] == "error"
+
+
+def test_locked_local_status_does_not_fail_upload(tmp_path, monkeypatch):
+    import json, threading
+
+    def locked(*a, **k):
+        raise PermissionError("status file locked")
+
+    monkeypatch.setattr(shared_tracker_mod, "atomic_write_text", locked)
+    result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG)
+    assert result["status"] == "completed" and put_keys == ["RMI1/a.jpg"]
+    final = json.loads(_run_copy.heartbeats[-1]["Body"].decode("utf-8"))
+    assert final["phase"] == "complete"                  # S3 heartbeat still finalized
+    alive = [th for th in threading.enumerate() if th.name == "status-heartbeat" and th.is_alive()]
+    assert alive == []
+    warned = " ".join(str(c.args[0]) for c in _run_copy.logger.warning.call_args_list)
+    assert "local upload status file could not be written" in warned
