@@ -191,26 +191,46 @@ def object_exists(s3_client, bucket: str, key: str) -> bool:
 MAX_SINGLE_PUT_BYTES = 5 * 1024 ** 3
 
 
+CONFLICT_RETRIES = 3          # 409 ConditionalRequestConflict: S3 asks for the whole PUT again
+CONFLICT_BACKOFF_SEC = 0.5
+
+
+def supports_conditional_put(s3_client) -> bool:
+    """True if this botocore's PutObject model has IfNoneMatch (older ones reject it)."""
+    try:
+        members = s3_client.meta.service_model.operation_model("PutObject").input_shape.members
+        return "IfNoneMatch" in members
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def put_if_absent(s3_client, bucket: str, key: str, path, content_type: str = "image/jpeg") -> bool:
     """Upload ``path`` to ``key`` only if no object exists there (If-None-Match: *).
 
     Returns True if uploaded, False if S3 refused because the key already exists
     (412 PreconditionFailed). The check is atomic in S3, so concurrent puts of the
-    same key cannot overwrite each other. Any other error is raised.
+    same key cannot overwrite each other. A 409 ConditionalRequestConflict (another
+    write to the key in flight) is retried from the start, as S3 requires; it then
+    resolves to an upload or a 412. Any other error is raised.
     """
     size = os.path.getsize(path)
     if size > MAX_SINGLE_PUT_BYTES:
         raise ValueError(f"{path} is {size} bytes, over the 5 GB single-PUT limit")
-    with open(path, "rb") as body:
-        try:
-            s3_client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type, IfNoneMatch="*")
-            return True
-        except ClientError as e:
-            code = str(e.response.get("Error", {}).get("Code", ""))
-            status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-            if code == "PreconditionFailed" or status == 412:
-                return False
-            raise
+    for attempt in range(CONFLICT_RETRIES + 1):
+        with open(path, "rb") as body:
+            try:
+                s3_client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type, IfNoneMatch="*")
+                return True
+            except ClientError as e:
+                code = str(e.response.get("Error", {}).get("Code", ""))
+                status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+                if code == "PreconditionFailed" or status == 412:
+                    return False
+                conflict = code == "ConditionalRequestConflict" or status == 409
+                if not conflict or attempt == CONFLICT_RETRIES:
+                    raise
+        time.sleep(CONFLICT_BACKOFF_SEC * (attempt + 1))
+    return False  # pragma: no cover - loop always returns or raises
 
 
 def find_duplicate_keys(tasks):
@@ -407,6 +427,23 @@ def copy_to_aws(
 
     if using_acceleration:
         logger.custom("Uploads will use the accelerated endpoint.", indent=2, emoji="🚀")
+
+    if not supports_conditional_put(s3):
+        msg = ("The installed botocore does not support conditional writes (PutObject IfNoneMatch), "
+               "which Copy To AWS needs so it never overwrites. Update boto3/botocore in the "
+               "ArcGIS Pro environment; nothing was uploaded.")
+        logger.error(msg, indent=2)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": msg,
+        }
 
     logger.info("Starting AWS Upload...", indent=1)
     # One conditional PutObject per file; max_workers caps how many run at once.

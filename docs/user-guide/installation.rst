@@ -24,6 +24,7 @@ The following Python packages are required and should be available in your ArcGI
    jinja2          # Templating for reports or config generation
    pytest          # Unit testing
    matplotlib      # Plotting and visualization
+   defusedxml      # Hardened XML parsing for GPX/script inputs
 
 Installing Dependencies
 -----------------------
