@@ -64,6 +64,17 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 - README: `scripts/` added to the repository structure, plus a Standalone Scripts table
   covering every helper in `scripts/`.
 
+#### Corridor thinning design notes
+
+- `docs/corridor_thinning_design.md`: the original pipeline design record from the
+  standalone scripts the corridor toolbox was ported from. It has the per-stage
+  rationale, parameter choices with 26-150 results, the reversal-resolution design
+  (F1/R/F2, keep F2), and the gotchas. A preface maps each script to its toolbox tool
+  and module, and notes that the scripts' trim was 1.5 **ft** (≈4.54 m effective)
+  while the toolbox's trim is in meters. Marked corrections fix the "mp_meas is
+  quantized" claim: the near-ties are real geometry, and the frame tie-break still
+  applies. Linked from `corridor_thinning.md`.
+
 ### Fixed
 
 - **NAVD88 camera heights about 1 m too low (missing reference-frame shift)**: the
