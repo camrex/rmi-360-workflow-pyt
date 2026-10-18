@@ -53,8 +53,9 @@ New: **Config Editor** — a standalone, comment-preserving editor for `config.y
 | Image Metadata Support | Auto tag EXIF metadata + rename by GPS, time, reel, frame, etc.             |
 
 Secured storage status: publishing now passes virtual_cache_directory when aws.secured_delivery.enabled is true.
-End-to-end secured-storage serving on Enterprise 12.0 is still blocked by Esri Case #04187998.
-Legacy public-URL mode remains the supported path until the Esri issue is resolved.
+Secured-storage serving does not work on ArcGIS Enterprise 12.0/12.1 (Esri Case #04187998, concluded) and
+is not expected before Enterprise 12.2. Legacy public-URL mode is the only supported delivery path; keep
+`aws.secured_delivery.enabled: false`.
 
 ---
 
