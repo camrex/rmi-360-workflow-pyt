@@ -1068,10 +1068,15 @@ class Process360Workflow(object):
             if manifest_steps_run:
                 logger.info(f"Corridor manifest for this run (Add Images, Update Linear, "
                             f"SequenceOrder): {run_manifest}", indent=1)
-        elif str(p.get("thinning_mode") or "").lower() == "pre" and manifest_steps_run:
+        elif manifest_steps_run and "pre" in (
+            str(p.get("thinning_mode") or "").lower(),
+            str(cfg.get("thinning_mode", "post") or "").lower(),
+        ):
+            # Same "either side says pre" rule as resolve_run_manifest.
             logger.error(
-                "Thinning Mode is 'pre' but no corridor manifest was given: set Corridor Manifest "
-                "CSV in the dialog or corridor_thinning.manifest.path in the config.",
+                "Thinning Mode is 'pre' (dialog or config) but no corridor manifest was given: "
+                "set Corridor Manifest CSV in the dialog or corridor_thinning.manifest.path "
+                "in the config.",
                 error_type=ValueError, indent=1,
             )
 
