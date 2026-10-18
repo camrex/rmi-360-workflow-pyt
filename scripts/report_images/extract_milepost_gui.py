@@ -234,9 +234,11 @@ class MilepostExtractorApp:
                     output_file = output_dir / f"{image_path.stem}_rect.jpg"
 
                 if backend == "ffmpeg":
+                    # v360 accepts yaw only in -180..180; wrap compass-style angles (e.g. 270 -> -90)
+                    ff_yaw = (yaw + 180) % 360 - 180
                     cmd = [
                         "ffmpeg", "-y", "-i", str(image_path),
-                        "-vf", f"v360=input=equirect:output=rectilinear:yaw={yaw}:pitch=0:roll=0:h_fov={hfov}:v_fov={v_fov:.4f}:w={width}:h={height}",
+                        "-vf", f"v360=input=equirect:output=rectilinear:yaw={ff_yaw}:pitch=0:roll=0:h_fov={hfov}:v_fov={v_fov:.4f}:w={width}:h={height}",
                         "-frames:v", "1", "-q:v", "2", str(output_file)
                     ]
                     subprocess.run(cmd, check=True)

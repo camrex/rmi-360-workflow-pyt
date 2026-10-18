@@ -58,6 +58,7 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
     `v360` renders at the target size, matching the OpenCV backend's geometry.
   - The GUI no longer needs numpy/OpenCV/SciPy to start (imported only for the OpenCV
     backend), so the ffmpeg backend runs in the ArcGIS Pro env.
+  - Yaw above 180° (e.g. 270) no longer makes ffmpeg fail; it is wrapped into −180…180.
   - The OpenCV backend reports a failed image write instead of counting it as processed.
   - A duplicate "Process Every:" label no longer shows in every mode.
 - README: `scripts/` added to the repository structure, plus a Standalone Scripts table
