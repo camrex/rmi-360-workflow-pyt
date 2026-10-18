@@ -133,8 +133,10 @@ cp configs/config.sample.yaml configs/config.yaml
 
 ## 🛠 Standalone Scripts
 
-Helpers in `scripts/` run outside the toolbox (`python scripts/<name>.py --help`).
-Each file's header documents its options.
+Helpers in `scripts/` run outside the toolbox. The command-line scripts take
+`--help` (`python scripts/<name>.py --help`), and each file's header documents its
+options. The report-image tool is a GUI with no options: run
+`python scripts/report_images/extract_milepost_gui.py`.
 
 | Script | Purpose |
 | --- | --- |

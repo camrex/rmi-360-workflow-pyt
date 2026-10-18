@@ -51,7 +51,15 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 - `scripts/report_images/`: a GUI that cuts flat perspective views from 360 panoramas
   for valuation reports (by milepost in the filename, every Nth image, or all; ffmpeg or
-  OpenCV backend). Brought in from a standalone folder that was never in version control.
+  OpenCV backend). Brought in from a standalone folder that was never in version control,
+  with these fixes:
+  - **ffmpeg output was stretched ~23% vertically**: `v_fov` was `hfov / 2.35` and
+    `scale=` then forced the size; it is now derived from the output aspect ratio and
+    `v360` renders at the target size, matching the OpenCV backend's geometry.
+  - The GUI no longer needs numpy/OpenCV/SciPy to start (imported only for the OpenCV
+    backend), so the ffmpeg backend runs in the ArcGIS Pro env.
+  - The OpenCV backend reports a failed image write instead of counting it as processed.
+  - A duplicate "Process Every:" label no longer shows in every mode.
 - README: `scripts/` added to the repository structure, plus a Standalone Scripts table
   covering every helper in `scripts/`.
 

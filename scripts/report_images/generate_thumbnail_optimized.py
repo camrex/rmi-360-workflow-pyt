@@ -68,4 +68,5 @@ def generate_thumbnail(input_path, output_path, yaw, pitch, hfov, width, height)
                     map_y.astype(np.float32),
                     interpolation=cv2.INTER_LINEAR)
     out = cv2.flip(out, 1)
-    cv2.imwrite(str(output_path), out)
+    if not cv2.imwrite(str(output_path), out):
+        raise IOError(f"Could not write image: {output_path}")

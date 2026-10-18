@@ -16,12 +16,12 @@ Usage:
 Moved here 2026-10-18 from the never-committed E:\\DevProjects\\rmi-360-report-image.
 """
 
+import math
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import re
 import subprocess
 from pathlib import Path
-from generate_thumbnail_optimized import generate_thumbnail
 
 
 def extract_milepost(filename, prefix):
@@ -70,7 +70,6 @@ class MilepostExtractorApp:
                       command=self.toggle_mode_fields).pack(anchor="w")
 
         # Nth value (for every_nth mode)
-        tk.Label(frame, text="Process Every:").grid(row=3, column=0, sticky="e")
         self.nth_label = tk.Label(frame, text="Process Every:")
         self.nth_label.grid(row=3, column=0, sticky="e")
         nth_entry_frame = tk.Frame(frame)
@@ -171,8 +170,9 @@ class MilepostExtractorApp:
             output_dir = Path(self.output_folder.get())
             hfov = float(self.hfov.get())
             yaw = float(self.yaw.get())
-            v_fov = round(hfov / 2.35, 2)
             width, height = map(int, self.resolution.get().split("x"))
+            # Vertical FOV for square pixels at this aspect ratio (matches the OpenCV backend)
+            v_fov = math.degrees(2 * math.atan(math.tan(math.radians(hfov / 2)) * height / width))
             backend = self.backend.get()
             mode = self.mode.get()
 
@@ -236,12 +236,14 @@ class MilepostExtractorApp:
                 if backend == "ffmpeg":
                     cmd = [
                         "ffmpeg", "-y", "-i", str(image_path),
-                        "-vf", f"v360=input=equirect:output=rectilinear:yaw={yaw}:pitch=0:roll=0:h_fov={hfov}:v_fov={v_fov},scale={width}:{height}",
+                        "-vf", f"v360=input=equirect:output=rectilinear:yaw={yaw}:pitch=0:roll=0:h_fov={hfov}:v_fov={v_fov:.4f}:w={width}:h={height}",
                         "-frames:v", "1", "-q:v", "2", str(output_file)
                     ]
                     subprocess.run(cmd, check=True)
 
                 elif backend == "opencv":
+                    # Imported here so the ffmpeg backend works without numpy/opencv/scipy.
+                    from generate_thumbnail_optimized import generate_thumbnail
                     generate_thumbnail(
                         input_path=image_path,
                         output_path=output_file,
