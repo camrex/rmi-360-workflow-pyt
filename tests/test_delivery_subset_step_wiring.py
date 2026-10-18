@@ -25,7 +25,6 @@ _STUBBED_MODULE_NAMES = [
     "utils.geocode_geoareas",
     "utils.build_oid_footprints",
     "utils.prepare_delivery_subset",
-    "utils.deploy_lambda_monitor",
     "utils.copy_to_aws",
     "utils.generate_oid_service",
     "utils.geoareas_exif_integration",
@@ -71,7 +70,6 @@ def _stubbed_build_step_funcs_module():
         _install_stub_module("utils.geocode_geoareas", geocode_geoareas=noop)
         _install_stub_module("utils.build_oid_footprints", build_oid_footprints=noop)
         _install_stub_module("utils.prepare_delivery_subset", prepare_delivery_subset=noop)
-        _install_stub_module("utils.deploy_lambda_monitor", deploy_lambda_monitor=noop)
         _install_stub_module("utils.copy_to_aws", copy_to_aws=noop)
         _install_stub_module("utils.generate_oid_service", generate_oid_service=noop)
         _install_stub_module("utils.geoareas_exif_integration", should_use_geoareas=lambda cfg: True)
@@ -139,7 +137,6 @@ def test_delivery_subset_outputs_feed_upload_and_service_steps():
         "enable_linear_ref": False,
         "enable_copy_to_aws": True,
         "enable_generate_service": True,
-        "enable_deploy_lambda_monitor": False,
         "enable_smooth_gps": False,
         "enable_distance_filter": False,
         "enable_geocode": False,
@@ -178,7 +175,6 @@ def test_delivery_subset_skip_when_not_enabled():
         "enable_linear_ref": False,
         "enable_copy_to_aws": True,
         "enable_generate_service": True,
-        "enable_deploy_lambda_monitor": False,
         "enable_smooth_gps": False,
         "enable_distance_filter": False,
         "enable_geocode": False,
@@ -216,7 +212,6 @@ def test_subset_folder_strategy_routes_upload_to_delivery_local_dir():
         "enable_linear_ref": False,
         "enable_copy_to_aws": True,
         "enable_generate_service": False,
-        "enable_deploy_lambda_monitor": False,
         "enable_smooth_gps": False,
         "enable_distance_filter": False,
         "enable_geocode": False,
@@ -257,7 +252,6 @@ def test_manifest_only_strategy_falls_back_to_renamed_dir_for_upload():
         "enable_linear_ref": False,
         "enable_copy_to_aws": True,
         "enable_generate_service": False,
-        "enable_deploy_lambda_monitor": False,
         "enable_smooth_gps": False,
         "enable_distance_filter": False,
         "enable_geocode": False,
@@ -298,7 +292,6 @@ def test_generate_service_falls_back_to_source_oid_when_delivery_oid_missing():
         "enable_linear_ref": False,
         "enable_copy_to_aws": False,
         "enable_generate_service": True,
-        "enable_deploy_lambda_monitor": False,
         "enable_smooth_gps": False,
         "enable_distance_filter": False,
         "enable_geocode": False,

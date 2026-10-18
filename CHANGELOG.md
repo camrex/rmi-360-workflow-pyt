@@ -8,14 +8,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-Schema bumped **1.3.3 → 1.4.0 → 1.5.0 → 1.6.0 → 1.7.0** across this set of work. The
-runtime accepts **only `1.7.0`** (clean break); upgrade older `config.yaml` files with the
+Schema bumped **1.3.3 → 1.4.0 → 1.5.0 → 1.6.0 → 1.7.0 → 1.8.0** across this set of work.
+The runtime accepts **only `1.8.0`** (clean break); upgrade older `config.yaml` files with the
 new Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 `spatial_ref.geoid_correction` for the NAVD88 camera-height conversion; 1.6.0 = additive
 `spatial_ref.geoid_correction.source_frame` for the reference-frame shift; 1.7.0 =
-`aws.profile` replaces the static-key settings.)
+`aws.profile` replaces the static-key settings; 1.8.0 = `aws.lambda_role_arn` removed with
+the Lambda upload monitor.)
 
 ### Added
+
+#### Upload heartbeat (replaces the Lambda upload monitor)
+
+- **Copy To AWS writes an upload heartbeat**: its progress JSON (phase, totals, per-group
+  counts, project/bucket/prefix) goes to
+  `s3://<aws.s3_bucket_raw>/status/<project.slug>/upload_progress.json` about once a
+  minute and when it ends (`complete` / `cancelled` / `error`), plus a local
+  `aws_upload_status.json` next to the upload log. It uses the same named profile
+  (rmi-aws-infra 0049 grants `rmi-360-raw/status/RMI*/*` and expires old heartbeat
+  versions after a day). Puts are SSE-S3 encrypted, the client has short timeouts,
+  and a failed heartbeat is reported once without affecting the upload. A background
+  thread publishes on a timer, outside the upload threads, so heartbeats continue
+  during long transfers; publishes are serialized so a slow one can't overwrite the
+  final state. It always stops at the end, including on an exception. A resume with
+  nothing left to upload still publishes a final `complete`.
+  No setting is needed. `StatusTracker` gained the `publish` hook, `start()` and
+  `finish()`.
+  See `docs/aws/upload-heartbeat.rst`.
 
 #### AWS access through a named profile only (rmi-aws-infra 0049)
 
@@ -226,6 +245,14 @@ new Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 ### Removed
 
+- **The Lambda upload monitor (schema 1.8.0):** `utils/deploy_lambda_monitor.py`, its
+  validator, `aws_lambdas/`, the orchestrator's step 16 *Deploy Lambda Monitor* and its
+  *Enable Deploy Lambda Monitor* option, *Copy To AWS*'s *Deploy Upload Monitor?*
+  option, the path manager's Lambda paths, and `aws.lambda_role_arn` (the editor's
+  Upgrade drops it). Its AWS side was already gone (rmi-aws-infra 0017), and the
+  `rmi-360-workflow-pyt` profile has no Lambda, EventBridge or IAM rights. Step
+  numbers are unchanged (Copy To AWS is still 17). A leftover `deploy_lambda_monitor`
+  in `orchestrator.wait_before_step` / `backup_before_step` is ignored.
 - The deprecated `aws.keyring_aws` flag — `auth_mode` is now the single switch for
   credential resolution. The Config Editor's Upgrade strips the key from older configs.
 - **Static AWS credentials (schema 1.7.0):** `aws.auth_mode` (`instance` / `keyring` /

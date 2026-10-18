@@ -9,15 +9,14 @@
 # Last Updated:       2025-10-30
 #
 # Description:
-#   ArcPy Tool class for uploading renamed images to AWS S3 using TransferManager.
-#   Optionally deploys a Lambda-based monitor to track upload progress via CloudWatch Events.
+#   ArcPy Tool class for uploading renamed images to AWS S3 (one conditional put per file;
+#   never overwrites). Progress goes to an upload heartbeat in rmi-360-raw/status/<slug>/.
 #   Reads from a config YAML and supports skipping existing uploads, robust logging, and progress tracking.
 #   Integrates with the RMI 360 workflow CORE utils for configuration, error handling, and AWS interaction.
 #
 # File Location:      /tools/copy_to_aws_tool.py
 # Core Utils:
 #   - utils/copy_to_aws.py
-#   - utils/deploy_lambda_monitor.py
 #   - utils/shared/arcpy_utils.py
 #   - utils/manager/config_manager.py
 #
@@ -30,17 +29,15 @@
 #   - Skip Existing Files in S3? {skip_existing} (Boolean): If checked, skips files that already exist in the target S3 location.
 #   - Project Folder {project_folder} (Folder): Root folder for the project; used for resolving logs and asset paths.
 #   - Config File {config_file} (File): Path to the project YAML config file with AWS and path settings.
-#   - Deploy Upload Monitor? {enable_monitor} (Boolean): Whether to deploy the AWS Lambda upload monitor before transfer.
 #
 # Notes:
-#   - Supports optional Lambda monitor deployment before upload for real-time tracking.
+#   - Writes an upload heartbeat (progress JSON) to rmi-360-raw/status/<slug>/upload_progress.json.
 #   - Skips re-uploading files already present in S3 if specified.
 #   - Uses resumable upload strategy with retry handling for reliability.
-#   - Ensure AWS credentials and permissions are correctly configured in the config file.
+#   - AWS access is the named profile in aws.profile (see docs/aws/setup-guide.rst).
 # =============================================================================
 
 import arcpy
-from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
 from utils.shared.arcpy_utils import str_to_bool
 from utils.manager.config_manager import ConfigManager
@@ -105,27 +102,14 @@ class CopyToAwsTool:
         )
         params.append(project_param)
 
-        enable_monitor = arcpy.Parameter(
-            displayName="Deploy Upload Monitor?",
-            name="enable_monitor",
-            datatype="GPBoolean",
-            parameterType="Optional",
-            direction="Input"
-        )
-        # Off by default: the monitor's AWS resources were removed (rmi-aws-infra 0017) and a
-        # failed deploy raises before the upload starts. See TODO.md (upload monitor redesign).
-        enable_monitor.value = False
-        params.append(enable_monitor)
-
         return params
 
     def execute(self, parameters, messages):
         """
-        Executes the tool to optionally deploy an AWS upload monitor and upload images to S3.
-        
-        Extracts user-specified parameters, deploys an AWS Lambda monitor if enabled, and uploads images from the
-        specified local folder to AWS S3 using project configuration settings. Logs progress and errors, raising
-        exceptions on failure.
+        Executes the tool to upload images to S3.
+
+        Uploads images from the specified local folder to AWS S3 using project configuration settings, writing
+        the upload heartbeat as it goes. Logs progress and errors, raising exceptions on failure.
         """
         p = {param.name: param.valueAsText for param in parameters}
 
@@ -137,14 +121,6 @@ class CopyToAwsTool:
             messages=messages
         )
         logger = cfg.get_logger()
-
-        if str_to_bool(p.get("enable_monitor", "false")):
-            try:
-                logger.info("Deploying AWS upload monitor...")
-                deploy_lambda_monitor(cfg=cfg)
-            except Exception as e:
-                logger.error(f"Failed to deploy AWS Monitor: {e!s}", error_type=RuntimeError)
-                raise
 
         try:
             logger.info("📤 Starting AWS Upload...")

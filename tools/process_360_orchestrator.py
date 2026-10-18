@@ -61,7 +61,6 @@
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
 #   - Enable Copy to AWS {enable_copy_to_aws} (Boolean): Uploads processed imagery and reports to AWS.
-#   - Enable Deploy Lambda Monitor {enable_deploy_lambda_monitor} (Boolean): Deploys AWS monitoring Lambda (if enabled).
 #   - Enable Generate Service {enable_generate_service} (Boolean): Publishes an OID web feature service.
 #   - Centerline (M-enabled) {centerline_fc} (Feature Class): Polyline for GPS smoothing or referencing.
 #   - Route ID Field {route_id_field} (Field): Field identifying route IDs in the centerline dataset.
@@ -209,8 +208,7 @@ class Process360Workflow(object):
         "13) ExifTool Geocoding (optional)\n"
         "14) Create OID Footprints\n"
         "15) Prepare Delivery Subset (optional; config-driven)\n"
-        "16) Deploy Lambda Monitor (optional)\n"
-        "17) Copy to AWS (optional)\n"
+        "17) Copy to AWS (optional; writes an upload heartbeat to rmi-360-raw/status/<slug>/)\n"
         "18) Generate OID Service (optional)"
     )
     canRunInBackground = False
@@ -232,7 +230,6 @@ class Process360Workflow(object):
         (13, "exiftool_geocoding", "ExifTool Geocoding"),
         (14, "build_footprints", "Build OID Footprints"),
         (15, "prepare_delivery_subset", "Prepare Delivery Subset"),
-        (16, "deploy_lambda_monitor", "Deploy Lambda Monitor"),
         (17, "copy_to_aws", "Upload to AWS S3"),
         (18, "generate_service", "Generate OID Service")
     ]
@@ -462,18 +459,6 @@ class Process360Workflow(object):
         enable_copy_to_aws_param.value = True
         params.append(enable_copy_to_aws_param)
 
-        # 16) Enable Deploy Lambda Monitor
-        enable_deploy_lambda_monitor_param = arcpy.Parameter(
-            displayName="Enable Deploy Lambda Monitor",
-            name="enable_deploy_lambda_monitor",
-            datatype="GPBoolean",
-            parameterType="Optional",
-            direction="Input",
-        )
-        # Off by default: the monitor's AWS resources were removed (rmi-aws-infra 0017).
-        enable_deploy_lambda_monitor_param.value = False
-        params.append(enable_deploy_lambda_monitor_param)
-
         # 17) Enable Generate OID Service
         enable_generate_service_param = arcpy.Parameter(
             displayName="Enable Generate OID Service",
@@ -558,7 +543,6 @@ class Process360Workflow(object):
         route_id_param = pmap.get("route_id_field")
 
         enable_copy_to_aws = pmap.get("enable_copy_to_aws")
-        enable_deploy_lambda_monitor = pmap.get("enable_deploy_lambda_monitor")
         enable_generate_service = pmap.get("enable_generate_service")
 
         # 1) Local vs AWS
@@ -711,17 +695,12 @@ class Process360Workflow(object):
             if not distance_filter_enabled:
                 distance_filter_action.value = "flag"
 
-        # 6) Copy to AWS → (Deploy Lambda / Generate Service) gating
+        # 6) Copy to AWS → Generate Service gating
         if enable_copy_to_aws and not bool(enable_copy_to_aws.value):
-            if enable_deploy_lambda_monitor:
-                enable_deploy_lambda_monitor.enabled = False
-                enable_deploy_lambda_monitor.value = False
             if enable_generate_service:
                 enable_generate_service.enabled = False
                 enable_generate_service.value = False
         else:
-            if enable_deploy_lambda_monitor:
-                enable_deploy_lambda_monitor.enabled = True
             if enable_generate_service:
                 enable_generate_service.enabled = True
 

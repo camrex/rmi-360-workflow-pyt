@@ -31,6 +31,10 @@
 #     check first skips known keys without sending the bytes. A repeat put of a
 #     panorama would re-run tiling. Two local files mapping to one key stop the run.
 #   - Credentials come from the named AWS profile (aws.profile); see utils/shared/aws_utils
+#   - Heartbeat: progress JSON goes to s3://{aws.s3_bucket_raw}/status/{slug}/upload_progress.json
+#     about once a minute and at the end (phase complete / cancelled / error), plus a
+#     local copy next to the upload log. It replaces the retired Lambda upload monitor.
+#     A failed heartbeat is reported once and never stops the upload.
 # =============================================================================
 
 __all__ = ["copy_to_aws"]
@@ -48,6 +52,7 @@ from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.aws_utils import get_boto3_session
+from utils.shared.s3_status_tracker import StatusTracker
 from utils.shared.oid_storage_paths import (
     is_secured_storage_enabled,
     build_oid_object_key,
@@ -241,6 +246,34 @@ def find_duplicate_keys(tasks):
     return {k: v for k, v in by_key.items() if len(v) > 1}
 
 
+HEARTBEAT_KEY = "status/{slug}/upload_progress.json"
+HEARTBEAT_INTERVAL_SEC = 60.0
+HEARTBEAT_GROUP = "panoramas"
+
+
+def make_heartbeat_publisher(session, cfg: ConfigManager):
+    """Return ``(publish, uri)``: ``publish(text)`` PUTs the status JSON to
+    ``s3://{aws.s3_bucket_raw}/status/{slug}/upload_progress.json``.
+
+    Returns ``(None, reason)`` when the raw bucket or project slug is not set. The
+    client has short timeouts so a slow heartbeat cannot hold up the uploads, and
+    every put is SSE-S3 encrypted (rmi-360-raw denies unencrypted puts).
+    """
+    raw_bucket = cfg.get("aws.s3_bucket_raw")
+    slug = cfg.get("project.slug")
+    if not raw_bucket or not slug:
+        return None, "aws.s3_bucket_raw or project.slug is not set"
+    key = HEARTBEAT_KEY.format(slug=slug)
+    client = session.client("s3", config=Config(
+        connect_timeout=5, read_timeout=10, retries={"max_attempts": 2, "mode": "standard"}))
+
+    def publish(text: str) -> None:
+        client.put_object(Bucket=raw_bucket, Key=key, Body=text.encode("utf-8"),
+                          ContentType="application/json", ServerSideEncryption="AES256")
+
+    return publish, f"s3://{raw_bucket}/{key}"
+
+
 def verify_s3_target_access(s3_client, bucket: str, bucket_folder: str, logger) -> None:
     """Verify that the target bucket is reachable before queueing uploads."""
     try:
@@ -366,6 +399,29 @@ def copy_to_aws(
         logger.warning("No matching files found to upload.", indent=2)
         return {}
 
+    def preflight_error(message, session=None):
+        """Error payload for a run stopped before uploading. Also records a final "error"
+        status (local file, plus the S3 heartbeat when a session exists) so a stale
+        heartbeat from an earlier, interrupted run does not linger."""
+        try:
+            publish = make_heartbeat_publisher(session, cfg)[0] if session is not None else None
+            StatusTracker(Path(log_file).with_name("aws_upload_status.json"), publish=publish,
+                          meta={"project": cfg.get("project.slug"), "bucket": bucket, "prefix": bucket_folder,
+                                "tool": "copy_to_aws", "message": message}).finish("error")
+        except Exception as hb_exc:  # noqa: BLE001 — never mask the real error
+            logger.warning(f"Could not record the final upload status: {hb_exc}", indent=2)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": message,
+        }
+
     # Two local files mapping to one key would race for it; which one is right is ambiguous.
     duplicates = find_duplicate_keys(all_tasks)
     if duplicates:
@@ -373,17 +429,7 @@ def copy_to_aws(
         msg = (f"{len(duplicates)} S3 key(s) would be written by more than one local file "
                f"(e.g. {sample}). Rename or remove the duplicates; nothing was uploaded.")
         logger.error(msg, indent=2)
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": msg,
-        }
+        return preflight_error(msg)
 
     # Session for the named AWS profile (aws.profile, else AWS_PROFILE)
     try:
@@ -391,17 +437,7 @@ def copy_to_aws(
         session = get_boto3_session(cfg)
     except Exception as e:
         # Error already logged upstream; return a consistent error payload.
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": str(e),
-        }
+        return preflight_error(str(e))
 
     # Pool sized for the concurrent puts; retries = attempts after the first.
     client_config = Config(
@@ -413,17 +449,7 @@ def copy_to_aws(
     try:
         verify_s3_target_access(s3, bucket, bucket_folder, logger)
     except Exception as ex:
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": f"Unable to access target S3 bucket '{bucket}': {ex}",
-        }
+        return preflight_error(f"Unable to access target S3 bucket '{bucket}': {ex}", session)
 
     if using_acceleration:
         logger.custom("Uploads will use the accelerated endpoint.", indent=2, emoji="🚀")
@@ -433,17 +459,7 @@ def copy_to_aws(
                "which Copy To AWS needs so it never overwrites. Update boto3/botocore in the "
                "ArcGIS Pro environment; nothing was uploaded.")
         logger.error(msg, indent=2)
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": msg,
-        }
+        return preflight_error(msg, session)
 
     logger.info("Starting AWS Upload...", indent=1)
     # One conditional PutObject per file; max_workers caps how many run at once.
@@ -465,8 +481,31 @@ def copy_to_aws(
             upload_tasks.append((file_path, s3_key))
 
     total = len(upload_tasks)
+
+    # Heartbeat (replaces the Lambda upload monitor): progress JSON to rmi-360-raw/status/{slug}/.
+    publish, heartbeat_target = make_heartbeat_publisher(session, cfg)
+    if publish:
+        logger.custom(f"Upload heartbeat: {heartbeat_target} (every {int(HEARTBEAT_INTERVAL_SEC)} s)",
+                      indent=2, emoji="💓")
+    else:
+        logger.warning(f"No upload heartbeat: {heartbeat_target}.", indent=2)
+    tracker = StatusTracker(
+        Path(log_file).with_name("aws_upload_status.json"),
+        interval_sec=5.0,
+        publish=publish,
+        publish_interval_sec=HEARTBEAT_INTERVAL_SEC,
+        meta={"project": cfg.get("project.slug"), "bucket": bucket, "prefix": bucket_folder,
+              "skipped_from_log": len(log_rows), "tool": "copy_to_aws"},
+    )
+    tracker.set_totals(total)
+
     if total == 0:
         logger.custom("No files to upload (all skipped or already uploaded).", indent=1, emoji="❗")
+        # Still publish a final heartbeat: it replaces any stale one from an interrupted run.
+        tracker.finish("complete")
+        if tracker.publish_error:
+            logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
+                           f"{tracker.publish_error}.", indent=1)
         return {
             "uploaded": 0,
             "skipped": 0,
@@ -478,15 +517,22 @@ def copy_to_aws(
             "status": "completed"
         }
 
+    tracker.start_group(HEARTBEAT_GROUP, total)
+
     start_time = time.time()
     completed = {"processed": 0, "uploaded": 0, "failed": 0}
+    log_append_error = {"first": None}
     lock = threading.Lock()
     cancel_event = threading.Event()
 
-    # Write log header
-    with open(log_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["timestamp", "local_file", "s3_key", "status", "error", "size_bytes", "duration_sec"])
+    # Write log header (a status was already written above, so record the failure if this fails)
+    try:
+        with open(log_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["timestamp", "local_file", "s3_key", "status", "error", "size_bytes", "duration_sec"])
+    except Exception:
+        tracker.finish("error")
+        raise
 
     def upload_one(f_path, s3_tgt_key):
         """
@@ -525,83 +571,122 @@ def copy_to_aws(
             elif status == "error":
                 completed["failed"] += 1
             log_rows.append((timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration))
-            with open(log_file, "a", newline="", encoding="utf-8") as csv_file:
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow([timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration])
+            try:
+                with open(log_file, "a", newline="", encoding="utf-8") as csv_file:
+                    csv_writer = csv.writer(csv_file)
+                    csv_writer.writerow([timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration])
+            except OSError as log_exc:
+                # e.g. the log is locked: keep going (worker exceptions would be silent);
+                # a resume still skips this file because it is already in S3.
+                if log_append_error["first"] is None:
+                    log_append_error["first"] = f"{type(log_exc).__name__}: {log_exc}"
+        # Outside the log lock: the tracker may publish the heartbeat (a network call).
+        tracker.file_done(HEARTBEAT_GROUP, status, file_size)
 
-    with cfg.get_progressor(total=total, label="Uploading images to S3") as progressor:
-        last = 0
+    tracker.set_phase("uploading")
+    tracker.start()  # heartbeat thread; always stopped by tracker.finish() below
+    crashed = False
+    try:
+        with cfg.get_progressor(total=total, label="Uploading images to S3") as progressor:
+            last = 0
 
-        for i in range(0, len(upload_tasks), batch_size):
-            batch = upload_tasks[i:i + batch_size]
-            threads = []
+            for i in range(0, len(upload_tasks), batch_size):
+                batch = upload_tasks[i:i + batch_size]
+                threads = []
 
-            for local_path, s3_key in batch:
+                for local_path, s3_key in batch:
+                    if cancel_event.is_set():
+                        break
+                    t = threading.Thread(target=upload_one, args=(local_path, s3_key))
+                    threads.append(t)
+                    t.start()
+
+                for t in threads:
+                    t.join()
+
+                # Check for cancel triggers
+                if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
+                    cancel_event.set()
+                    logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
+
                 if cancel_event.is_set():
+                    progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
+                    if report_data is not None:
+                        upload_status = "canceled" if cancel_event.is_set() else "completed"
+                        current_status = report_data.setdefault("upload", {}).get("status")
+
+                        # If previously canceled, and now completed, mark as completed_after_cancel
+                        if upload_status == "completed" and current_status == "canceled":
+                            upload_status = "completed_after_cancel"
+
+                        report_data["upload"]["status"] = upload_status
+
                     break
-                t = threading.Thread(target=upload_one, args=(local_path, s3_key))
-                threads.append(t)
-                t.start()
 
-            for t in threads:
-                t.join()
+                with lock:
+                    current = completed["processed"]
+                    uploaded = completed["uploaded"]
+                    failed = completed["failed"]
 
-            # Check for cancel triggers
-            if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
-                cancel_event.set()
-                logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
+                if current > last:
+                    elapsed = time.time() - start_time
+                    eta = (elapsed / current) * (total - current) if current > 0 else 0
+                    eta_min, eta_sec = divmod(int(eta), 60)
+                    eta_hr, eta_min = divmod(eta_min, 60)
+                    label = (
+                        f"Processing {current}/{total} images... "
+                        f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
+                    )
+                    progressor.update(current, label)
+                    logger.custom(label, indent=3, emoji="☁️")
+                    last = current
 
-            if cancel_event.is_set():
-                progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
-                if report_data is not None:
-                    upload_status = "canceled" if cancel_event.is_set() else "completed"
-                    current_status = report_data.setdefault("upload", {}).get("status")
+        # Summary and report updates come before the final heartbeat, so "complete" is
+        # only published once they have succeeded (an exception here publishes "error").
+        # Write Summary File (aws_upload_summary)
+        summary_stats = calculate_summary(log_rows, total, start_time)
+        write_summary_file(summary_file, summary_stats)
 
-                    # If previously canceled, and now completed, mark as completed_after_cancel
-                    if upload_status == "completed" and current_status == "canceled":
-                        upload_status = "completed_after_cancel"
+        logger.success(f"Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.", indent=1)
+        if summary_stats['failed'] and not summary_stats['uploaded']:
+            logger.warning("No files were uploaded successfully. Check AWS credentials, bucket name, region, and IAM permissions.", indent=1)
+        logger.custom(f"Log written to: {log_file}", indent=1, emoji="📄")
+        logger.custom(f"Upload summary written to: {summary_file}", indent=1, emoji="📊")
 
-                    report_data["upload"]["status"] = upload_status
+        # Update report_data if passed
+        if report_data is not None:
+            report_data.setdefault("upload", {}).update({
+                "status": "cancelled" if cancel_event.is_set() else "completed",
+                "count": summary_stats['uploaded'],
+                "expected_total": total,
+                "end_time": datetime.now(timezone.utc).isoformat(),
+                "percent_complete": summary_stats['uploaded'] / total * 100 if total else 0
+            })
+    except BaseException:
+        crashed = True
+        raise
+    finally:
+        # Final heartbeat, also on an exception, so the publisher thread never outlives the upload.
+        tracker.complete_group(HEARTBEAT_GROUP)  # local status write failures are non-fatal
+        if crashed:
+            final_phase = "error"
+        elif cancel_event.is_set():
+            final_phase = "cancelled"
+        elif completed["failed"] and not completed["uploaded"]:
+            final_phase = "error"
+        else:
+            final_phase = "complete"
+        tracker.finish(final_phase)
+        if tracker.publish_error:
+            logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
+                           f"{tracker.publish_error}. The upload itself was not affected.", indent=1)
 
-                break
-
-            with lock:
-                current = completed["processed"]
-                uploaded = completed["uploaded"]
-                failed = completed["failed"]
-
-            if current > last:
-                elapsed = time.time() - start_time
-                eta = (elapsed / current) * (total - current) if current > 0 else 0
-                eta_min, eta_sec = divmod(int(eta), 60)
-                eta_hr, eta_min = divmod(eta_min, 60)
-                label = (
-                    f"Processing {current}/{total} images... "
-                    f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
-                )
-                progressor.update(current, label)
-                logger.custom(label, indent=3, emoji="☁️")
-                last = current
-
-    # Write Summary File (aws_upload_summary)
-    summary_stats = calculate_summary(log_rows, total, start_time)
-    write_summary_file(summary_file, summary_stats)
-
-    logger.success(f"Upload complete: {summary_stats['uploaded']} uploaded, {summary_stats['skipped']} skipped, {summary_stats['failed']} failed.", indent=1)
-    if summary_stats['failed'] and not summary_stats['uploaded']:
-        logger.warning("No files were uploaded successfully. Check AWS credentials, bucket name, region, and IAM permissions.", indent=1)
-    logger.custom(f"Log written to: {log_file}", indent=1, emoji="📄")
-    logger.custom(f"Upload summary written to: {summary_file}", indent=1, emoji="📊")
-
-    # Update report_data if passed
-    if report_data is not None:
-        report_data.setdefault("upload", {}).update({
-            "status": "cancelled" if cancel_event.is_set() else "completed",
-            "count": summary_stats['uploaded'],
-            "expected_total": total,
-            "end_time": datetime.now(timezone.utc).isoformat(),
-            "percent_complete": summary_stats['uploaded'] / total * 100 if total else 0
-        })
+    if tracker.local_error:
+        logger.warning(f"The local upload status file could not be written: {tracker.local_error}.", indent=1)
+    if log_append_error["first"]:
+        logger.warning(f"Some rows could not be added to the upload log {log_file}: {log_append_error['first']}. "
+                       "The summary and heartbeat counts are complete; a resume re-checks S3 for those files.",
+                       indent=1)
 
     return {
         "uploaded": summary_stats['uploaded'],

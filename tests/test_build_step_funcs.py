@@ -26,7 +26,6 @@ def test_build_step_funcs_structure():
     mod.update_metadata_from_config = dummy_func
     mod.geocode_images = dummy_func
     mod.build_oid_footprints = dummy_func
-    mod.deploy_lambda_monitor = dummy_func
     mod.copy_to_aws = dummy_func
     mod.generate_oid_service = dummy_func
     # Minimal params
@@ -44,7 +43,7 @@ def test_build_step_funcs_structure():
         "run_mosaic_processor", "create_oid", "add_images", "assign_group_index", "enrich_oid",
         "smooth_gps", "correct_gps", "filter_distance", "update_linear_custom", "rename_images",
         "geoareas_enrichment", "update_metadata", "exiftool_geocoding", "build_footprints",
-        "prepare_delivery_subset", "deploy_lambda_monitor", "copy_to_aws", "generate_service"
+        "prepare_delivery_subset", "copy_to_aws", "generate_service"
     ]
     assert set(step_funcs.keys()) == set(expected_keys)
     # Check structure

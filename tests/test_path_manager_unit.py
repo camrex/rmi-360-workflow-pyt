@@ -9,7 +9,6 @@ def tmp_script_base(tmp_path):
     script_base.mkdir()
     (script_base / "rmi_360_workflow.pyt").touch()
     (script_base / "configs").mkdir()
-    (script_base / "aws_lambdas").mkdir()
     (script_base / "templates").mkdir()
     return script_base
 
@@ -48,10 +47,6 @@ def test_templates_path(tmp_script_base, minimal_config):
 def test_configs_path(tmp_script_base, minimal_config):
     pm = PathManager(project_base=tmp_script_base, config=minimal_config, script_base=tmp_script_base)
     assert pm.configs == tmp_script_base / "configs"
-
-def test_lambdas_path(tmp_script_base, minimal_config):
-    pm = PathManager(project_base=tmp_script_base, config=minimal_config, script_base=tmp_script_base)
-    assert pm.lambdas == tmp_script_base / "aws_lambdas"
 
 def test_primary_config_path(tmp_script_base, minimal_config):
     pm = PathManager(project_base=tmp_script_base, config=minimal_config, script_base=tmp_script_base)

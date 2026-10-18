@@ -106,11 +106,6 @@ Publishing and Cloud Integration
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: utils.deploy_lambda_monitor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Workflow and Step Management
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

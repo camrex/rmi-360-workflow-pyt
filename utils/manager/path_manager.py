@@ -93,11 +93,6 @@ class PathManager:
         return self.script_base / "configs"
 
     @property
-    def lambdas(self):
-        """Path to aws_lambdas directory under script base."""
-        return self.script_base / "aws_lambdas"
-
-    @property
     def primary_config_path(self):
         """Returns the path to config.yaml under script base."""
         return self.configs / "config.yaml"
@@ -231,18 +226,6 @@ class PathManager:
     def mosaic_processor_cfg(self):
         """Path to Mosaic Processor config file (no default)."""
         return self._get_config_value("executables.mosaic_processor.cfg_path")
-
-    @property
-    def lambda_pm_path(self):
-        """Path to the lambda_progress_monitor.py."""
-        progress_monitor_rel_path = "aws_lambdas/lambda_progress_monitor.py"
-        return self.script_base / progress_monitor_rel_path
-
-    @property
-    def lambda_dr_path(self):
-        """Path to the disable_rule.py."""
-        deactivator_rel_path = "aws_lambdas/disable_rule.py"
-        return self.script_base / deactivator_rel_path
 
     def get_log_file_path(self, log_key: str, cfg: Optional["ConfigManager"] = None) -> Path:
         from utils.shared.expression_utils import resolve_expression

@@ -17,7 +17,7 @@
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.7.0
+schema_version: 1.8.0
 debug_messages: false   # Verbose debug-level logging
 
 # ------------------------------------------------------------------------------
@@ -867,15 +867,14 @@ image_output:
 # Upload settings:
 #   - use_acceleration: Enable S3 Transfer Acceleration
 #   - skip_existing: Skip files already logged as uploaded
-#   - max_workers: Upload threads; fixed int (16) or pattern (cpu*2)
+#   - max_workers: Concurrent uploads; fixed int (16) or pattern (cpu*2)
 #   - retries: Retry attempts for failed uploads
 #   - upload_batch_size: Files per batch (enables cancel checkpoints)
 #   - allow_cancel_file_trigger: Allow cancel via cancel_copy.txt
 #
-# Lambda / publishing:
-#   - lambda_role_arn: IAM role assumed by the Lambda progress monitor
-#     Required permissions: s3:ListBucket on target bucket, s3:GetObject on
-#     bucket or folder, cloudwatch:PutMetricData (optional).
+# Upload heartbeat (no setting): Copy To AWS writes its progress JSON to
+#   s3://<s3_bucket_raw>/status/<project.slug>/upload_progress.json about once a
+#   minute and when it ends. It replaces the retired Lambda upload monitor.
 # ------------------------------------------------------------------------------
 
 # @section: AWS Storage | AWS auth, S3 buckets, and secured-delivery mode for uploads and OID hosting.
@@ -912,8 +911,6 @@ aws:
   retries: 3                                # Upload retry attempts per file
   upload_batch_size: 25                     # Files per upload batch
   allow_cancel_file_trigger: true           # Allow cancelling an upload by creating cancel_copy.txt in the project folder
-
-  lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"  # IAM role ARN for the upload-monitor Lambda
 
 # ------------------------------------------------------------------------------
 # 🌐 PORTAL SERVICE PUBLISHING
@@ -1133,7 +1130,6 @@ orchestrator:
     - rename_images
     - geocode
     - build_footprints
-    - deploy_lambda_monitor
     - generate_service
 
   # Enable or disable OID backups before specific steps.

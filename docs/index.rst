@@ -122,7 +122,7 @@ Table of Contents
 
    aws/setup-guide
    aws/s3-uploads
-   aws/lambda-monitoring
+   aws/upload-heartbeat
 
 .. toctree::
    :maxdepth: 2

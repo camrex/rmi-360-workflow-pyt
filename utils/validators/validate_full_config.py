@@ -11,7 +11,7 @@
 # Description:
 #   Performs comprehensive validation of the pipeline’s configuration, including schema version checks,
 #   required section enforcement, and dynamic expression resolution. Registers tool-specific validators
-#   for all supported workflow steps (e.g., enhance_images, copy_to_aws, deploy_lambda_monitor).
+#   for all supported workflow steps (e.g., copy_to_aws, generate_oid_service).
 #   Raises `ConfigValidationError` for invalid structures, missing fields, or improper expressions.
 #
 # File Location:        /utils/validate_full_config.py

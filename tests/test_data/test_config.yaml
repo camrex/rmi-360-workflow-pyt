@@ -1,6 +1,6 @@
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.7.0
+schema_version: 1.8.0
 debug_messages: true
 
 # NEW RUNTIME CONFIG
@@ -637,14 +637,6 @@ image_output:
 # retries                (int)    - Number of retry attempts for failed uploads
 # upload_batch_size      (int)    - Number of files uploaded per batch (enables cancel points)
 # allow_cancel_file_trigger (bool)- If true, allows upload cancellation via 'cancel_copy.txt'
-#
-# ─── Lambda / Publishing ──────────────────────────────────────────────────────
-# lambda_role_arn (str) - IAM Role ARN assumed by the Lambda progress monitor.
-# Required Permissions:
-#   - "s3:ListBucket"         on your S3 bucket
-#   - "s3:GetObject"          on your bucket/folder (e.g., "rmi-orient-img/*")
-#   - "cloudwatch:PutMetricData" (optional, for monitoring/logging)
-# The role must have trust policy allowing Lambda service to assume it.
 # ------------------------------------------------------------------------------
 
 aws:
@@ -666,8 +658,6 @@ aws:
   retries: 3
   upload_batch_size: 25     # Enables cancellation checks between batch groups
   allow_cancel_file_trigger: true
-
-  lambda_role_arn: <YOUR_LAMBDA_ROLE_ARN>  # IAM Role ARN for Lambda progress monitor
 
 # ------------------------------------------------------------------------------
 # 🌐 PORTAL SERVICE PUBLISHING
@@ -794,7 +784,6 @@ orchestrator:
     - rename_images
     - geocode
     - build_footprints
-    - deploy_lambda_monitor
     - generate_service
 
   # Enable or disable OID backups before specific steps.

@@ -37,8 +37,13 @@ RETIRE_STATIC_KEYS = [
     {"op": "remove", "path": "aws.secret_key"},
 ]
 
+# 1.8.0 — the Lambda upload monitor is retired (replaced by the upload heartbeat).
+RETIRE_LAMBDA_MONITOR = [
+    {"op": "remove", "path": "aws.lambda_role_arn"},
+]
+
 # All known rules, in apply order. (Append future milestones' rules here.)
-ALL_RULES: List[dict] = CONSOLIDATE_AWS + RETIRE_STATIC_KEYS
+ALL_RULES: List[dict] = CONSOLIDATE_AWS + RETIRE_STATIC_KEYS + RETIRE_LAMBDA_MONITOR
 
 
 def rules_for(source_version: Any = None, target_version: Any = None) -> List[dict]:
