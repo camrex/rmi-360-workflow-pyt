@@ -55,8 +55,9 @@ All stage tools are runnable **independently as checkpoints**, and the QC tools 
 
 **Recommended order:** 00 → 01 → 02 → (03) → 05/06 → 04 → 07 → 08, with QC gates
 between stages. The granularity is deliberate: QC-between-stages caught real bugs
-during development (junction mis-snapping, mp_meas quantization ties, dual-track
-overlap).
+during development (junction mis-snapping, mp_meas near-ties, dual-track
+overlap). Why each stage works the way it does is in
+[corridor_thinning_design.md](corridor_thinning_design.md).
 
 ---
 
@@ -132,6 +133,7 @@ converted to the data's planar units: `units = meters / metersPerUnit(wkid)`.
 ## Out of scope
 
 - **Reversal resolution** (the 3-segment F1/R/F2 keep-F2 policy) is *designed but
-  not built* — Detect Reversals is report-only (0 live reversals on 26-150).
+  not built* — Detect Reversals is report-only (0 live reversals on 26-150). The
+  design is in [corridor_thinning_design.md](corridor_thinning_design.md#reversal-resolution-designed-not-yet-built).
 - Automating the editorial `include`/`mp_pre`/`track` selection or building route
   centerlines remains upstream manual GIS work.
