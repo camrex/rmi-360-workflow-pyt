@@ -196,26 +196,46 @@ def object_exists(s3_client, bucket: str, key: str) -> bool:
 MAX_SINGLE_PUT_BYTES = 5 * 1024 ** 3
 
 
+CONFLICT_RETRIES = 3          # 409 ConditionalRequestConflict: S3 asks for the whole PUT again
+CONFLICT_BACKOFF_SEC = 0.5
+
+
+def supports_conditional_put(s3_client) -> bool:
+    """True if this botocore's PutObject model has IfNoneMatch (older ones reject it)."""
+    try:
+        members = s3_client.meta.service_model.operation_model("PutObject").input_shape.members
+        return "IfNoneMatch" in members
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def put_if_absent(s3_client, bucket: str, key: str, path, content_type: str = "image/jpeg") -> bool:
     """Upload ``path`` to ``key`` only if no object exists there (If-None-Match: *).
 
     Returns True if uploaded, False if S3 refused because the key already exists
     (412 PreconditionFailed). The check is atomic in S3, so concurrent puts of the
-    same key cannot overwrite each other. Any other error is raised.
+    same key cannot overwrite each other. A 409 ConditionalRequestConflict (another
+    write to the key in flight) is retried from the start, as S3 requires; it then
+    resolves to an upload or a 412. Any other error is raised.
     """
     size = os.path.getsize(path)
     if size > MAX_SINGLE_PUT_BYTES:
         raise ValueError(f"{path} is {size} bytes, over the 5 GB single-PUT limit")
-    with open(path, "rb") as body:
-        try:
-            s3_client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type, IfNoneMatch="*")
-            return True
-        except ClientError as e:
-            code = str(e.response.get("Error", {}).get("Code", ""))
-            status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
-            if code == "PreconditionFailed" or status == 412:
-                return False
-            raise
+    for attempt in range(CONFLICT_RETRIES + 1):
+        with open(path, "rb") as body:
+            try:
+                s3_client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type, IfNoneMatch="*")
+                return True
+            except ClientError as e:
+                code = str(e.response.get("Error", {}).get("Code", ""))
+                status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+                if code == "PreconditionFailed" or status == 412:
+                    return False
+                conflict = code == "ConditionalRequestConflict" or status == 409
+                if not conflict or attempt == CONFLICT_RETRIES:
+                    raise
+        time.sleep(CONFLICT_BACKOFF_SEC * (attempt + 1))
+    return False  # pragma: no cover - loop always returns or raises
 
 
 def find_duplicate_keys(tasks):
@@ -441,6 +461,23 @@ def copy_to_aws(
     if using_acceleration:
         logger.custom("Uploads will use the accelerated endpoint.", indent=2, emoji="🚀")
 
+    if not supports_conditional_put(s3):
+        msg = ("The installed botocore does not support conditional writes (PutObject IfNoneMatch), "
+               "which Copy To AWS needs so it never overwrites. Update boto3/botocore in the "
+               "ArcGIS Pro environment; nothing was uploaded.")
+        logger.error(msg, indent=2)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": msg,
+        }
+
     logger.info("Starting AWS Upload...", indent=1)
     # One conditional PutObject per file; max_workers caps how many run at once.
     put_slots = threading.BoundedSemaphore(max(int(max_concurrency), 1))
@@ -545,72 +582,80 @@ def copy_to_aws(
         # Outside the log lock: the tracker may publish the heartbeat (a network call).
         tracker.file_done(HEARTBEAT_GROUP, status, file_size)
 
-    with cfg.get_progressor(total=total, label="Uploading images to S3") as progressor:
-        last = 0
+    tracker.start()  # heartbeat thread; always stopped by tracker.finish() below
+    crashed = False
+    try:
+        with cfg.get_progressor(total=total, label="Uploading images to S3") as progressor:
+            last = 0
 
-        for i in range(0, len(upload_tasks), batch_size):
-            batch = upload_tasks[i:i + batch_size]
-            threads = []
+            for i in range(0, len(upload_tasks), batch_size):
+                batch = upload_tasks[i:i + batch_size]
+                threads = []
 
-            for local_path, s3_key in batch:
+                for local_path, s3_key in batch:
+                    if cancel_event.is_set():
+                        break
+                    t = threading.Thread(target=upload_one, args=(local_path, s3_key))
+                    threads.append(t)
+                    t.start()
+
+                for t in threads:
+                    t.join()
+
+                # Check for cancel triggers
+                if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
+                    cancel_event.set()
+                    logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
+
                 if cancel_event.is_set():
+                    progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
+                    if report_data is not None:
+                        upload_status = "canceled" if cancel_event.is_set() else "completed"
+                        current_status = report_data.setdefault("upload", {}).get("status")
+
+                        # If previously canceled, and now completed, mark as completed_after_cancel
+                        if upload_status == "completed" and current_status == "canceled":
+                            upload_status = "completed_after_cancel"
+
+                        report_data["upload"]["status"] = upload_status
+
                     break
-                t = threading.Thread(target=upload_one, args=(local_path, s3_key))
-                threads.append(t)
-                t.start()
 
-            for t in threads:
-                t.join()
+                with lock:
+                    current = completed["processed"]
+                    uploaded = completed["uploaded"]
+                    failed = completed["failed"]
 
-            # Check for cancel triggers
-            if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
-                cancel_event.set()
-                logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
-
-            if cancel_event.is_set():
-                progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
-                if report_data is not None:
-                    upload_status = "canceled" if cancel_event.is_set() else "completed"
-                    current_status = report_data.setdefault("upload", {}).get("status")
-
-                    # If previously canceled, and now completed, mark as completed_after_cancel
-                    if upload_status == "completed" and current_status == "canceled":
-                        upload_status = "completed_after_cancel"
-
-                    report_data["upload"]["status"] = upload_status
-
-                break
-
-            with lock:
-                current = completed["processed"]
-                uploaded = completed["uploaded"]
-                failed = completed["failed"]
-
-            if current > last:
-                elapsed = time.time() - start_time
-                eta = (elapsed / current) * (total - current) if current > 0 else 0
-                eta_min, eta_sec = divmod(int(eta), 60)
-                eta_hr, eta_min = divmod(eta_min, 60)
-                label = (
-                    f"Processing {current}/{total} images... "
-                    f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
-                )
-                progressor.update(current, label)
-                logger.custom(label, indent=3, emoji="☁️")
-                last = current
-
-    # Final heartbeat
-    tracker.complete_group(HEARTBEAT_GROUP)
-    if cancel_event.is_set():
-        final_phase = "cancelled"
-    elif completed["failed"] and not completed["uploaded"]:
-        final_phase = "error"
-    else:
-        final_phase = "complete"
-    tracker.finish(final_phase)
-    if tracker.publish_error:
-        logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
-                       f"{tracker.publish_error}. The upload itself was not affected.", indent=1)
+                if current > last:
+                    elapsed = time.time() - start_time
+                    eta = (elapsed / current) * (total - current) if current > 0 else 0
+                    eta_min, eta_sec = divmod(int(eta), 60)
+                    eta_hr, eta_min = divmod(eta_min, 60)
+                    label = (
+                        f"Processing {current}/{total} images... "
+                        f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
+                    )
+                    progressor.update(current, label)
+                    logger.custom(label, indent=3, emoji="☁️")
+                    last = current
+    except BaseException:
+        crashed = True
+        raise
+    finally:
+        # Final heartbeat, also on an exception, so the publisher thread never outlives the upload.
+        tracker.complete_group(HEARTBEAT_GROUP)
+        if crashed:
+            final_phase = "error"
+        elif cancel_event.is_set():
+            final_phase = "cancelled"
+        elif completed["failed"] and not completed["uploaded"]:
+            final_phase = "error"
+        else:
+            final_phase = "complete"
+        tracker.finish(final_phase)
+        if tracker.publish_error:
+            logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
+                           f"{tracker.publish_error}. The upload itself was not affected.", indent=1)
 
     # Write Summary File (aws_upload_summary)
     summary_stats = calculate_summary(log_rows, total, start_time)

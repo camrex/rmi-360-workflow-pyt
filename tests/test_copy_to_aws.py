@@ -391,7 +391,8 @@ class _Progressor:
         pass
 
 
-def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, heartbeat_fails=False):
+def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, heartbeat_fails=False,
+              progressor_error=None):
     """Run copy_to_aws over ``files`` (relative paths). ``existing`` keys answer HeadObject 200;
     ``raced`` keys pass HeadObject but are refused by the conditional put (412)."""
     src = tmp_path / "renamed"
@@ -404,9 +405,12 @@ def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, h
     cfg = MagicMock()
     cfg.get.side_effect = lambda k, d=None: values.get(k, d)
     cfg.get_progressor.return_value = _Progressor()
+    if progressor_error is not None:
+        cfg.get_progressor.side_effect = progressor_error
     cfg.paths.project_base = tmp_path
     cfg.paths.get_log_file_path.side_effect = lambda name, _cfg: tmp_path / f"{name}.csv"
     s3 = MagicMock()
+    s3.meta.service_model.operation_model.return_value.input_shape.members = {"IfNoneMatch": object()}
     s3.head_object.side_effect = lambda Bucket, Key: (None if Key in existing else
                                                       (_ for _ in ()).throw(_client_error("404")))
     put_keys, heartbeats = [], []
@@ -472,3 +476,65 @@ def test_heartbeat_failure_does_not_fail_upload(tmp_path, monkeypatch):
 def test_no_heartbeat_without_raw_bucket_or_slug(tmp_path, monkeypatch):
     result, _, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"])
     assert result["status"] == "completed" and _run_copy.heartbeats == []
+
+
+def test_put_if_absent_retries_409_conflict(tmp_path, monkeypatch):
+    monkeypatch.setattr(copy_to_aws_mod.time, "sleep", lambda s: None)
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    s3 = MagicMock()
+    s3.put_object.side_effect = [_client_error_status("ConditionalRequestConflict", 409), None]
+    assert copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f)) is True
+    assert s3.put_object.call_count == 2
+    # a 409 that resolves to "already there" on retry is a skip, not a failure
+    s3 = MagicMock()
+    s3.put_object.side_effect = [_client_error_status("ConditionalRequestConflict", 409),
+                                 _client_error_status("PreconditionFailed", 412)]
+    assert copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f)) is False
+
+
+def test_put_if_absent_gives_up_after_repeated_409(tmp_path, monkeypatch):
+    monkeypatch.setattr(copy_to_aws_mod.time, "sleep", lambda s: None)
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    s3 = MagicMock()
+    s3.put_object.side_effect = _client_error_status("ConditionalRequestConflict", 409)
+    try:
+        copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f))
+    except ClientError:
+        pass
+    else:
+        raise AssertionError("expected ClientError")
+    assert s3.put_object.call_count == copy_to_aws_mod.CONFLICT_RETRIES + 1
+
+
+def test_supports_conditional_put():
+    s3 = MagicMock()
+    s3.meta.service_model.operation_model.return_value.input_shape.members = {"IfNoneMatch": 1}
+    assert copy_to_aws_mod.supports_conditional_put(s3) is True
+    s3.meta.service_model.operation_model.return_value.input_shape.members = {"Bucket": 1}
+    assert copy_to_aws_mod.supports_conditional_put(s3) is False
+
+
+def test_copy_stops_when_botocore_lacks_conditional_put(tmp_path, monkeypatch):
+    real = copy_to_aws_mod.supports_conditional_put
+    monkeypatch.setattr(copy_to_aws_mod, "supports_conditional_put", lambda s3: False)
+    try:
+        result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"])
+    finally:
+        monkeypatch.setattr(copy_to_aws_mod, "supports_conditional_put", real)
+    assert result["status"] == "error" and "conditional writes" in result["message"]
+    assert put_keys == []
+
+
+def test_heartbeat_thread_stops_when_upload_raises(tmp_path, monkeypatch):
+    import json, threading
+    try:
+        _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG,
+                  progressor_error=RuntimeError("boom"))
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("expected RuntimeError")
+    alive = [th for th in threading.enumerate() if th.name == "status-heartbeat" and th.is_alive()]
+    assert alive == []
+    status = json.loads((tmp_path / "aws_upload_status.json").read_text(encoding="utf-8"))
+    assert status["phase"] == "error"

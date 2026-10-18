@@ -1,4 +1,4 @@
-"""Unit tests for utils/shared/s3_status_tracker.py — the publish (heartbeat) hook.
+"""Unit tests for utils/shared/s3_status_tracker.py — the heartbeat publisher thread.
 
 Loaded by file path: the module is pure stdlib and needs no arcpy or AWS.
 """
@@ -6,6 +6,8 @@ Loaded by file path: the module is pure stdlib and needs no arcpy or AWS.
 import importlib.util
 import json
 import pathlib
+import threading
+import time
 
 _spec = importlib.util.spec_from_file_location(
     "s3_status_tracker_under_test",
@@ -16,24 +18,40 @@ _spec.loader.exec_module(tracker_mod)
 StatusTracker = tracker_mod.StatusTracker
 
 
-def test_publish_is_throttled_and_forced_on_finish(monkeypatch):
-    clock = {"t": 1000.0}
-    monkeypatch.setattr(tracker_mod, "now_ts", lambda: clock["t"])
+def _heartbeat_threads():
+    return [t for t in threading.enumerate() if t.name == "status-heartbeat" and t.is_alive()]
+
+
+def test_publishes_on_a_timer_while_work_is_in_flight():
     sent = []
-    tr = StatusTracker(None, interval_sec=1, publish=sent.append, publish_interval_sec=60)
-    tr.set_totals(3)                      # first flush publishes (nothing sent yet)
-    for _ in range(3):
-        clock["t"] += 2                   # flushes are due, publishes are not
-        tr.file_done("g", "uploaded", 10)
-    assert len(sent) == 1
-    clock["t"] += 61
-    tr.file_done("g", "skipped", 10)      # publish interval elapsed
-    assert len(sent) == 2
-    tr.finish("complete")                 # always published
-    assert len(sent) == 3
+    tr = StatusTracker(None, publish=sent.append, publish_interval_sec=0.05)
+    tr.set_totals(1)
+    tr.start()
+    time.sleep(0.4)                      # one long "transfer": no file_done calls at all
+    assert len(sent) >= 3                # heartbeats kept coming anyway
+    tr.file_done("g", "uploaded", 10)
+    tr.finish("complete")
+    assert _heartbeat_threads() == []    # the thread is stopped
     final = json.loads(sent[-1])
-    assert final["phase"] == "complete" and final["completed_at"] == clock["t"]
-    assert final["totals"]["uploaded"] == 3 and final["totals"]["skipped"] == 1
+    assert final["phase"] == "complete" and final["completed_at"]
+    assert final["totals"]["uploaded"] == 1
+
+
+def test_publish_runs_off_the_calling_thread_and_outside_the_lock():
+    seen = {}
+
+    def publish(_text):
+        seen["thread"] = threading.current_thread().name
+        seen["lock_free"] = tr.lock.acquire(blocking=False)   # would deadlock/False if held
+        if seen["lock_free"]:
+            tr.lock.release()
+
+    tr = StatusTracker(None, publish=publish, publish_interval_sec=60)
+    tr.start()
+    time.sleep(0.1)
+    tr.finish("complete")
+    assert seen["lock_free"] is True
+    assert tr.publish_count >= 2        # the thread's first publish + the final one
 
 
 def test_publish_failure_is_recorded_not_raised(tmp_path):
@@ -41,16 +59,20 @@ def test_publish_failure_is_recorded_not_raised(tmp_path):
         raise ConnectionError("no network")
 
     status = tmp_path / "status.json"
-    tr = StatusTracker(status, publish=boom, meta={"project": "RMI1"})
+    tr = StatusTracker(status, publish=boom, publish_interval_sec=60, meta={"project": "RMI1"})
+    tr.start()
     tr.file_done("g", "uploaded", 1)
     tr.finish("complete")
     assert tr.publish_error == "ConnectionError: no network"
     local = json.loads(status.read_text(encoding="utf-8"))   # local file still written
     assert local["phase"] == "complete" and local["meta"] == {"project": "RMI1"}
+    assert _heartbeat_threads() == []
 
 
 def test_no_publish_keeps_local_only_behaviour(tmp_path):
     status = tmp_path / "status.json"
     tr = StatusTracker(status)
+    tr.start()                           # no-op without publish
     tr.set_totals(1)
     assert json.loads(status.read_text(encoding="utf-8"))["totals"]["files"] == 1
+    assert _heartbeat_threads() == []

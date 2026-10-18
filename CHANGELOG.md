@@ -27,8 +27,11 @@ the Lambda upload monitor.)
   `aws_upload_status.json` next to the upload log. It uses the same named profile
   (rmi-aws-infra 0049 grants `rmi-360-raw/status/RMI*/*` and expires old heartbeat
   versions after a day). Puts are SSE-S3 encrypted, the client has short timeouts,
-  and a failed heartbeat is reported once without affecting the upload. No setting
-  is needed. `StatusTracker` gained the `publish` hook and `finish()`.
+  and a failed heartbeat is reported once without affecting the upload. A background
+  thread publishes on a timer, outside the upload threads, so heartbeats continue
+  during long transfers. It always stops at the end, including on an exception.
+  No setting is needed. `StatusTracker` gained the `publish` hook, `start()` and
+  `finish()`.
   See `docs/aws/upload-heartbeat.rst`.
 
 #### AWS access through a named profile only (rmi-aws-infra 0049)

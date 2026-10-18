@@ -42,8 +42,11 @@ How it is written
   refuses unencrypted puts.
 - ``rmi-360-raw`` is versioned. A lifecycle rule (rmi-aws-infra change 0049) expires
   old heartbeat versions under ``status/`` after a day.
-- The heartbeat client has short timeouts, and a failed heartbeat never stops or slows
-  the upload: the tool logs one warning at the end and carries on.
+- A background thread publishes it on a timer, outside the upload threads, so
+  heartbeats keep coming during long transfers and a slow S3 call can't hold up an
+  upload. The client has short timeouts. A failed heartbeat never stops the upload:
+  the tool logs one warning at the end. The thread always stops when the upload
+  ends, including when it fails with an error (phase ``error``).
 - No setting turns it on. If ``aws.s3_bucket_raw`` or ``project.slug`` is empty, the
   tool says so and uploads without a heartbeat.
 

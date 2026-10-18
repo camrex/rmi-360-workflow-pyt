@@ -60,11 +60,16 @@ class StatusTracker:
         file_progress_cb(group): Get progress callback for boto3
         file_done(group, outcome, size): Mark file complete
         note_skip(group): Note a skipped file
-        finish(phase): Record the final phase and publish one last time
+        start(): Start the heartbeat publisher thread (only with ``publish``)
+        finish(phase): Record the final phase, stop the publisher, publish once more
 
-    With ``publish`` set, the same JSON is also handed to that callable (e.g. an S3
-    put: the upload heartbeat) at most every ``publish_interval_sec``, and always on
-    ``finish``. A failed publish is remembered in ``publish_error`` and never raised.
+    With ``publish`` set and ``start()`` called, a daemon thread hands the current
+    JSON to ``publish`` (e.g. an S3 put: the upload heartbeat) right away and then
+    every ``publish_interval_sec``, outside the tracker lock and off the worker
+    threads, so a slow publish never holds up the work and heartbeats continue
+    while long transfers are in flight. ``finish`` stops the thread and publishes the
+    final state. A failed publish is remembered in ``publish_error`` and never
+    raised. Always call ``finish`` (in a ``finally``) once ``start`` has run.
     """
 
     def __init__(self, status_path: Optional[Path], interval_sec: float = 2.0, group_key: str = "groups",
@@ -87,9 +92,11 @@ class StatusTracker:
         self.lock = threading.Lock()
         self.last_flush = 0.0
         self.publish = publish
-        self.publish_interval = max(1.0, float(publish_interval_sec))
-        self.last_publish = 0.0
+        self.publish_interval = max(0.01, float(publish_interval_sec))
         self.publish_error: Optional[str] = None
+        self.publish_count = 0
+        self._stop = threading.Event()
+        self._publisher: Optional[threading.Thread] = None
         self.data = {
             "started_at": now_ts(),
             "phase": "init",
@@ -215,8 +222,16 @@ class StatusTracker:
             self.data["totals"]["skipped"] += 1
             self._flush_if_due()
 
-    def finish(self, phase: str = "complete"):
-        """Record the final phase ("complete", "cancelled", "error") and publish it."""
+    def start(self):
+        """Start the publisher thread (no-op without ``publish`` or if already running)."""
+        if not self.publish or self._publisher is not None:
+            return
+        self._publisher = threading.Thread(target=self._publish_loop, name="status-heartbeat", daemon=True)
+        self._publisher.start()
+
+    def finish(self, phase: str = "complete", join_timeout_sec: float = 30.0):
+        """Record the final phase ("complete", "cancelled", "error"), stop the publisher
+        thread and publish the final state from the calling thread."""
         with self.lock:
             self.data["phase"] = phase
             self.data["completed_at"] = now_ts()
@@ -224,28 +239,43 @@ class StatusTracker:
             self.data["current_file_bytes"] = 0
             self.data["current_file_size"] = 0
             self._flush(force=True)
+        self._stop.set()
+        if self._publisher is not None:
+            self._publisher.join(timeout=join_timeout_sec)
+        if self.publish:
+            self._publish_now()
+
+    def _publish_loop(self):
+        """Publish now, then every ``publish_interval`` until ``finish``."""
+        while True:
+            self._publish_now()
+            if self._stop.wait(self.publish_interval):
+                return
+
+    def _publish_now(self):
+        """Snapshot under the lock; publish outside it. Never raises."""
+        with self.lock:
+            self.data["last_update"] = now_ts()
+            text = json.dumps(self.data, ensure_ascii=False, indent=2)
+        try:
+            self.publish(text)
+            self.publish_count += 1
+        except Exception as e:  # noqa: BLE001 — a heartbeat must never stop the work
+            if self.publish_error is None:
+                self.publish_error = f"{type(e).__name__}: {e}"
 
     def _flush_if_due(self):
         """Flush JSON if enough time has passed since last flush."""
-        if not self.status_path and not self.publish:
+        if not self.status_path:
             return
         now = now_ts()
         if (now - self.last_flush) >= self.interval:
             self._flush()
 
     def _flush(self, force: bool = False):
-        """Write JSON status to disk, and publish it when due (always when forced)."""
-        if not self.status_path and not self.publish:
+        """Write JSON status to disk (the local copy; publishing is the thread's job)."""
+        if not self.status_path:
             return
         self.data["last_update"] = now_ts()
-        text = json.dumps(self.data, ensure_ascii=False, indent=2)
-        if self.status_path:
-            atomic_write_text(self.status_path, text)
+        atomic_write_text(self.status_path, json.dumps(self.data, ensure_ascii=False, indent=2))
         self.last_flush = now_ts()
-        if self.publish and (force or (self.last_flush - self.last_publish) >= self.publish_interval):
-            self.last_publish = self.last_flush
-            try:
-                self.publish(text)
-            except Exception as e:  # noqa: BLE001 — a heartbeat must never stop the work
-                if self.publish_error is None:
-                    self.publish_error = f"{type(e).__name__}: {e}"
