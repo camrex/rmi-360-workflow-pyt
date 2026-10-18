@@ -5,7 +5,6 @@
 pyyaml          # YAML parsing (used for config files)
 boto3           # AWS SDK for Python
 botocore        # Core dependency for boto3
-keyring         # Secure credential storage
 numpy           # Numerical computing
 jinja2          # Templating for reports or config generation
 pytest          # Unit testing

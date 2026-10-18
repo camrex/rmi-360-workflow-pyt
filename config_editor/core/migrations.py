@@ -28,8 +28,17 @@ CONSOLIDATE_AWS = [
 # rules needed — the Upgrade's skeleton merge fills the new keys from the sample's
 # defaults (enabled: true, model: GEOID18) and adopts the sample's schema_version.
 
+# 1.7.0 — credentials come only from a named AWS profile (new aws.profile, filled
+# from the sample: blank = AWS_PROFILE). The static-key settings are dropped.
+RETIRE_STATIC_KEYS = [
+    {"op": "remove", "path": "aws.auth_mode"},
+    {"op": "remove", "path": "aws.keyring_service_name"},
+    {"op": "remove", "path": "aws.access_key"},
+    {"op": "remove", "path": "aws.secret_key"},
+]
+
 # All known rules, in apply order. (Append future milestones' rules here.)
-ALL_RULES: List[dict] = CONSOLIDATE_AWS
+ALL_RULES: List[dict] = CONSOLIDATE_AWS + RETIRE_STATIC_KEYS
 
 
 def rules_for(source_version: Any = None, target_version: Any = None) -> List[dict]:

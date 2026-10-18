@@ -30,7 +30,7 @@ def test_consolidate_aws_upgrade():
     assert "s3_bucket" not in aws                               # old key renamed away
     assert "keyring_aws" not in aws                             # removed
     assert "secured_storage" not in v                          # emptied + pruned
-    assert v["schema_version"] == "1.6.0"                       # adopts current
+    assert v["schema_version"] == "1.7.0"                       # adopts current
 
     renamed = " | ".join(res.report.renamed)
     assert "secured_storage.s3_bucket -> aws.s3_bucket_panos_secured" in renamed
@@ -39,9 +39,24 @@ def test_consolidate_aws_upgrade():
 
 def test_upgrade_on_current_config_is_noop_for_renames():
     # A config already on the new schema should not gain stray keys from the rules.
-    current = {"schema_version": "1.6.0", "aws": {"s3_bucket_panos_unsecured": "b"}}
-    res = migrate.upgrade(current, rules=migrations.rules_for("1.6.0"))
+    current = {"schema_version": "1.7.0", "aws": {"s3_bucket_panos_unsecured": "b"}}
+    res = migrate.upgrade(current, rules=migrations.rules_for("1.7.0"))
     v = config_io.extract_values(res.config)
     assert v["aws"]["s3_bucket_panos_unsecured"] == "b"
     assert "secured_storage" not in v
     assert res.report.renamed == []  # nothing to rename
+
+
+def test_upgrade_retires_static_aws_keys():
+    # 1.7.0: credentials come only from a named profile; the static-key settings go.
+    old = {"schema_version": "1.6.0", "aws": {
+        "auth_mode": "keyring", "keyring_service_name": "rmi_s3",
+        "access_key": "<ACCESS_KEY_ID>", "secret_key": "<SECRET_ACCESS_KEY>",
+        "s3_bucket_panos_unsecured": "b"}}
+    res = migrate.upgrade(old, rules=migrations.rules_for("1.6.0"))
+    aws = config_io.extract_values(res.config)["aws"]
+    for gone in ("auth_mode", "keyring_service_name", "access_key", "secret_key"):
+        assert gone not in aws
+    assert aws["profile"] == ""                  # new key, filled from the sample
+    assert aws["s3_bucket_panos_unsecured"] == "b"
+    assert "aws.profile" in res.report.added_keys

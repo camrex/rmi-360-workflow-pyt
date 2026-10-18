@@ -122,7 +122,9 @@ def main() -> int:
             folder_types=folder_types,
             local_project_dir=local_dir,
             max_workers=args.max_workers,
-            skip_if_exists=not args.force
+            skip_if_exists=not args.force,
+            profile=cfg.get("aws.profile"),
+            region=cfg.get("aws.region"),
         )
 
         print("\n[SUCCESS] Downloaded project files:")

@@ -6,6 +6,7 @@ Setup Tools
 Setup tools help prepare your environment and configure initial settings:
 
 - Create OID Template Tool
-- Set AWS Keyring Credentials
+
+AWS access needs no setup tool: see :doc:`../aws/setup-guide` for the named AWS profile.
 
 For detailed tool information, see the :doc:`../api/tools` API reference and the legacy documentation in ``docs_legacy/TOOL_GUIDES.md``.

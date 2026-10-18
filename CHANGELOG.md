@@ -8,13 +8,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-Schema bumped **1.3.3 → 1.4.0 → 1.5.0 → 1.6.0** across this set of work. The runtime
-accepts **only `1.6.0`** (clean break); upgrade older `config.yaml` files with the new
-Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
+Schema bumped **1.3.3 → 1.4.0 → 1.5.0 → 1.6.0 → 1.7.0** across this set of work. The
+runtime accepts **only `1.7.0`** (clean break); upgrade older `config.yaml` files with the
+new Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 `spatial_ref.geoid_correction` for the NAVD88 camera-height conversion; 1.6.0 = additive
-`spatial_ref.geoid_correction.source_frame` for the reference-frame shift.)
+`spatial_ref.geoid_correction.source_frame` for the reference-frame shift; 1.7.0 =
+`aws.profile` replaces the static-key settings.)
 
 ### Added
+
+#### AWS access through a named profile only (rmi-aws-infra 0049)
+
+- **Every AWS call now uses a named AWS profile** (IAM Identity Center): new
+  `aws.profile` (RMI: `rmi-360-workflow-pyt`), else the `AWS_PROFILE` environment
+  variable. With neither, or with `default`, every AWS step refuses to run. Previously
+  `auth_mode: instance` fell through to boto3's default chain, which on a desktop is
+  whatever key the machine holds, and `utils/s3_utils.py` (reel/project staging, the
+  raw project picker, `download_project_files.py`) ignored `auth_mode` entirely. The
+  same rule now covers `copy_to_aws`, the artifact backup, OID audit/sync, staging,
+  `scripts/upload_to_s3.py` and `download_project_files.py`, and the config editor's
+  **Check AWS auth**.
+- **Copy To AWS never overwrites.** Each file goes up as one `PutObject` with
+  `If-None-Match: *`, so S3 itself refuses a put to an existing key (412 → skipped,
+  "already in S3" in the upload log); this holds even for two runs at once. A
+  `HeadObject` check first skips known keys without sending the bytes, and errors
+  other than 404 fail that file. If two local files map to the same key, the run
+  stops before uploading anything. A repeat put of a panorama in `rmi-360-prod` would
+  re-run tiling. Uploads no longer use boto3's TransferManager (panoramas are far below
+  the 5 GB single-PUT limit); `aws.max_workers` caps concurrent puts, and `aws.retries`
+  now really sets the client's retry attempts (it used to set a download-only option).
+- **Docs:** `docs/aws/setup-guide.rst` (profile setup, `aws sso login`, how ArcGIS Pro
+  picks the profile up, what the profile may do), and a new `CLAUDE.md`.
+- Config editor's RMI profile now sets `aws.profile`, the `rmi-360-prod` /
+  `rmi-360-raw` buckets and `use_acceleration: true` (Transfer Acceleration is on for
+  `rmi-360-prod`).
 
 #### Ellipsoidal → NAVD88 camera-height conversion (vertical datum fix)
 
@@ -201,6 +228,13 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 - The deprecated `aws.keyring_aws` flag — `auth_mode` is now the single switch for
   credential resolution. The Config Editor's Upgrade strips the key from older configs.
+- **Static AWS credentials (schema 1.7.0):** `aws.auth_mode` (`instance` / `keyring` /
+  `config`), `aws.keyring_service_name`, `aws.access_key` and `aws.secret_key`; the
+  toolbox's **Set AWS Keyring Credentials** tool and the config editor's **Set keyring
+  credentials…** button; `keyring` from both requirements files. The artifact backup
+  copies `config.yaml` into `rmi-360-raw`, so plaintext keys in a config would have
+  gone to S3. The Config Editor's Upgrade drops these keys and adds `aws.profile`.
+  Delete old keyring entries (service `rmi_s3` / `aws_s3`) on each machine.
 
 ### Notes
 

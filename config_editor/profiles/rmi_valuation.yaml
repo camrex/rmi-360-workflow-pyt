@@ -10,9 +10,12 @@ project:
 
 aws:
   region: "us-east-2"
-  auth_mode: "keyring"
+  profile: "rmi-360-workflow-pyt"   # IAM Identity Center profile (rmi-aws-infra 0049)
+  s3_bucket_raw: "rmi-360-raw"
+  s3_bucket_panos_unsecured: "rmi-360-prod"
+  use_acceleration: true             # Transfer Acceleration is on for rmi-360-prod ($0.04/GB extra)
   secured_delivery:
-    enabled: false      # keep legacy/public until Esri Case 04187998 resolves
+    enabled: false      # not before ArcGIS Enterprise 12.2 (Esri Case 04187998, concluded)
 
 portal:
   share_with: "PRIVATE"

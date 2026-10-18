@@ -188,7 +188,7 @@ Configuration Best Practices
 
 1. **Version Control:** Keep your configuration files in version control
 2. **Environment Separation:** Use separate configs for dev/test/production
-3. **Sensitive Data:** Use environment variables or keyring for AWS credentials
+3. **Sensitive Data:** Never put AWS keys in config files; use the named AWS profile (see :doc:`../aws/setup-guide`)
 4. **Documentation:** Comment your configuration changes
 5. **Validation:** Always test configuration changes with sample data
 

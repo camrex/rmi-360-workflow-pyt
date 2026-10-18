@@ -299,3 +299,179 @@ def test_should_cancel(tmp_path):
     assert should_cancel(object(), True, cancel_file)
     # Neither
     assert not should_cancel(object(), False, cancel_file)
+
+
+def _client_error(code):
+    err = ClientError(code)
+    err.response = {"Error": {"Code": code}}
+    return err
+
+
+def test_object_exists_true_when_head_succeeds():
+    s3 = MagicMock()
+    assert copy_to_aws_mod.object_exists(s3, "rmi-360-prod", "RMI1/a.jpg") is True
+    s3.head_object.assert_called_once_with(Bucket="rmi-360-prod", Key="RMI1/a.jpg")
+
+
+def test_object_exists_false_on_404():
+    for code in ("404", "NoSuchKey", "NotFound"):
+        s3 = MagicMock()
+        s3.head_object.side_effect = _client_error(code)
+        assert copy_to_aws_mod.object_exists(s3, "b", "k") is False
+
+
+def test_object_exists_raises_on_other_errors():
+    # A 403 must not be read as "absent": that would risk an overwrite.
+    s3 = MagicMock()
+    s3.head_object.side_effect = _client_error("403")
+    try:
+        copy_to_aws_mod.object_exists(s3, "b", "k")
+    except ClientError:
+        pass
+    else:
+        raise AssertionError("expected ClientError")
+
+
+def _client_error_status(code, status):
+    err = ClientError(code)
+    err.response = {"Error": {"Code": code}, "ResponseMetadata": {"HTTPStatusCode": status}}
+    return err
+
+
+def test_put_if_absent_sends_if_none_match(tmp_path):
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    s3 = MagicMock()
+    assert copy_to_aws_mod.put_if_absent(s3, "b", "RMI1/a.jpg", str(f)) is True
+    kwargs = s3.put_object.call_args.kwargs
+    assert kwargs["IfNoneMatch"] == "*" and kwargs["Key"] == "RMI1/a.jpg"
+    assert kwargs["ContentType"] == "image/jpeg"
+
+
+def test_put_if_absent_412_means_already_there(tmp_path):
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    for err in (_client_error_status("PreconditionFailed", 412), _client_error_status("", 412)):
+        s3 = MagicMock(); s3.put_object.side_effect = err
+        assert copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f)) is False
+
+
+def test_put_if_absent_raises_other_errors(tmp_path):
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    s3 = MagicMock(); s3.put_object.side_effect = _client_error_status("AccessDenied", 403)
+    try:
+        copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f))
+    except ClientError:
+        pass
+    else:
+        raise AssertionError("expected ClientError")
+
+
+def test_find_duplicate_keys():
+    tasks = [("a/x.jpg", "P/x.jpg"), ("b/x.jpg", "P/x.jpg"), ("c/y.jpg", "P/y.jpg")]
+    assert copy_to_aws_mod.find_duplicate_keys(tasks) == {"P/x.jpg": ["a/x.jpg", "b/x.jpg"]}
+
+
+# --- end to end: copy_to_aws() against a fake S3 --------------------------------------
+
+class _Progressor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def update(self, *a, **k):
+        pass
+
+
+def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=()):
+    """Run copy_to_aws over ``files`` (relative paths). ``existing`` keys answer HeadObject 200;
+    ``raced`` keys pass HeadObject but are refused by the conditional put (412)."""
+    src = tmp_path / "renamed"
+    for rel in files:
+        p = src / rel; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(b"jpeg")
+    values = {"aws.s3_bucket_folder": "RMI1", "aws.s3_bucket_panos_unsecured": "prod",
+              "aws.upload_batch_size": 10, "aws.max_workers": 4, "aws.retries": 2,
+              "aws.use_acceleration": False, "aws.skip_existing": True,
+              "aws.allow_cancel_file_trigger": False}
+    cfg = MagicMock()
+    cfg.get.side_effect = lambda k, d=None: values.get(k, d)
+    cfg.get_progressor.return_value = _Progressor()
+    cfg.paths.project_base = tmp_path
+    cfg.paths.get_log_file_path.side_effect = lambda name, _cfg: tmp_path / f"{name}.csv"
+    s3 = MagicMock()
+    s3.meta.service_model.operation_model.return_value.input_shape.members = {"IfNoneMatch": object()}
+    s3.head_object.side_effect = lambda Bucket, Key: (None if Key in existing else
+                                                      (_ for _ in ()).throw(_client_error("404")))
+    put_keys = []
+
+    def put_object(**kw):
+        put_keys.append(kw["Key"])
+        if kw["Key"] in raced:
+            raise _client_error_status("PreconditionFailed", 412)
+    s3.put_object.side_effect = put_object
+    session = MagicMock(); session.client.return_value = s3
+    monkeypatch.setattr(copy_to_aws_mod, "get_boto3_session", lambda _cfg: session)
+    result = copy_to_aws_mod.copy_to_aws(cfg, local_dir=str(src))
+    return result, put_keys, s3
+
+
+def test_copy_never_overwrites(tmp_path, monkeypatch):
+    result, put_keys, s3 = _run_copy(tmp_path, monkeypatch, ["a.jpg", "b.jpg", "c.jpg"],
+                                     existing={"RMI1/a.jpg"}, raced={"RMI1/b.jpg"})
+    assert result["status"] == "completed"
+    assert sorted(put_keys) == ["RMI1/b.jpg", "RMI1/c.jpg"]       # a.jpg never sent
+    assert result["uploaded"] == 1 and result["skipped"] == 2 and result["failed"] == 0
+    assert all(c.kwargs["IfNoneMatch"] == "*" for c in s3.put_object.call_args_list)
+
+
+def test_copy_stops_on_duplicate_keys(tmp_path, monkeypatch):
+    result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["reel1/x.jpg", "reel2/x.jpg", "y.jpg"])
+    assert result["status"] == "error" and "more than one local file" in result["message"]
+    assert put_keys == []
+
+
+def test_put_if_absent_retries_409_conflict(tmp_path, monkeypatch):
+    monkeypatch.setattr(copy_to_aws_mod.time, "sleep", lambda s: None)
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    s3 = MagicMock()
+    s3.put_object.side_effect = [_client_error_status("ConditionalRequestConflict", 409), None]
+    assert copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f)) is True
+    assert s3.put_object.call_count == 2
+    # a 409 that resolves to "already there" on retry is a skip, not a failure
+    s3 = MagicMock()
+    s3.put_object.side_effect = [_client_error_status("ConditionalRequestConflict", 409),
+                                 _client_error_status("PreconditionFailed", 412)]
+    assert copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f)) is False
+
+
+def test_put_if_absent_gives_up_after_repeated_409(tmp_path, monkeypatch):
+    monkeypatch.setattr(copy_to_aws_mod.time, "sleep", lambda s: None)
+    f = tmp_path / "a.jpg"; f.write_bytes(b"jpeg")
+    s3 = MagicMock()
+    s3.put_object.side_effect = _client_error_status("ConditionalRequestConflict", 409)
+    try:
+        copy_to_aws_mod.put_if_absent(s3, "b", "k", str(f))
+    except ClientError:
+        pass
+    else:
+        raise AssertionError("expected ClientError")
+    assert s3.put_object.call_count == copy_to_aws_mod.CONFLICT_RETRIES + 1
+
+
+def test_supports_conditional_put():
+    s3 = MagicMock()
+    s3.meta.service_model.operation_model.return_value.input_shape.members = {"IfNoneMatch": 1}
+    assert copy_to_aws_mod.supports_conditional_put(s3) is True
+    s3.meta.service_model.operation_model.return_value.input_shape.members = {"Bucket": 1}
+    assert copy_to_aws_mod.supports_conditional_put(s3) is False
+
+
+def test_copy_stops_when_botocore_lacks_conditional_put(tmp_path, monkeypatch):
+    real = copy_to_aws_mod.supports_conditional_put
+    monkeypatch.setattr(copy_to_aws_mod, "supports_conditional_put", lambda s3: False)
+    try:
+        result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"])
+    finally:
+        monkeypatch.setattr(copy_to_aws_mod, "supports_conditional_put", real)
+    assert result["status"] == "error" and "conditional writes" in result["message"]
+    assert put_keys == []

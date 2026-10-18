@@ -3,14 +3,6 @@ from unittest.mock import MagicMock
 from config_editor.core import aws_check
 
 
-class FakeKeyring:
-    def __init__(self, store):
-        self.store = store  # {(service, item): value}
-
-    def get_password(self, service, item):
-        return self.store.get((service, item))
-
-
 class FakeClientError(Exception):
     """Mimics botocore ClientError enough for _error_code (has .response)."""
     def __init__(self, code):
@@ -38,70 +30,84 @@ def _statuses(checks):
     return {c.name: c.status for c in checks}
 
 
-def test_keyring_all_ok():
-    vals = {"aws": {"auth_mode": "keyring", "keyring_service_name": "aws_s3",
-                    "region": "us-east-2", "s3_bucket_panos_unsecured": "b1"}}
-    km = FakeKeyring({("aws_s3", "aws_access_key_id"): "AK", ("aws_s3", "aws_secret_access_key"): "SK"})
-    checks = aws_check.check_aws_auth(vals, keyring_mod=km, session_factory=lambda **k: FakeSession())
+NO_ENV = {}
+
+
+def _factory(seen=None, **session_kwargs):
+    """Session factory that records the kwargs it was called with."""
+    def make(**kwargs):
+        if seen is not None:
+            seen.update(kwargs)
+        return FakeSession(**session_kwargs)
+    return make
+
+
+def test_profile_from_config_ok():
+    vals = {"aws": {"profile": "rmi-360-workflow-pyt", "region": "us-east-2",
+                    "s3_bucket_panos_unsecured": "b1"}}
+    seen = {}
+    checks = aws_check.check_aws_auth(vals, session_factory=_factory(seen), environ=NO_ENV)
     st = _statuses(checks)
-    assert st["Credentials valid"] == "ok"
-    assert all(c.status != "error" for c in checks)
+    assert st["AWS profile"] == "ok" and st["Credentials valid"] == "ok"
+    assert seen == {"profile_name": "rmi-360-workflow-pyt", "region_name": "us-east-2"}
     assert any(c.name == "S3 bucket b1" and c.status == "ok" for c in checks)
 
 
-def test_keyring_missing_item_skips_validation():
-    vals = {"aws": {"auth_mode": "keyring", "keyring_service_name": "aws_s3"}}
-    km = FakeKeyring({("aws_s3", "aws_access_key_id"): "AK"})  # secret missing
-    checks = aws_check.check_aws_auth(vals, keyring_mod=km, session_factory=lambda **k: FakeSession())
-    assert any(c.status == "error" and "aws_secret_access_key" in c.name for c in checks)
+def test_profile_falls_back_to_env():
+    seen = {}
+    checks = aws_check.check_aws_auth({"aws": {"profile": ""}}, session_factory=_factory(seen),
+                                     environ={"AWS_PROFILE": "from-env"}, check_buckets=False)
+    assert seen["profile_name"] == "from-env"
+    assert "from AWS_PROFILE" in checks[0].detail
+
+
+def test_config_profile_wins_over_env():
+    seen = {}
+    aws_check.check_aws_auth({"aws": {"profile": "cfg"}}, session_factory=_factory(seen),
+                             environ={"AWS_PROFILE": "env"}, check_buckets=False)
+    assert seen["profile_name"] == "cfg"
+
+
+def test_no_profile_is_error_and_never_calls_aws():
+    def boom(**kwargs):
+        raise AssertionError("must not create a session")
+    checks = aws_check.check_aws_auth({"aws": {}}, session_factory=boom, environ=NO_ENV)
+    assert checks[0].name == "AWS profile" and checks[0].status == "error"
     assert any(c.name == "Validate credentials" and c.status == "warn" for c in checks)
 
 
-def test_config_placeholder_is_error():
-    vals = {"aws": {"auth_mode": "config", "access_key": "<ACCESS_KEY_ID>", "secret_key": "SK"}}
-    checks = aws_check.check_aws_auth(vals, session_factory=lambda **k: FakeSession())
-    assert any(c.status == "error" and "access_key" in c.name for c in checks)
+def test_default_profile_is_refused():
+    def boom(**kwargs):
+        raise AssertionError("must not create a session")
+    for vals, env in (({"aws": {"profile": "default"}}, NO_ENV), ({"aws": {}}, {"AWS_PROFILE": "Default"})):
+        checks = aws_check.check_aws_auth(vals, session_factory=boom, environ=env)
+        assert checks[0].status == "error" and "refused" in checks[0].detail
 
 
-def test_config_valid_keys_but_auth_fails():
-    vals = {"aws": {"auth_mode": "config", "access_key": "AK", "secret_key": "SK", "region": "us-east-2"}}
-    checks = aws_check.check_aws_auth(vals, session_factory=lambda **k: FakeSession(sts_ok=False),
-                                     check_buckets=False)
-    assert any(c.name == "Credentials valid" and c.status == "error" for c in checks)
+def test_auth_failure_suggests_sso_login():
+    checks = aws_check.check_aws_auth({"aws": {"profile": "p"}}, session_factory=_factory(sts_ok=False),
+                                     environ=NO_ENV, check_buckets=False)
+    bad = next(c for c in checks if c.name == "Credentials valid")
+    assert bad.status == "error" and "aws sso login --profile p" in bad.detail
 
 
-def test_instance_mode_ok():
-    vals = {"aws": {"auth_mode": "instance", "region": "us-east-2"}}
-    checks = aws_check.check_aws_auth(vals, session_factory=lambda **k: FakeSession(), check_buckets=False)
-    assert any(c.name == "Credentials valid" and c.status == "ok" for c in checks)
+def test_placeholder_region_is_not_passed():
+    seen = {}
+    aws_check.check_aws_auth({"aws": {"profile": "p", "region": "<YOUR_AWS_S3_REGION>"}},
+                             session_factory=_factory(seen), environ=NO_ENV, check_buckets=False)
+    assert seen["region_name"] is None
 
 
 def test_bucket_missing_is_error():
-    vals = {"aws": {"auth_mode": "instance", "s3_bucket_panos_unsecured": "b1"}}
-    checks = aws_check.check_aws_auth(vals, session_factory=lambda **k: FakeSession(bucket_error="404"))
+    vals = {"aws": {"profile": "p", "s3_bucket_panos_unsecured": "b1"}}
+    checks = aws_check.check_aws_auth(vals, session_factory=_factory(bucket_error="404"), environ=NO_ENV)
     bucket = next(c for c in checks if c.name == "S3 bucket b1")
     assert bucket.status == "error" and "does not exist" in bucket.detail
     assert any(c.name == "Credentials valid" and c.status == "ok" for c in checks)  # auth still ok
 
 
 def test_bucket_forbidden_is_warning():
-    vals = {"aws": {"auth_mode": "instance", "s3_bucket_panos_unsecured": "b1"}}
-    checks = aws_check.check_aws_auth(vals, session_factory=lambda **k: FakeSession(bucket_error="403"))
+    vals = {"aws": {"profile": "p", "s3_bucket_panos_unsecured": "b1"}}
+    checks = aws_check.check_aws_auth(vals, session_factory=_factory(bucket_error="403"), environ=NO_ENV)
     bucket = next(c for c in checks if c.name == "S3 bucket b1")
     assert bucket.status == "warn" and "access denied" in bucket.detail
-
-
-def test_set_keyring_ok():
-    stored = {}
-    km = MagicMock()
-    km.set_password.side_effect = lambda svc, item, val: stored.__setitem__((svc, item), val)
-    c = aws_check.set_keyring_credentials("aws_s3", "AK", "SK", keyring_mod=km)
-    assert c.status == "ok"
-    assert stored == {("aws_s3", "aws_access_key_id"): "AK", ("aws_s3", "aws_secret_access_key"): "SK"}
-
-
-def test_set_keyring_requires_both():
-    km = MagicMock()
-    c = aws_check.set_keyring_credentials("aws_s3", "AK", "", keyring_mod=km)
-    assert c.status == "error"
-    km.set_password.assert_not_called()

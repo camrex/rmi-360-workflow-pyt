@@ -39,7 +39,7 @@ jobs:
         pip install sphinx sphinx_rtd_theme
 
         # Install project dependencies needed for autodoc
-        pip install pyyaml boto3 keyring matplotlib numpy jinja2
+        pip install pyyaml boto3 matplotlib numpy jinja2
 
     - name: Build documentation
       run: |

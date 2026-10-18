@@ -41,8 +41,10 @@ Run from the toolbox root. New (from sample defaults or a profile) → fill the 
 Validate → Save. Open an existing config to edit; if it predates the current schema
 version, an **Upgrade…** button appears. **Preview** shows the live, commented
 `config.yaml` that will be written. Repeatable sections (e.g. Custom Fields) have
-Add/Remove. The AWS section has **Check AWS auth** (keyring/credentials validation —
-needs `boto3`+`keyring`, included in the venv). In the browser preview, file dialogs
+Add/Remove. The AWS section has **Check AWS auth**: it resolves the named AWS profile
+(`aws.profile`, else `AWS_PROFILE`), signs in with it (STS) and checks the buckets.
+It needs `boto3`, included in the venv, and an SSO sign-in
+(`aws sso login --profile rmi-360-workflow-pyt`). In the browser preview, file dialogs
 become path prompts.
 
 ```bash
@@ -101,7 +103,7 @@ loads config:
 
 - A field's **inline comment** is its help text.
 - `@choices[a, b, c]` → strict dropdown (value must be one of these).
-- `@secret` → password field (keep out of plaintext; prefer keyring).
+- `@secret` → password field (keep out of plaintext).
 - `@widget[textarea|number|text|list]` → force a widget (type is otherwise inferred).
 - `# @section: Title | description` above a top-level key labels that section.
 - `@repeatable @itemlabel[name]` on a map of records (e.g. `custom_fields`,
@@ -146,5 +148,5 @@ Bundled profiles ship in `config_editor/profiles/`. User profiles live in
 
 - Do not add `ruamel.yaml` / `pywebview` to the toolbox's top-level
   `requirements.txt`; keep the ArcGIS Pro base environment untouched.
-- Secrets (AWS keys) should be routed to `keyring`, not written to plaintext
-  `config.yaml` — to be enforced in the GUI layer.
+- AWS credentials never go in `config.yaml`: the toolbox uses a named AWS profile
+  (`aws.profile`) signed in through IAM Identity Center. Static keys are not supported.

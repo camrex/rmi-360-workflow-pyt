@@ -26,6 +26,11 @@
 # Notes:
 #   - Uses TransferManager with configurable concurrency and retry limits
 #   - Respects cancel_copy.txt trigger for manual interruption support
+#   - Never overwrites: each file goes up as one PutObject with If-None-Match: *, so S3
+#     itself refuses a put to an existing key (412 -> "already in S3"). A HeadObject
+#     check first skips known keys without sending the bytes. A repeat put of a
+#     panorama would re-run tiling. Two local files mapping to one key stop the run.
+#   - Credentials come from the named AWS profile (aws.profile); see utils/shared/aws_utils
 # =============================================================================
 
 __all__ = ["copy_to_aws"]
@@ -37,7 +42,6 @@ import threading
 import multiprocessing
 from datetime import datetime, timezone
 from typing import Optional, Any
-from boto3.s3.transfer import create_transfer_manager, TransferConfig
 from botocore.config import Config
 from botocore.exceptions import ClientError, NoCredentialsError
 from pathlib import Path
@@ -167,6 +171,76 @@ def should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
     return False
 
 
+def object_exists(s3_client, bucket: str, key: str) -> bool:
+    """True if ``key`` is already in ``bucket`` (HeadObject), False on 404.
+
+    Any other error (e.g. 403) is raised, so the caller records a failure instead of
+    risking an overwrite. Needs s3:GetObject on the target keys.
+    """
+    try:
+        s3_client.head_object(Bucket=bucket, Key=key)
+        return True
+    except ClientError as e:
+        code = str(e.response.get("Error", {}).get("Code", ""))
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return False
+        raise
+
+
+# Single-PUT limit; panoramas (~15-25 MB) are far below it.
+MAX_SINGLE_PUT_BYTES = 5 * 1024 ** 3
+
+
+CONFLICT_RETRIES = 3          # 409 ConditionalRequestConflict: S3 asks for the whole PUT again
+CONFLICT_BACKOFF_SEC = 0.5
+
+
+def supports_conditional_put(s3_client) -> bool:
+    """True if this botocore's PutObject model has IfNoneMatch (older ones reject it)."""
+    try:
+        members = s3_client.meta.service_model.operation_model("PutObject").input_shape.members
+        return "IfNoneMatch" in members
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def put_if_absent(s3_client, bucket: str, key: str, path, content_type: str = "image/jpeg") -> bool:
+    """Upload ``path`` to ``key`` only if no object exists there (If-None-Match: *).
+
+    Returns True if uploaded, False if S3 refused because the key already exists
+    (412 PreconditionFailed). The check is atomic in S3, so concurrent puts of the
+    same key cannot overwrite each other. A 409 ConditionalRequestConflict (another
+    write to the key in flight) is retried from the start, as S3 requires; it then
+    resolves to an upload or a 412. Any other error is raised.
+    """
+    size = os.path.getsize(path)
+    if size > MAX_SINGLE_PUT_BYTES:
+        raise ValueError(f"{path} is {size} bytes, over the 5 GB single-PUT limit")
+    for attempt in range(CONFLICT_RETRIES + 1):
+        with open(path, "rb") as body:
+            try:
+                s3_client.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type, IfNoneMatch="*")
+                return True
+            except ClientError as e:
+                code = str(e.response.get("Error", {}).get("Code", ""))
+                status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+                if code == "PreconditionFailed" or status == 412:
+                    return False
+                conflict = code == "ConditionalRequestConflict" or status == 409
+                if not conflict or attempt == CONFLICT_RETRIES:
+                    raise
+        time.sleep(CONFLICT_BACKOFF_SEC * (attempt + 1))
+    return False  # pragma: no cover - loop always returns or raises
+
+
+def find_duplicate_keys(tasks):
+    """{s3_key: [local files]} for keys that more than one local file maps to."""
+    by_key = {}
+    for file_path, s3_key in tasks:
+        by_key.setdefault(s3_key, []).append(file_path)
+    return {k: v for k, v in by_key.items() if len(v) > 1}
+
+
 def verify_s3_target_access(s3_client, bucket: str, bucket_folder: str, logger) -> None:
     """Verify that the target bucket is reachable before queueing uploads."""
     try:
@@ -178,9 +252,13 @@ def verify_s3_target_access(s3_client, bucket: str, bucket_folder: str, logger) 
         raise
 
 
-def resolve_s3_client(session, bucket: str, use_accel: bool, logger):
-    """Create an S3 client, falling back when Transfer Acceleration is not enabled on the bucket."""
-    base_client = session.client("s3")
+def resolve_s3_client(session, bucket: str, use_accel: bool, logger, client_config: Optional[Config] = None):
+    """Create an S3 client, falling back when Transfer Acceleration is not enabled on the bucket.
+
+    ``client_config`` (pool size, retries) applies to both the standard and the accelerated client.
+    """
+    client_config = client_config or Config()
+    base_client = session.client("s3", config=client_config)
 
     if not use_accel:
         logger.info("S3 Transfer Acceleration endpoint disabled", indent=2)
@@ -194,7 +272,7 @@ def resolve_s3_client(session, bucket: str, use_accel: bool, logger):
 
     if accel_status == "Enabled":
         logger.custom("Using S3 Transfer Acceleration endpoint", indent=2, emoji="🚀")
-        s3_cfg = Config(s3={"use_accelerate_endpoint": True})
+        s3_cfg = client_config.merge(Config(s3={"use_accelerate_endpoint": True}))
         return session.client("s3", config=s3_cfg), True
 
     logger.warning(f"S3 Transfer Acceleration is not enabled for bucket '{bucket}'. Falling back to standard endpoint.", indent=2)
@@ -213,8 +291,8 @@ def copy_to_aws(
     logging.
 
     Recursively scans the specified local directory, optionally filtering files by extension, and uploads them to the
-    given S3 bucket and folder using boto3's TransferManager. Supports skipping files already uploaded (based on a CSV
-    log), resuming interrupted uploads, and concurrent transfers with configurable concurrency. Progress and per-file
+    given S3 bucket and folder, one conditional PutObject per file (never overwriting). Supports skipping files
+    already uploaded (based on a CSV log), resuming interrupted uploads, and concurrent puts capped by aws.max_workers. Progress and per-file
     status are logged to CSV files, and a summary report is generated upon completion. Uploads can be canceled via
     ArcGIS Pro events or a trigger file. Updates the provided config dictionary with upload status.
 
@@ -223,6 +301,7 @@ def copy_to_aws(
         report_data:
         local_dir: Path to the local directory containing files to upload.
         skip_existing: If True, skips files already uploaded as recorded in the log.
+            Independently of this, a key already in S3 is always skipped (never overwritten).
         messages:
     """
     logger = cfg.get_logger()
@@ -287,9 +366,28 @@ def copy_to_aws(
         logger.warning("No matching files found to upload.", indent=2)
         return {}
 
-    # Load credentials from keyring or config and verify AWS credentials
+    # Two local files mapping to one key would race for it; which one is right is ambiguous.
+    duplicates = find_duplicate_keys(all_tasks)
+    if duplicates:
+        sample = "; ".join(f"{k} <- {len(v)} files" for k, v in list(duplicates.items())[:5])
+        msg = (f"{len(duplicates)} S3 key(s) would be written by more than one local file "
+               f"(e.g. {sample}). Rename or remove the duplicates; nothing was uploaded.")
+        logger.error(msg, indent=2)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": msg,
+        }
+
+    # Session for the named AWS profile (aws.profile, else AWS_PROFILE)
     try:
-        logger.info("Retrieving AWS credentials...", indent=1)
+        logger.info("Opening AWS session...", indent=1)
         session = get_boto3_session(cfg)
     except Exception as e:
         # Error already logged upstream; return a consistent error payload.
@@ -305,7 +403,12 @@ def copy_to_aws(
             "message": str(e),
         }
 
-    s3, using_acceleration = resolve_s3_client(session, bucket, use_accel, logger)
+    # Pool sized for the concurrent puts; retries = attempts after the first.
+    client_config = Config(
+        max_pool_connections=max(int(max_concurrency), 10),
+        retries={"max_attempts": int(retries) + 1, "mode": "standard"},
+    )
+    s3, using_acceleration = resolve_s3_client(session, bucket, use_accel, logger, client_config=client_config)
 
     try:
         verify_s3_target_access(s3, bucket, bucket_folder, logger)
@@ -325,16 +428,26 @@ def copy_to_aws(
     if using_acceleration:
         logger.custom("Uploads will use the accelerated endpoint.", indent=2, emoji="🚀")
 
+    if not supports_conditional_put(s3):
+        msg = ("The installed botocore does not support conditional writes (PutObject IfNoneMatch), "
+               "which Copy To AWS needs so it never overwrites. Update boto3/botocore in the "
+               "ArcGIS Pro environment; nothing was uploaded.")
+        logger.error(msg, indent=2)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": msg,
+        }
+
     logger.info("Starting AWS Upload...", indent=1)
-    # Create TransferManager with custom configuration
-    transfer_config = TransferConfig(
-        multipart_threshold=16 * 1024 * 1024,
-        multipart_chunksize=8 * 1024 * 1024,
-        max_concurrency=max_concurrency,
-        num_download_attempts=retries,
-        use_threads=True
-    )
-    manager = create_transfer_manager(client=s3, config=transfer_config)
+    # One conditional PutObject per file; max_workers caps how many run at once.
+    put_slots = threading.BoundedSemaphore(max(int(max_concurrency), 1))
 
     log_rows = []
 
@@ -379,16 +492,23 @@ def copy_to_aws(
         """
         Uploads a single file to the specified S3 key and logs the result.
 
-        Attempts to upload the file using the transfer manager, recording the status, error (if any), file size, and
-        duration. Appends the upload result to the log and updates the completed count in a thread-safe manner.
+        Never overwrites: a key already in S3 is skipped (HeadObject), and the put itself is
+        conditional (If-None-Match: *), so a key created meanwhile is refused by S3, not
+        overwritten. Records status, error (if any), file size and duration in the log and
+        updates the completed counts in a thread-safe manner.
         """
         upload_start = None
         try:
-            future = manager.upload(f_path, bucket, s3_tgt_key, extra_args={"ContentType": "image/jpeg"})
-            upload_start = time.perf_counter()
-            future.result()
-            upload_end = time.perf_counter()
-            status, error = "uploaded", ""
+            if object_exists(s3, bucket, s3_tgt_key):
+                # Never overwrite: a repeat put of a panorama re-runs tiling downstream.
+                upload_start = upload_end = time.perf_counter()
+                status, error = "skipped", "already in S3"
+            else:
+                with put_slots:
+                    upload_start = time.perf_counter()
+                    uploaded_now = put_if_absent(s3, bucket, s3_tgt_key, f_path)
+                    upload_end = time.perf_counter()
+                status, error = ("uploaded", "") if uploaded_now else ("skipped", "already in S3")
         except Exception as exc:
             upload_end = time.perf_counter()
             if upload_start is None:
@@ -412,59 +532,56 @@ def copy_to_aws(
     with cfg.get_progressor(total=total, label="Uploading images to S3") as progressor:
         last = 0
 
-        try:
-            for i in range(0, len(upload_tasks), batch_size):
-                batch = upload_tasks[i:i + batch_size]
-                threads = []
+        for i in range(0, len(upload_tasks), batch_size):
+            batch = upload_tasks[i:i + batch_size]
+            threads = []
 
-                for local_path, s3_key in batch:
-                    if cancel_event.is_set():
-                        break
-                    t = threading.Thread(target=upload_one, args=(local_path, s3_key))
-                    threads.append(t)
-                    t.start()
-
-                for t in threads:
-                    t.join()
-
-                # Check for cancel triggers
-                if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
-                    cancel_event.set()
-                    logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
-
+            for local_path, s3_key in batch:
                 if cancel_event.is_set():
-                    progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
-                    if report_data is not None:
-                        upload_status = "canceled" if cancel_event.is_set() else "completed"
-                        current_status = report_data.setdefault("upload", {}).get("status")
-
-                        # If previously canceled, and now completed, mark as completed_after_cancel
-                        if upload_status == "completed" and current_status == "canceled":
-                            upload_status = "completed_after_cancel"
-
-                        report_data["upload"]["status"] = upload_status
-
                     break
+                t = threading.Thread(target=upload_one, args=(local_path, s3_key))
+                threads.append(t)
+                t.start()
 
-                with lock:
-                    current = completed["processed"]
-                    uploaded = completed["uploaded"]
-                    failed = completed["failed"]
+            for t in threads:
+                t.join()
 
-                if current > last:
-                    elapsed = time.time() - start_time
-                    eta = (elapsed / current) * (total - current) if current > 0 else 0
-                    eta_min, eta_sec = divmod(int(eta), 60)
-                    eta_hr, eta_min = divmod(eta_min, 60)
-                    label = (
-                        f"Processing {current}/{total} images... "
-                        f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
-                    )
-                    progressor.update(current, label)
-                    logger.custom(label, indent=3, emoji="☁️")
-                    last = current
-        finally:
-            manager.shutdown()
+            # Check for cancel triggers
+            if should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
+                cancel_event.set()
+                logger.custom("Upload canceled by trigger.", emoji="🛑", indent=2)
+
+            if cancel_event.is_set():
+                progressor.update(completed["processed"], "🛑 Upload canceled — finishing current batch.")
+                if report_data is not None:
+                    upload_status = "canceled" if cancel_event.is_set() else "completed"
+                    current_status = report_data.setdefault("upload", {}).get("status")
+
+                    # If previously canceled, and now completed, mark as completed_after_cancel
+                    if upload_status == "completed" and current_status == "canceled":
+                        upload_status = "completed_after_cancel"
+
+                    report_data["upload"]["status"] = upload_status
+
+                break
+
+            with lock:
+                current = completed["processed"]
+                uploaded = completed["uploaded"]
+                failed = completed["failed"]
+
+            if current > last:
+                elapsed = time.time() - start_time
+                eta = (elapsed / current) * (total - current) if current > 0 else 0
+                eta_min, eta_sec = divmod(int(eta), 60)
+                eta_hr, eta_min = divmod(eta_min, 60)
+                label = (
+                    f"Processing {current}/{total} images... "
+                    f"Uploaded: {uploaded}, Failed: {failed}, ETA: {eta_hr}:{eta_min:02d}:{eta_sec:02d}"
+                )
+                progressor.update(current, label)
+                logger.custom(label, indent=3, emoji="☁️")
+                last = current
 
     # Write Summary File (aws_upload_summary)
     summary_stats = calculate_summary(log_rows, total, start_time)

@@ -11,7 +11,7 @@
 # Description:
 #   Deploys and configures AWS Lambda functions for monitoring upload progress to S3. Sets up a CloudWatch
 #   Events schedule to invoke the monitoring Lambda every 5 minutes. Initializes a project-specific progress
-#   JSON file and verifies credentials via boto3. Uses keyring or fallback credentials defined in the config.
+#   JSON file. Credentials come from the named AWS profile (aws.profile); see utils/shared/aws_utils.
 #
 # File Location:        /utils/deploy_lambda_monitor.py
 # Validator:            /utils/validators/deploy_lambda_monitor_validator.py
@@ -39,7 +39,7 @@ from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.expression_utils import resolve_expression
-from utils.shared.aws_utils import get_aws_credentials, verify_aws_credentials
+from utils.shared.aws_utils import get_boto3_session
 
 
 def zip_lambda(source_path: str, arcname: str, logger) -> bytes:
@@ -311,11 +311,10 @@ def deploy_lambda_monitor(cfg: ConfigManager):
     slug = cfg.get("project.slug")
     bucket = cfg.get("aws.s3_bucket_panos_unsecured")
 
-    # Load credentials from keyring or config and verify AWS credentials
+    # Session for the named AWS profile. The rmi-360-workflow-pyt permission set grants no
+    # Lambda/EventBridge, so this deploy is refused by IAM; the heartbeat replaces it.
     try:
-        logger.info("Retrieving AWS credentials...", indent=1)
-        access_key, secret_key = get_aws_credentials(cfg)
-        session = verify_aws_credentials(access_key, secret_key, region, logger)
+        session = get_boto3_session(cfg)
     except Exception:
         # Error already logged; handle accordingly
         return

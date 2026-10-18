@@ -334,7 +334,7 @@ def main() -> int:
     aws = cfg.get("aws", {})
     region = aws.get("region")
     bucket = aws.get("s3_bucket_raw")
-    auth_mode = aws.get("auth_mode", "config")
+    profile = aws.get("profile")
 
     if not region or not bucket:
         print("[ERROR] aws.region and aws.s3_bucket_raw are required in config.", file=sys.stderr)
@@ -375,7 +375,7 @@ def main() -> int:
     print(f"[INFO] Folder types: {', '.join(folder_types)}")
     if timestamp:
         print(f"[INFO] Timestamp:    {timestamp}")
-    print(f"[INFO] Auth mode:    {auth_mode}")
+    print(f"[INFO] AWS profile:  {profile or '(from AWS_PROFILE)'}")
 
     # Collect files
     tasks = collect_multi_folder_tasks(local_folder, folder_types, args.project_key, timestamp)
@@ -421,8 +421,12 @@ def main() -> int:
         print("[DRY-RUN] Exiting without uploading.")
         return 0
 
-    # AWS session and S3 client (service name must match aws.keyring_service_name)
-    session = resolve_session(auth_mode, aws.get("keyring_service_name", "rmi_s3"))
+    # AWS session and S3 client for the named profile (aws.profile, else AWS_PROFILE)
+    try:
+        session = resolve_session(profile, region)
+    except RuntimeError as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return 2
     boto_cfg = get_boto_config()
     s3 = session.client("s3", region_name=region, config=boto_cfg)
 

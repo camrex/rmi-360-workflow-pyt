@@ -162,11 +162,6 @@ button.small { padding: 3px 8px; font-size: 12px; }
 .check-name { font-size: 13px; font-weight: 600; }
 .check-detail { font-size: 12px; color: var(--muted); font-family: var(--mono); word-break: break-word; }
 
-/* Keyring credential form (modal) */
-.kr-form { display: flex; flex-direction: column; gap: 12px; }
-.kr-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
-.kr-form input { padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--mono); }
-.kr-note { font-size: 12px; color: var(--muted); }
 .issues-list .msg { font-size: 13px; }
 .issues-list .where { font-size: 11px; color: var(--muted); font-family: var(--mono); }
 
