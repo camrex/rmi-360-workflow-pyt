@@ -521,6 +521,7 @@ def copy_to_aws(
 
     start_time = time.time()
     completed = {"processed": 0, "uploaded": 0, "failed": 0}
+    log_append_error = {"first": None}
     lock = threading.Lock()
     cancel_event = threading.Event()
 
@@ -570,9 +571,15 @@ def copy_to_aws(
             elif status == "error":
                 completed["failed"] += 1
             log_rows.append((timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration))
-            with open(log_file, "a", newline="", encoding="utf-8") as csv_file:
-                csv_writer = csv.writer(csv_file)
-                csv_writer.writerow([timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration])
+            try:
+                with open(log_file, "a", newline="", encoding="utf-8") as csv_file:
+                    csv_writer = csv.writer(csv_file)
+                    csv_writer.writerow([timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration])
+            except OSError as log_exc:
+                # e.g. the log is locked: keep going (worker exceptions would be silent);
+                # a resume still skips this file because it is already in S3.
+                if log_append_error["first"] is None:
+                    log_append_error["first"] = f"{type(log_exc).__name__}: {log_exc}"
         # Outside the log lock: the tracker may publish the heartbeat (a network call).
         tracker.file_done(HEARTBEAT_GROUP, status, file_size)
 
@@ -676,6 +683,10 @@ def copy_to_aws(
 
     if tracker.local_error:
         logger.warning(f"The local upload status file could not be written: {tracker.local_error}.", indent=1)
+    if log_append_error["first"]:
+        logger.warning(f"Some rows could not be added to the upload log {log_file}: {log_append_error['first']}. "
+                       "The summary and heartbeat counts are complete; a resume re-checks S3 for those files.",
+                       indent=1)
 
     return {
         "uploaded": summary_stats['uploaded'],

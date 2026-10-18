@@ -106,19 +106,26 @@ Control output folder structure and file naming:
 AWS Configuration
 ^^^^^^^^^^^^^^^^^
 
-Configure AWS S3 uploads:
+Configure AWS S3 uploads (the full block, with comments, is in ``configs/config.sample.yaml``):
 
 .. code-block:: yaml
 
    aws:
-     s3:
-       bucket_name: rmi-360-raw
-       region: us-east-1
-       prefix: "{project.slug}"
+     region: "us-east-2"
+     profile: "rmi-360-workflow-pyt"             # named AWS profile (SSO); see AWS Setup Guide
+     s3_bucket_folder: "config.project.slug"     # key prefix inside every bucket
+     s3_bucket_raw: "rmi-360-raw"                # reels, raw video, artifact backups, heartbeat
+     s3_bucket_panos_unsecured: "rmi-360-prod"   # public panorama hosting
+     secured_delivery:
+       enabled: false                            # not before ArcGIS Enterprise 12.2
+     use_acceleration: true
+     skip_existing: true
+     max_workers: 16
+     retries: 3
+     upload_batch_size: 25
 
-     lambda:
-       function_name: rmi-360-upload-monitor
-       schedule_expression: "rate(5 minutes)"
+The upload heartbeat needs no settings: it goes to
+``s3://<s3_bucket_raw>/status/<project.slug>/`` (see :doc:`../aws/upload-heartbeat`).
 
 Field Registry
 --------------

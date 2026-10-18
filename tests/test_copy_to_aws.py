@@ -648,3 +648,24 @@ def test_locked_local_status_does_not_fail_upload(tmp_path, monkeypatch):
     assert alive == []
     warned = " ".join(str(c.args[0]) for c in _run_copy.logger.warning.call_args_list)
     assert "local upload status file could not be written" in warned
+
+
+def test_locked_upload_log_mid_run_keeps_counts(tmp_path, monkeypatch):
+    import json
+    real_open = open
+
+    def locked_appends(path, mode="r", *a, **k):
+        if str(path).endswith("aws_upload_log.csv") and "a" in mode:
+            raise PermissionError("log locked")
+        return real_open(path, mode, *a, **k)
+
+    monkeypatch.setattr("builtins.open", locked_appends)
+    try:
+        result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg", "b.jpg"], extra=HEARTBEAT_CFG)
+    finally:
+        monkeypatch.setattr("builtins.open", real_open)
+    assert result["status"] == "completed" and result["uploaded"] == 2
+    final = json.loads(_run_copy.heartbeats[-1]["Body"].decode("utf-8"))
+    assert final["phase"] == "complete" and final["totals"]["uploaded"] == 2
+    warned = " ".join(str(c.args[0]) for c in _run_copy.logger.warning.call_args_list)
+    assert "could not be added to the upload log" in warned
