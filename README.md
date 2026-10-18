@@ -78,6 +78,8 @@ rmi-360-workflow-pyt/
 │   ├── shared/                         # Shared utilities (oid_storage_paths, oid_storage_migration, ...)
 │   └── validators/                     # Validators
 ├── aws_lambdas/                        # Lambda upload status functions
+├── scripts/                            # Standalone command-line helpers (see below)
+│   └── report_images/                  # Perspective report images cut from 360 panoramas
 ├── templates/                          # HTML report templates
 ├── docs/                               # Updated documentation set  (TODO: implement using sphinx)
 ├── docs_legacy/                        # Full documentation set (tool guides, schema changelog)
@@ -126,6 +128,25 @@ cp configs/config.sample.yaml configs/config.yaml
   - Image rendering and reel fixing
   - GPX integration to embed GPS
 - Requires `.grp` calibration file (provided by Mosaic) and raw `.mp4` input folders.
+
+---
+
+## 🛠 Standalone Scripts
+
+Helpers in `scripts/` run outside the toolbox (`python scripts/<name>.py --help`).
+Each file's header documents its options.
+
+| Script | Purpose |
+| --- | --- |
+| `report_images/extract_milepost_gui.py` | GUI that cuts flat perspective views (default 90° HFOV, 4096×1743) from 360 panoramas for valuation reports; select by milepost in the filename, every Nth image, or all. ffmpeg backend (needs `ffmpeg` on PATH) or OpenCV backend (`report_images/generate_thumbnail_optimized.py`; needs `opencv-python` + `scipy`, not in the ArcGIS Pro env). |
+| `upload_to_s3.py` | Upload project folders (reels, config, gis_data, logs, report) to S3 with crash-safe resume. |
+| `download_project_files.py` | Download a project's config and/or gis_data from S3 (reels excluded by default). |
+| `standalone_mosaic_monitor.py` | Reopen the Mosaic Processor progress monitor for a running or finished job. |
+| `correct_video_timestamps.py` | Shift video timestamps to match a GPX track (removes the need for timeshift files). |
+| `gpx_to_video_time_converter.py` | Convert GPX times to video positions, or compute the ArcGIS Pro Video Multiplexer timeshift. |
+| `remove_stationary_segments.py` | Find stopped segments in a GPX track and generate ffmpeg commands to keep only the moving parts. |
+
+The S3 scripts need AWS credentials for the project's profile.
 
 ---
 
