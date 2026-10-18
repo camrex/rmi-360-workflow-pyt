@@ -6,8 +6,8 @@ design, and the gotchas. For how to run the toolbox, see
 [corridor_thinning.md](corridor_thinning.md).
 
 This is the original `PIPELINE.md` from the standalone scripts the toolbox was
-ported from, kept as written apart from this preface and the correction below. The
-scripts it names map to the toolbox like this:
+ported from. It is kept as written apart from this preface and the corrections
+marked *(2026 correction)*. The scripts it names map to the toolbox like this:
 
 | Script | Toolbox tool (`rmi_360_corridor_thinning.pyt`) | Module |
 | --- | --- | --- |
@@ -20,17 +20,16 @@ scripts it names map to the toolbox like this:
 | `qc_thin.py` | 07 QC Thinning | `utils/corridor/qc_thin.py` |
 | `export_manifest.py` | 08 Export Manifest | `utils/corridor/export_manifest.py` |
 
-In the toolbox the hard-coded constants below (`EPS_MILES`, `THRESHOLD_FT`,
-`MIN_BACKTRACK_FT`, …) are tool parameters with defaults from `corridor_thinning.*`
-in `config.yaml`. The thinning threshold is a distance in meters, converted through
-the WKID, rather than a fixed foot value.
+In the toolbox, the constants below (`EPS_MILES`, `THRESHOLD_FT`,
+`MIN_BACKTRACK_FT`, …) are tool parameters whose defaults are set in each tool's
+dialog. The `corridor_thinning.*` block in `config.yaml` mirrors them, but the
+stage tools do not read it.
 
-> **Correction (2026-06): `mp_meas` is not quantized.** The section "mp_meas is
-> quantized" below has the wrong cause. A later check found Locate Features Along
-> Routes' `MEAS` bit-identical to `measureOnLine` on the route geometry, so Locate
-> does not round the measures. The near-ties are real: adjacent points that project
-> to almost the same spot on the route. The fix is unchanged and still correct:
-> break near-ties by oriented frame, not by raw measure (Stage 2).
+**Units changed in the port.** The scripts worked in the data's US survey feet. The
+toolbox takes the threshold *and the trim* in meters and converts both through the
+WKID. The scripts' `THRESHOLD_TRIM_FT=1.5` was **1.5 ft**, giving 16.4042 − 1.5 ≈
+14.90 ft ≈ **4.54 m**. A trim of 1.5 *meters* gives 3.5 m. To reproduce the 26-150
+result in the toolbox, use a trim of 1.5 ft (≈ 0.457 m).
 
 ---
 
@@ -89,15 +88,20 @@ time (corroborates frame order).
 **Ordering signal hierarchy:**
 - reel + reel_start_ts : which contiguous capture run a frame belongs to
 - frame               : fine sequence within a run (clean, no ties)
-- mp_meas             : position along route (coarse; QUANTIZED - see below)
+- mp_meas             : position along route (coarse; near-ties - see below)
 - planar X/Y bearing  : direction (RTK+IMU corrected, clean)
 - DateTime            : global capture order / corroboration
 
-**mp_meas is quantized.** Locate Features Along Routes returns measures whose
-resolution can be coarser than the ~1 m (actually ~1.3 m) capture spacing, so
-adjacent points sometimes collapse onto identical or near-identical measures.
-Normal spacing ~0.00065 mi (~3.4 ft); artifact ties span 0..0.0002 mi. This
-is why sequencing must break ties by FRAME, not by raw measure (Stage 2).
+**mp_meas has near-ties.** Adjacent points sometimes land on identical or
+near-identical measures. Normal spacing ~0.00065 mi (~3.4 ft); ties span
+0..0.0002 mi. This is why sequencing must break ties by FRAME, not by raw
+measure (Stage 2).
+
+*(2026 correction)* This paragraph originally blamed the ties on Locate Features
+Along Routes quantizing its measures. A later check found Locate's `MEAS`
+bit-identical to `measureOnLine` on the route geometry, so Locate does not round.
+The ties are real geometry: adjacent points that project to almost the same spot
+on the route. The frame tie-break is the right fix either way.
 
 ---
 
@@ -110,7 +114,7 @@ is why sequencing must break ties by FRAME, not by raw measure (Stage 2).
   Harvard/McHenry, Harvard/Geneva convergence near OTC) a single global Locate
   snapped points to the wrong route, producing huge mp jumps. Per-route Locate
   makes cross-route snapping structurally impossible.
-- **Full precision, no rounding** -> minimizes quantization ties.
+- **Full precision, no rounding** -> adds no artificial ties of its own.
 - **All points** (regardless of include) get a measure.
 - NULL mp_meas = point beyond search radius of its own route (expected; the
   200 ft radius was chosen to capture exactly what's needed).
@@ -129,7 +133,7 @@ is why sequencing must break ties by FRAME, not by raw measure (Stage 2).
   direction that makes mp ASCEND in that capture run (detect frame-vs-mp sign
   from same-run neighbors -> ascending frame if forward-captured, descending if
   reverse-captured). Frame is exact where geometry projection stumbles on
-  quantization. Geometry bracket-projection remains only as a fallback when
+  near-ties. Geometry bracket-projection remains only as a fallback when
   orientation can't be derived.
 - EPS_MILES = 0.0003 mi (~1.6 ft): below normal spacing (0.00065), above
   artifact floor (0.0002). Tune per dataset from the min-step/p05 stats.
@@ -164,6 +168,8 @@ is why sequencing must break ties by FRAME, not by raw measure (Stage 2).
   regardless of capture density.
 - THRESHOLD_FT = 16.4042 ft = 5 m in US survey ft (data is 6455 / US ft -
   the unit conversion matters). THRESHOLD_TRIM_FT pulls it in (1.5 -> ~4.5 m).
+  *(2026 correction: that trim is 1.5 **feet**; the toolbox's trim is in meters,
+  see the units note at the top.)*
 - Non-destructive: writes flag_5m (1 keep / 0 drop). include=0 -> NULL.
 - 26-150 chose 4.5 m (THRESHOLD_TRIM_FT=1.5): tighter, p95 ~5.88 m, no
   within-run gap past ~6.1 m, 51,110 kept. 5.0 m gave 47,251 with p95 ~6.4 m.

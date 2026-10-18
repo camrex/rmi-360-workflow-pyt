@@ -70,8 +70,10 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
   standalone scripts the corridor toolbox was ported from. It has the per-stage
   rationale, parameter choices with 26-150 results, the reversal-resolution design
   (F1/R/F2, keep F2), and the gotchas. A preface maps each script to its toolbox tool
-  and module, and corrects the "mp_meas is quantized" claim: the near-ties are real
-  geometry, and the frame tie-break still applies. Linked from `corridor_thinning.md`.
+  and module, and notes that the scripts' trim was 1.5 **ft** (≈4.54 m effective)
+  while the toolbox's trim is in meters. Marked corrections fix the "mp_meas is
+  quantized" claim: the near-ties are real geometry, and the frame tie-break still
+  applies. Linked from `corridor_thinning.md`.
 
 ### Fixed
 
