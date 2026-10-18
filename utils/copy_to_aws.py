@@ -399,6 +399,29 @@ def copy_to_aws(
         logger.warning("No matching files found to upload.", indent=2)
         return {}
 
+    def preflight_error(message, session=None):
+        """Error payload for a run stopped before uploading. Also records a final "error"
+        status (local file, plus the S3 heartbeat when a session exists) so a stale
+        heartbeat from an earlier, interrupted run does not linger."""
+        try:
+            publish = make_heartbeat_publisher(session, cfg)[0] if session is not None else None
+            StatusTracker(Path(log_file).with_name("aws_upload_status.json"), publish=publish,
+                          meta={"project": cfg.get("project.slug"), "bucket": bucket, "prefix": bucket_folder,
+                                "tool": "copy_to_aws", "message": message}).finish("error")
+        except Exception as hb_exc:  # noqa: BLE001 — never mask the real error
+            logger.warning(f"Could not record the final upload status: {hb_exc}", indent=2)
+        return {
+            "uploaded": 0,
+            "skipped": 0,
+            "skipped_from_log": 0,
+            "failed": 0,
+            "cancelled": False,
+            "log_file": str(log_file),
+            "summary_file": str(summary_file),
+            "status": "error",
+            "message": message,
+        }
+
     # Two local files mapping to one key would race for it; which one is right is ambiguous.
     duplicates = find_duplicate_keys(all_tasks)
     if duplicates:
@@ -406,17 +429,7 @@ def copy_to_aws(
         msg = (f"{len(duplicates)} S3 key(s) would be written by more than one local file "
                f"(e.g. {sample}). Rename or remove the duplicates; nothing was uploaded.")
         logger.error(msg, indent=2)
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": msg,
-        }
+        return preflight_error(msg)
 
     # Session for the named AWS profile (aws.profile, else AWS_PROFILE)
     try:
@@ -424,17 +437,7 @@ def copy_to_aws(
         session = get_boto3_session(cfg)
     except Exception as e:
         # Error already logged upstream; return a consistent error payload.
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": str(e),
-        }
+        return preflight_error(str(e))
 
     # Pool sized for the concurrent puts; retries = attempts after the first.
     client_config = Config(
@@ -446,17 +449,7 @@ def copy_to_aws(
     try:
         verify_s3_target_access(s3, bucket, bucket_folder, logger)
     except Exception as ex:
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": f"Unable to access target S3 bucket '{bucket}': {ex}",
-        }
+        return preflight_error(f"Unable to access target S3 bucket '{bucket}': {ex}", session)
 
     if using_acceleration:
         logger.custom("Uploads will use the accelerated endpoint.", indent=2, emoji="🚀")
@@ -466,17 +459,7 @@ def copy_to_aws(
                "which Copy To AWS needs so it never overwrites. Update boto3/botocore in the "
                "ArcGIS Pro environment; nothing was uploaded.")
         logger.error(msg, indent=2)
-        return {
-            "uploaded": 0,
-            "skipped": 0,
-            "skipped_from_log": 0,
-            "failed": 0,
-            "cancelled": False,
-            "log_file": str(log_file),
-            "summary_file": str(summary_file),
-            "status": "error",
-            "message": msg,
-        }
+        return preflight_error(msg, session)
 
     logger.info("Starting AWS Upload...", indent=1)
     # One conditional PutObject per file; max_workers caps how many run at once.

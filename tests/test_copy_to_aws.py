@@ -554,3 +554,24 @@ def test_resume_with_nothing_left_still_publishes_final_heartbeat(tmp_path, monk
     assert put_keys == []
     final = json.loads(_run_copy.heartbeats[-1]["Body"].decode("utf-8"))
     assert final["phase"] == "complete" and final["meta"]["skipped_from_log"] == 2
+
+
+def test_preflight_stop_records_error_heartbeat(tmp_path, monkeypatch):
+    import json
+    real = copy_to_aws_mod.supports_conditional_put
+    monkeypatch.setattr(copy_to_aws_mod, "supports_conditional_put", lambda s3: False)
+    try:
+        result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG)
+    finally:
+        monkeypatch.setattr(copy_to_aws_mod, "supports_conditional_put", real)
+    assert result["status"] == "error" and put_keys == []
+    final = json.loads(_run_copy.heartbeats[-1]["Body"].decode("utf-8"))
+    assert final["phase"] == "error" and "conditional writes" in final["meta"]["message"]
+
+
+def test_duplicate_stop_writes_local_error_status(tmp_path, monkeypatch):
+    import json
+    result, _, _ = _run_copy(tmp_path, monkeypatch, ["r1/x.jpg", "r2/x.jpg"], extra=HEARTBEAT_CFG)
+    assert result["status"] == "error"
+    status = json.loads((tmp_path / "aws_upload_status.json").read_text(encoding="utf-8"))
+    assert status["phase"] == "error" and "more than one local file" in status["meta"]["message"]
