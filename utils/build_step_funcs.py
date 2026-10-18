@@ -53,8 +53,32 @@ from utils.prepare_delivery_subset import prepare_delivery_subset
 from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
 from utils.generate_oid_service import generate_oid_service
+from utils.shared.manifest_fields import resolve_manifest_path
 
 StepSpec = namedtuple("StepSpec", ["key", "label", "func_builder", "skip_fn"])
+
+# Steps that join the corridor manifest onto the OID (Track/custom fields in
+# add_images; MP_Pre/MP_Num + SequenceOrder in update_linear_custom).
+MANIFEST_STEPS = ("add_images", "update_linear_custom")
+
+
+def resolve_run_manifest(params, cfg):
+    """Resolve the ONE corridor manifest every manifest-consuming step uses this run.
+
+    The dialog's Corridor Manifest CSV wins. Otherwise the configured
+    ``corridor_thinning.manifest.path`` applies when EITHER the dialog's Thinning
+    Mode or the config's ``thinning_mode`` is "pre". Returns the path or None.
+    Resolving once (and passing it to each step) prevents the split where Add Images
+    used the dialog manifest while Update Linear / SequenceOrder silently fell back
+    to unconstrained Locate and capture ordering.
+    """
+    explicit = params.get("corridor_manifest_path")
+    if explicit:
+        return str(explicit)
+    if str(params.get("thinning_mode") or "").lower() == "pre":
+        configured = cfg.get("corridor_thinning.manifest.path")
+        return str(configured) if configured else None
+    return resolve_manifest_path(cfg)
 
 
 
@@ -265,7 +289,7 @@ def build_step_funcs(p, cfg):
         StepSpec("filter_distance", "Filter Distance Spacing",
             lambda params, config: lambda **kwargs: filter_distance_spacing(oid_fc=p["oid_fc"], action=p.get("distance_filter_action", "flag"), cfg=cfg), skip_if_distance_filter_disabled),
         StepSpec("update_linear_custom", "Update Linear and Custom Attributes",
-            lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg), None),
+            lambda params, config: lambda **kwargs: update_linear_and_custom(oid_fc_path=p["oid_fc"], centerline_fc=p["centerline_fc"], route_id_field=p["route_id_field"], enable_linear_ref=p["enable_linear_ref"], cfg=cfg, manifest_path=p.get("corridor_manifest_path")), None),
         # ORDERING: manifest joins (Track in add_images, MP_Pre/MP_Num here) key on the
         # ORIGINAL image filename, so they MUST stay before rename_images. Moving rename
         # earlier breaks the manifest match — a zero-match join fails fast (RuntimeError).

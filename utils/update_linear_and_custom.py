@@ -38,6 +38,7 @@ from utils.manager.config_manager import ConfigManager
 from utils.corridor.units import compile_identity_regex, parse_run_frame
 from utils.shared.expression_utils import resolve_expression
 from utils.shared.manifest_fields import (
+    explain_manifest_zero_match,
     load_manifest_attr_map,
     populate_oid_fields_from_manifest,
     resolve_manifest_path,
@@ -76,19 +77,30 @@ def _build_intended_route_map(cfg: ConfigManager, oid_fc_path: str, manifest_pat
     attr_map = load_manifest_attr_map(manifest_path, [intended_col], logger)
     col = intended_col.lower()
     out: dict = {}
-    total = 0
+    total = matched = 0
+    sample_paths = []
     with arcpy.da.SearchCursor(oid_fc_path, ["OID@", "ImagePath"]) as cursor:
         for oid, image_path in cursor:
             total += 1
+            if len(sample_paths) < 3:
+                sample_paths.append(image_path)
             filename = extract_filename_from_image_path(image_path)
             rec = attr_map.get(filename.lower()) if filename else None
+            if rec is not None:
+                matched += 1
             if rec and rec.get(col):
                 out[f"OID_{oid}"] = rec[col]
-    if total and not out:
-        # Join keys on the ORIGINAL filename, so this must run before Rename Images.
+    if total and matched and not out:
+        # Names joined fine — the manifest's intended-route column is blank/missing.
+        logger.error(
+            f"{matched:,} of {total:,} OID image(s) matched the manifest, but none has a value in "
+            f"its '{intended_col}' column — check the manifest's columns/data.",
+            error_type=RuntimeError, indent=1,
+        )
+    elif total and not out:
         logger.error(
             f"No OID image name matched the manifest (of {total:,}) for linear relocation. "
-            "Update Linear must run BEFORE Rename Images — check step order or the manifest path.",
+            + explain_manifest_zero_match(cfg, sample_paths, attr_map),
             error_type=RuntimeError, indent=1,
         )
     return out
@@ -417,7 +429,8 @@ def update_linear_and_custom(
         oid_fc_path: str,
         centerline_fc: Optional[str] = None,
         route_id_field: Optional[str] = None,
-        enable_linear_ref: bool = True):
+        enable_linear_ref: bool = True,
+        manifest_path: Optional[str] = None):
     """
     Updates linear referencing and custom attribute fields for an Oriented Imagery Dataset feature class.
 
@@ -430,6 +443,9 @@ def update_linear_and_custom(
         centerline_fc: Path to centerline routes (optional).
         route_id_field: Field name used for route matching (if linear ref is enabled).
         enable_linear_ref: Whether to compute linear route measures.
+        manifest_path: Optional corridor manifest CSV (e.g. from the orchestrator
+            dialog). When None, the configured pre-thin manifest is used if
+            ``thinning_mode`` is "pre". Also drives SequenceOrder.
     """
     logger = cfg.get_logger()
     cfg.validate(tool="update_linear_and_custom")
@@ -453,7 +469,7 @@ def update_linear_and_custom(
 
     # Resolve manifest mode (pre-thin). MP_Pre always comes from the manifest's
     # intended subdivision; MP_Num source is controlled by mp_num_source.
-    manifest_path = resolve_manifest_path(cfg)
+    manifest_path = resolve_manifest_path(cfg, explicit=manifest_path)
     id_spec = _linear_field_manifest_spec(cfg, "route_identifier")
     meas_spec = _linear_field_manifest_spec(cfg, "route_measure")
     manifest_mode = bool(manifest_path) and id_spec is not None
@@ -672,9 +688,12 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
         attr = load_manifest_attr_map(manifest_path, ["mp_pre", "track", "sub_order"], logger)
         man_rows = []
         total = matched = 0
+        sample_paths = []
         with arcpy.da.SearchCursor(oid_fc_path, ["OID@", "ImagePath"]) as cursor:
             for oid, image_path in cursor:
                 total += 1
+                if len(sample_paths) < 3:
+                    sample_paths.append(image_path)
                 filename = extract_filename_from_image_path(image_path) if image_path else None
                 rec = attr.get(filename.lower()) if filename else None
                 if rec:
@@ -683,8 +702,9 @@ def assign_sequence_order(cfg: ConfigManager, oid_fc_path: str, enable_linear_re
 
         if matched == 0:
             logger.warning(
-                "SequenceOrder: manifest present but no OID image matched (the join keys on the "
-                "ORIGINAL filename and must run before Rename Images). Falling back to LR/capture ordering.",
+                "SequenceOrder: manifest present but no OID image matched. "
+                + explain_manifest_zero_match(cfg, sample_paths, attr)
+                + " Falling back to LR/capture ordering.",
                 indent=1,
             )
         else:

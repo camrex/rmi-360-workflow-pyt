@@ -111,7 +111,7 @@ def test_linear_override_corrects_wrong_subdivision(tmp_path, monkeypatch):
     cursor = DummyUpdateCursor(rows)
     captured = {}
     monkeypatch.setattr(arcpy.da, "UpdateCursor",
-                        lambda fc, fields: captured.setdefault("fields", fields) or cursor)
+                        lambda fc, fields: (captured.setdefault("fields", fields), cursor)[1])
 
     from unittest.mock import MagicMock
     specs = [("MP_Pre", "mp_pre", None, "TEXT"), ("MP_Num", "mp_meas", None, "DOUBLE")]
@@ -146,7 +146,8 @@ def test_zero_match_fails_fast(tmp_path, monkeypatch):
 
     logger = _RaisingLogger()
     specs = [("MP_Pre", "mp_pre", None, "TEXT")]
-    with pytest.raises(RuntimeError, match="BEFORE Rename Images"):
+    # Renamed names don't parse as capture names -> the message points at step order.
+    with pytest.raises(RuntimeError, match="Rename Images already ran"):
         mf.populate_oid_fields_from_manifest(Cfg(), "oid", specs, str(p), logger)
 
 
@@ -159,3 +160,29 @@ def test_missing_oid_field_skipped(tmp_path, monkeypatch):
     monkeypatch.setattr(arcpy.da, "UpdateCursor",
                         lambda *a, **k: (_ for _ in ()).throw(AssertionError("cursor opened")))
     assert mf.populate_oid_fields_from_manifest(Cfg(), "oid", specs, p, MagicMock()) == 0
+
+
+# --- zero-match diagnosis ----------------------------------------------------
+
+_ORIG = "reel_0001_20250101-120000_x_000123.jpg"
+
+
+def test_explain_zero_match_unparseable_path():
+    msg = mf.explain_manifest_zero_match(Cfg(), ["$virtualCacheDirectory:", "/"], {"a.jpg": {}})
+    assert "path-parsing" in msg
+
+
+def test_explain_zero_match_renamed_names_points_at_step_order():
+    msg = mf.explain_manifest_zero_match(Cfg(), ["C:/x/RMI_MP12.5_G.jpg"], {_ORIG: {}})
+    assert "Rename Images already ran" in msg and _ORIG in msg
+
+
+def test_explain_zero_match_original_names_points_at_manifest():
+    msg = mf.explain_manifest_zero_match(Cfg(), [rf"I:\panos\{_ORIG}"], {"other.jpg": {}})
+    assert "belongs to this project" in msg and "Rename" not in msg
+
+
+def test_explain_zero_match_honors_configured_regex():
+    cfg = Cfg({"corridor_thinning.filename_regex": r"^CAM\d+_(\d+)\.jpg$"})
+    msg = mf.explain_manifest_zero_match(cfg, ["C:/x/CAM1_42.jpg"], {"other.jpg": {}})
+    assert "belongs to this project" in msg

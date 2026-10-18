@@ -72,7 +72,9 @@ from utils.validators import (
 # 1.5.0 added spatial_ref.geoid_correction (ellipsoidal -> NAVD88 camera heights).
 # Additive with code defaults, but versioned so every config explicitly carries
 # the geoid flags — the conversion changes the Z values written to the OID.
-SUPPORTED_SCHEMA_VERSIONS = {"1.5.0"}
+# 1.6.0 added spatial_ref.geoid_correction.source_frame (frame of the camera
+# heights, shifted to NAD83(2011) before GEOID18; POLARIS = ITRF2014).
+SUPPORTED_SCHEMA_VERSIONS = {"1.6.0"}
 
 
 class ConfigManager:

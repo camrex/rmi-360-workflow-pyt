@@ -8,6 +8,7 @@ in the ArcGIS Pro environment; _event_allowed is the rule it delegates to.
 import csv
 
 import arcpy
+import pytest
 
 from utils import update_linear_and_custom as ulc
 
@@ -75,3 +76,36 @@ def test_build_intended_route_map(tmp_path, monkeypatch):
     from unittest.mock import MagicMock
     m = ulc._build_intended_route_map(Cfg(), "oid", str(p), "mp_pre", MagicMock())
     assert m == {"OID_1": "SUBA", "OID_2": "SUBB"}  # img_c absent (not in manifest)
+
+
+def test_build_intended_route_map_blank_column_is_a_data_error(tmp_path, monkeypatch):
+    # Names match, but the manifest's mp_pre column is blank -> the error must
+    # point at the manifest's data, not claim the names didn't match.
+    p = tmp_path / "m.csv"
+    with open(p, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["Name", "mp_pre"])
+        w.writerow(["img_a.jpg", ""])
+
+    class SC:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def __iter__(self):
+            return iter([(1, "C:/x/img_a.jpg")])
+
+    monkeypatch.setattr(arcpy.da, "SearchCursor", lambda fc, fields: SC())
+
+    class RaisingLogger:
+        def error(self, msg, *a, error_type=None, **k):
+            if error_type:
+                raise error_type(msg)
+
+        def __getattr__(self, _name):
+            return lambda *a, **k: None
+
+    with pytest.raises(RuntimeError, match="no.*value|none has a value"):
+        ulc._build_intended_route_map(Cfg(), "oid", str(p), "mp_pre", RaisingLogger())

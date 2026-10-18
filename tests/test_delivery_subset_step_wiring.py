@@ -29,6 +29,8 @@ _STUBBED_MODULE_NAMES = [
     "utils.copy_to_aws",
     "utils.generate_oid_service",
     "utils.geoareas_exif_integration",
+    "utils.shared",
+    "utils.shared.manifest_fields",
 ]
 
 
@@ -73,6 +75,8 @@ def _stubbed_build_step_funcs_module():
         _install_stub_module("utils.copy_to_aws", copy_to_aws=noop)
         _install_stub_module("utils.generate_oid_service", generate_oid_service=noop)
         _install_stub_module("utils.geoareas_exif_integration", should_use_geoareas=lambda cfg: True)
+        _install_stub_module("utils.shared")
+        _install_stub_module("utils.shared.manifest_fields", resolve_manifest_path=lambda cfg: None)
 
         repo_root = pathlib.Path(__file__).resolve().parents[1]
         module_path = repo_root / "utils" / "build_step_funcs.py"
