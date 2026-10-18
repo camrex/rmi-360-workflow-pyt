@@ -28,10 +28,15 @@ new Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
   same rule now covers `copy_to_aws`, the artifact backup, OID audit/sync, staging,
   `scripts/upload_to_s3.py` and `download_project_files.py`, and the config editor's
   **Check AWS auth**.
-- **Copy To AWS never overwrites**: each key is checked with `HeadObject` first and
-  skipped if it already exists ("already in S3" in the upload log). A repeat put of a
-  panorama in `rmi-360-prod` re-runs tiling. Errors other than 404 fail that file
-  instead of uploading.
+- **Copy To AWS never overwrites.** Each file goes up as one `PutObject` with
+  `If-None-Match: *`, so S3 itself refuses a put to an existing key (412 → skipped,
+  "already in S3" in the upload log); this holds even for two runs at once. A
+  `HeadObject` check first skips known keys without sending the bytes, and errors
+  other than 404 fail that file. If two local files map to the same key, the run
+  stops before uploading anything. A repeat put of a panorama in `rmi-360-prod` would
+  re-run tiling. Uploads no longer use boto3's TransferManager (panoramas are far below
+  the 5 GB single-PUT limit); `aws.max_workers` caps concurrent puts, and `aws.retries`
+  now really sets the client's retry attempts (it used to set a download-only option).
 - **Docs:** `docs/aws/setup-guide.rst` (profile setup, `aws sso login`, how ArcGIS Pro
   picks the profile up, what the profile may do), and a new `CLAUDE.md`.
 - Config editor's RMI profile now sets `aws.profile`, the `rmi-360-prod` /

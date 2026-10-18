@@ -31,6 +31,8 @@ def aws_env(tmp_path, monkeypatch):
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "envsecretfake")
     monkeypatch.delenv("AWS_PROFILE", raising=False)
     monkeypatch.delenv("AWS_DEFAULT_PROFILE", raising=False)
+    monkeypatch.delenv("AWS_DEFAULT_REGION", raising=False)
+    monkeypatch.delenv("AWS_REGION", raising=False)
     return monkeypatch
 
 
@@ -125,12 +127,12 @@ def test_s3_utils_client_uses_profile(aws_env):
     seen = {}
 
     def fake_profile_session(profile=None, region=None):
-        seen["profile"] = profile
+        seen["profile"], seen["region"] = profile, region
         return MagicMock()
 
     aws_env.setattr(aws_utils, "profile_session", fake_profile_session)
-    s3_utils._client("proj")
-    assert seen["profile"] == "proj"
+    s3_utils._client("proj", "us-west-2")
+    assert seen == {"profile": "proj", "region": "us-west-2"}
 
 
 def test_s3_utils_client_refuses_without_profile(aws_env):

@@ -47,10 +47,11 @@ def normalize_prefix(prefix: str) -> str:
         p += "/"
     return p
 
-def _client(profile: Optional[str] = None):
-    """S3 client for the named profile (``profile``, else ``$AWS_PROFILE``); never the default chain."""
+def _client(profile: Optional[str] = None, region: Optional[str] = None):
+    """S3 client for the named profile (``profile``, else ``$AWS_PROFILE``) in ``region``
+    (aws.region; None = the profile's region). Never the default chain."""
     from utils.shared.aws_utils import profile_session
-    return profile_session(profile).client("s3")
+    return profile_session(profile, region).client("s3")
 
 
 def _extract_reel_name(dst: Path, local_project_dir: Path) -> str:
@@ -61,8 +62,8 @@ def _extract_reel_name(dst: Path, local_project_dir: Path) -> str:
         return path_parts[1] if len(path_parts) > 1 else "unknown"
     return "unknown"
 
-def list_projects(bucket: str, s3=None, profile: Optional[str] = None) -> List[str]:
-    s3 = s3 or _client(profile)
+def list_projects(bucket: str, s3=None, profile: Optional[str] = None, region: Optional[str] = None) -> List[str]:
+    s3 = s3 or _client(profile, region)
     keys: List[str] = []
     token: Optional[str] = None
     while True:
@@ -79,8 +80,9 @@ def list_projects(bucket: str, s3=None, profile: Optional[str] = None) -> List[s
         token = resp.get("NextContinuationToken")
     return sorted(set(keys))
 
-def list_reels(bucket: str, project_key: str, s3=None, profile: Optional[str] = None) -> List[str]:
-    s3 = s3 or _client(profile)
+def list_reels(bucket: str, project_key: str, s3=None, profile: Optional[str] = None,
+               region: Optional[str] = None) -> List[str]:
+    s3 = s3 or _client(profile, region)
     base = normalize_prefix(f"{project_key}/reels")
     names: List[str] = []
     token: Optional[str] = None
@@ -111,6 +113,7 @@ def stage_reels(
     skip_if_exists: bool = True,
     logger = None,
     profile: Optional[str] = None,
+    region: Optional[str] = None,
 ) -> Path:
     """
     Stage one or more reels under s3://{bucket}/{project_key}/reels/ to:
@@ -128,11 +131,12 @@ def stage_reels(
         skip_if_exists: Skip files that already exist locally
         logger: Optional logger for progress messages
         profile: AWS profile (aws.profile); None uses $AWS_PROFILE
+        region: AWS region (aws.region); None uses the profile's region
         
     Returns:
         Path to local reels root directory
     """
-    s3 = _client(profile)
+    s3 = _client(profile, region)
     local_project_dir = Path(local_project_dir)
     local_reels_root = local_project_dir / "reels"
     local_reels_root.mkdir(parents=True, exist_ok=True)
@@ -264,6 +268,7 @@ def stage_project_files(
     max_workers: int = 16,
     skip_if_exists: bool = True,
     profile: Optional[str] = None,
+    region: Optional[str] = None,
 ) -> Dict[str, Path]:
     """
     Stage config and/or gis_data files from S3 to local project directory.
@@ -280,6 +285,7 @@ def stage_project_files(
         max_workers: Number of concurrent download threads
         skip_if_exists: Skip files that already exist locally with matching size
         profile: AWS profile (aws.profile); None uses $AWS_PROFILE
+        region: AWS region (aws.region); None uses the profile's region
 
     Returns:
         Dict mapping folder_type to local Path where files were staged
@@ -294,7 +300,7 @@ def stage_project_files(
         # Returns: {'config': Path('D:/Process360_Data/projects/RMI25320/config'),
         #           'gis_data': Path('D:/Process360_Data/projects/RMI25320/gis_data')}
     """
-    s3 = _client(profile)
+    s3 = _client(profile, region)
     local_project_dir = Path(local_project_dir)
 
     # Default to both config and gis_data if not specified

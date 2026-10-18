@@ -42,14 +42,14 @@ Most dependencies are already included with ArcGIS Pro. For any missing packages
    .. code-block:: bash
 
       conda activate <your-arcgis-environment>
-      conda install pyyaml boto3 matplotlib
+      conda install pyyaml boto3 numpy jinja2 matplotlib defusedxml pytest
 
 3. **Using pip:**
 
    .. code-block:: bash
 
       # Activate your ArcGIS Pro Python environment first
-      pip install pyyaml boto3 matplotlib
+      pip install -r requirements.txt
 
 Environment Verification
 ------------------------

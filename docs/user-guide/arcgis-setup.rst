@@ -48,7 +48,7 @@ Before adding the main toolbox, verify your Python environment has all required 
       conda activate arcgispro-py3
 
       # Install packages
-      conda install pyyaml boto3 matplotlib
+      conda install pyyaml boto3 numpy jinja2 matplotlib defusedxml pytest
 
 Adding the Main Toolbox
 ------------------------

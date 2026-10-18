@@ -1,9 +1,11 @@
 AWS Setup Guide
 ===============
 
-The toolbox talks to AWS only through a **named AWS profile** signed in with IAM
-Identity Center (SSO). It never uses static access keys, and it never falls back to
-the machine's ``default`` profile.
+The toolbox talks to AWS only through a **named AWS profile**, and it never falls back
+to the machine's ``default`` profile. It no longer reads keys from ``config.yaml`` or
+the OS keyring. The profile itself must be the IAM Identity Center (SSO) profile
+below: the toolbox uses whatever credentials a named profile resolves to, so don't
+point it at a profile that holds static keys.
 
 For RMI the profile is **``rmi-360-workflow-pyt``**, issued by rmi-aws-infra
 (change record 0049).
