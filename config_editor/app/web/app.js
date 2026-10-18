@@ -387,6 +387,7 @@ async function doValidate() {
   const warns = issues.filter((i) => i.level === "warning").length;
   setStatus(errs ? `${errs} error(s), ${warns} warning(s).` : `Valid. ${warns} warning(s).`,
             errs ? "err" : warns ? "warn" : "ok");
+  return { errs, warns };
 }
 
 function renderIssues(issues) {
@@ -508,15 +509,31 @@ async function doPreview() {
   drawer.classList.remove("hidden");
 }
 
+async function writeConfig() {
+  const path = await api().save_dialog("config.yaml");
+  if (!path) { setStatus("Save cancelled.", ""); return; }
+  const res = await api().save(state.values, path);
+  if (res.ok) { state.dirty = false; setMeta(); setStatus(`Saved ${res.path}`, "ok"); }
+}
+
 async function doSave() {
+  const fail = (e) => setStatus("Save failed: " + (e && e.message ? e.message : e), "err");
   try {
-    await doValidate();  // refreshes the issues panel; warnings never block saving
-    const path = await api().save_dialog("config.yaml");
-    if (!path) { setStatus("Save cancelled.", ""); return; }
-    const res = await api().save(state.values, path);
-    if (res.ok) { state.dirty = false; setMeta(); setStatus(`Saved ${res.path}`, "ok"); }
+    // Refreshes the issues panel. Warnings never block saving; errors ask first —
+    // saving a work-in-progress config is allowed, but never silently.
+    const { errs } = await doValidate();
+    if (!errs) { await writeConfig(); return; }
+    document.getElementById("modal-body").innerHTML =
+      `<div>This config has <strong>${errs}</strong> validation error(s), listed in the issues panel. ` +
+      `The toolbox may refuse to load it until they are fixed.</div>` +
+      `<div style="margin-top:8px">Save anyway (e.g. to finish later)?</div>`;
+    openModal("Save with errors?", { confirm: true, confirmText: "Save anyway" });
+    document.getElementById("modal-confirm").onclick = async () => {
+      document.getElementById("modal").classList.add("hidden");
+      try { await writeConfig(); } catch (e) { fail(e); }
+    };
   } catch (e) {
-    setStatus("Save failed: " + (e && e.message ? e.message : e), "err");
+    fail(e);
   }
 }
 

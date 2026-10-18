@@ -143,3 +143,34 @@ def test_save_dialog_cancel_returns_none():
 def test_open_dialog_returns_single_path_string():
     api = ConfigEditorAPI(window=_FakeWindow((r"C:\somewhere\config.yaml",)))
     assert api.open_dialog() == r"C:\somewhere\config.yaml"
+
+
+def test_numeric_field_in_repeatable_collection_saved_as_int(tmp_path):
+    # Collection entries are typed by the item template (custom_fields.*.length is
+    # int in the sample). A GUI-submitted "8" must be written as 8, or the runtime
+    # OID schema validator rejects the field definition.
+    api = _api()
+    v = api.new_config()["values"]
+    entries = v["oid_schema_template"]["custom_fields"]
+    first = next(iter(entries))
+    entries[first]["length"] = "8"
+    entries["custom_new"] = {"name": "Sub", "type": "TEXT", "length": " 12 ", "alias": "Sub"}
+    out = tmp_path / "config.yaml"
+    api.save(v, str(out))
+    reloaded = config_io.extract_values(config_io.load_yaml(out))
+    saved = reloaded["oid_schema_template"]["custom_fields"]
+    assert saved[first]["length"] == 8 and isinstance(saved[first]["length"], int)
+    assert saved["custom_new"]["length"] == 12
+    assert saved["custom_new"]["name"] == "Sub"          # text fields untouched
+
+
+def test_collection_null_and_placeholder_lengths_preserved(tmp_path):
+    api = _api()
+    v = api.new_config()["values"]
+    entries = v["oid_schema_template"]["custom_fields"]
+    first = next(iter(entries))
+    entries[first]["length"] = None
+    out = tmp_path / "config.yaml"
+    api.save(v, str(out))
+    reloaded = config_io.extract_values(config_io.load_yaml(out))
+    assert reloaded["oid_schema_template"]["custom_fields"][first]["length"] is None
