@@ -469,7 +469,8 @@ class Process360Workflow(object):
             parameterType="Optional",
             direction="Input",
         )
-        enable_deploy_lambda_monitor_param.value = True
+        # Off by default: the monitor's AWS resources were removed (rmi-aws-infra 0017).
+        enable_deploy_lambda_monitor_param.value = False
         params.append(enable_deploy_lambda_monitor_param)
 
         # 17) Enable Generate OID Service
