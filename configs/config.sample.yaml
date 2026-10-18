@@ -691,7 +691,7 @@ corridor_thinning:
     flag: "flag_5m"               # Thinning keep/drop flag
   thin:
     threshold_meters: 5.0         # Target interval (meters)
-    trim_meters: 1.5              # Pull-in (1.5 -> ~4.5 m effective). 0 = none.
+    trim_meters: 0.4572           # Pull-in in meters (0.4572 = 1.5 ft -> ~4.54 m effective). 0 = none.
   reversals:
     min_backtrack_ft: 15.0        # Min backward displacement (data units) to flag
     oppose_deg: 120.0             # Bearing >= this off prevailing = opposing

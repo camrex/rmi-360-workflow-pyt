@@ -66,6 +66,15 @@ Config Editor. (1.4.0 = aws/secured-storage consolidation; 1.5.0 = additive
 
 ### Fixed
 
+- **Corridor thinning ran at 3.5 m instead of ~4.5 m by default**: the Thin to
+  Interval and Run Corridor Thinning tools defaulted the trim to `1.5 Meters`, but the
+  validated 26-150 scripts trimmed 1.5 **feet** (16.4042 − 1.5 = 14.90 ft ≈ 4.54 m).
+  Default runs therefore kept more images than intended. The default is now
+  `1.5 Feet`, defined once in `utils/corridor/units.py` for both tools. A test pins
+  the effective threshold to the scripts' value. The docstring, the
+  `corridor_thinning.thin.trim_meters` sample value (now `0.4572`) and
+  `docs/corridor_thinning.md` are corrected. Re-thin any project thinned on the old
+  defaults if the spacing matters.
 - **NAVD88 camera heights about 1 m too low (missing reference-frame shift)**: the
   pinned GEOID18 operation is a bare grid shift that treats its input as NAD83(2011),
   but the XVN's heights are in the frame of its RTK corrections — Point One mount point

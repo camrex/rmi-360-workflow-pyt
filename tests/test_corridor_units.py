@@ -6,6 +6,8 @@ import math
 import pytest
 
 from utils.corridor.units import (
+    DEFAULT_THIN_THRESHOLD,
+    DEFAULT_THIN_TRIM,
     anchor_reset_keep,
     linear_unit_to_meters,
     meters_per_unit,
@@ -46,6 +48,18 @@ def test_linear_unit_to_meters_variants():
     assert linear_unit_to_meters("1.5 Meters") == pytest.approx(1.5)
     # bare number treated as meters
     assert linear_unit_to_meters("5") == pytest.approx(5.0)
+
+
+def test_default_trim_reproduces_validated_scripts():
+    # Same arithmetic as thin(): effective = threshold - trim, both in data units.
+    # The 26-150 scripts used THRESHOLD_FT=16.4042 and THRESHOLD_TRIM_FT=1.5 (feet).
+    threshold = threshold_to_data_units(
+        linear_unit_to_meters(DEFAULT_THIN_THRESHOLD), meters_per_unit_override=US_SURVEY_FOOT)
+    trim = threshold_to_data_units(
+        linear_unit_to_meters(DEFAULT_THIN_TRIM), meters_per_unit_override=US_SURVEY_FOOT)
+    effective_ft = threshold - trim
+    assert effective_ft == pytest.approx(16.4042 - 1.5, abs=1e-3)
+    assert effective_ft * US_SURVEY_FOOT == pytest.approx(4.543, abs=1e-3)
 
 
 def test_linear_unit_unknown_raises():

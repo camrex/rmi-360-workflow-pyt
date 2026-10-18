@@ -14,6 +14,7 @@
 
 from utils.corridor import toolparams as tp
 from utils.corridor.thin import thin
+from utils.corridor.units import DEFAULT_THIN_THRESHOLD, DEFAULT_THIN_TRIM
 
 
 class CorridorThinTool(object):
@@ -33,8 +34,8 @@ class CorridorThinTool(object):
         sub = tp.field_param("sub_order_field", "Sub-Order Field", "points_fc", default="sub_order", required=True)
         include = tp.field_param("include_field", "Include Field", "points_fc", default="include")
         flag = tp.string_param("flag_field", "Keep/Drop Flag Field (created if missing)", default="flag_5m")
-        threshold = tp.linear_unit_param("threshold", "Thinning Threshold", default="5 Meters")
-        trim = tp.linear_unit_param("trim", "Threshold Trim (pull-in)", default="1.5 Meters")
+        threshold = tp.linear_unit_param("threshold", "Thinning Threshold", default=DEFAULT_THIN_THRESHOLD)
+        trim = tp.linear_unit_param("trim", "Threshold Trim (pull-in)", default=DEFAULT_THIN_TRIM)
         wkid = tp.number_param("wkid", "Data WKID (for unit conversion)", default=6455, datatype="GPLong")
         return [tp.project_param(), points, pre, track, sub, include, flag, threshold, trim, wkid, tp.config_param()]
 
