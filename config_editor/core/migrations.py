@@ -22,6 +22,8 @@ CONSOLIDATE_AWS = [
     {"op": "remove", "path": "aws.keyring_aws"},
 ]
 
+# 1.6.0 — additive: spatial_ref.geoid_correction.source_frame (default ITRF2014 =
+# Point One POLARIS mount point). Upgrade fills it from the sample; no rules needed.
 # 1.5.0 — additive: spatial_ref.geoid_correction (enabled/model). No rename/remove
 # rules needed — the Upgrade's skeleton merge fills the new keys from the sample's
 # defaults (enabled: true, model: GEOID18) and adopts the sample's schema_version.

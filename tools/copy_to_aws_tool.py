@@ -112,7 +112,9 @@ class CopyToAwsTool:
             parameterType="Optional",
             direction="Input"
         )
-        enable_monitor.value = True
+        # Off by default: the monitor's AWS resources were removed (rmi-aws-infra 0017) and a
+        # failed deploy raises before the upload starts. See TODO.md (upload monitor redesign).
+        enable_monitor.value = False
         params.append(enable_monitor)
 
         return params
@@ -136,7 +138,7 @@ class CopyToAwsTool:
         )
         logger = cfg.get_logger()
 
-        if str_to_bool(p.get("enable_monitor", "true")):
+        if str_to_bool(p.get("enable_monitor", "false")):
             try:
                 logger.info("Deploying AWS upload monitor...")
                 deploy_lambda_monitor(cfg=cfg)
