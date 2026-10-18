@@ -22,7 +22,7 @@
 # File Location:        /utils/shared/aws_utils.py
 # Called By:            utils/copy_to_aws.py, utils/s3_utils.py, utils/shared/backup_to_s3.py,
 #                       utils/shared/oid_storage_migration.py, utils/shared/s3_upload_helpers.py,
-#                       utils/deploy_secured_test_set.py, utils/deploy_lambda_monitor.py
+#                       utils/deploy_secured_test_set.py
 # Ext. Dependencies:    boto3, botocore
 #
 # Documentation:

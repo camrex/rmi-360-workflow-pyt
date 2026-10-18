@@ -54,6 +54,12 @@ manager_cfg_mod = types.ModuleType("utils.manager.config_manager")
 shared_mod = types.ModuleType("utils.shared")
 shared_aws_mod = types.ModuleType("utils.shared.aws_utils")
 shared_paths_mod = types.ModuleType("utils.shared.oid_storage_paths")
+# The status tracker is pure stdlib: load the real one (the heartbeat is under test).
+_tracker_spec = importlib.util.spec_from_file_location(
+    "utils.shared.s3_status_tracker",
+    pathlib.Path(__file__).resolve().parents[1] / "utils" / "shared" / "s3_status_tracker.py")
+shared_tracker_mod = importlib.util.module_from_spec(_tracker_spec)
+_tracker_spec.loader.exec_module(shared_tracker_mod)
 
 
 class ConfigManager:  # pragma: no cover - typing-only import target
@@ -107,6 +113,7 @@ _STUBBED_MODULE_NAMES = [
     "utils.shared",
     "utils.shared.aws_utils",
     "utils.shared.oid_storage_paths",
+    "utils.shared.s3_status_tracker",
 ]
 _snapshots = {name: sys.modules.get(name, _MISSING) for name in _STUBBED_MODULE_NAMES}
 try:
@@ -123,6 +130,7 @@ try:
     sys.modules["utils.shared"] = shared_mod
     sys.modules["utils.shared.aws_utils"] = shared_aws_mod
     sys.modules["utils.shared.oid_storage_paths"] = shared_paths_mod
+    sys.modules["utils.shared.s3_status_tracker"] = shared_tracker_mod
 
     repo_root = pathlib.Path(__file__).resolve().parents[1]
     module_path = repo_root / "utils" / "copy_to_aws.py"
@@ -383,7 +391,7 @@ class _Progressor:
         pass
 
 
-def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=()):
+def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=(), extra=None, heartbeat_fails=False):
     """Run copy_to_aws over ``files`` (relative paths). ``existing`` keys answer HeadObject 200;
     ``raced`` keys pass HeadObject but are refused by the conditional put (412)."""
     src = tmp_path / "renamed"
@@ -392,7 +400,7 @@ def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=()):
     values = {"aws.s3_bucket_folder": "RMI1", "aws.s3_bucket_panos_unsecured": "prod",
               "aws.upload_batch_size": 10, "aws.max_workers": 4, "aws.retries": 2,
               "aws.use_acceleration": False, "aws.skip_existing": True,
-              "aws.allow_cancel_file_trigger": False}
+              "aws.allow_cancel_file_trigger": False, **(extra or {})}
     cfg = MagicMock()
     cfg.get.side_effect = lambda k, d=None: values.get(k, d)
     cfg.get_progressor.return_value = _Progressor()
@@ -401,9 +409,14 @@ def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=()):
     s3 = MagicMock()
     s3.head_object.side_effect = lambda Bucket, Key: (None if Key in existing else
                                                       (_ for _ in ()).throw(_client_error("404")))
-    put_keys = []
+    put_keys, heartbeats = [], []
 
     def put_object(**kw):
+        if kw["Key"].startswith("status/"):
+            if heartbeat_fails:
+                raise _client_error_status("AccessDenied", 403)
+            heartbeats.append(kw)
+            return
         put_keys.append(kw["Key"])
         if kw["Key"] in raced:
             raise _client_error_status("PreconditionFailed", 412)
@@ -411,6 +424,8 @@ def _run_copy(tmp_path, monkeypatch, files, existing=(), raced=()):
     session = MagicMock(); session.client.return_value = s3
     monkeypatch.setattr(copy_to_aws_mod, "get_boto3_session", lambda _cfg: session)
     result = copy_to_aws_mod.copy_to_aws(cfg, local_dir=str(src))
+    _run_copy.heartbeats = heartbeats
+    _run_copy.logger = cfg.get_logger.return_value
     return result, put_keys, s3
 
 
@@ -427,3 +442,33 @@ def test_copy_stops_on_duplicate_keys(tmp_path, monkeypatch):
     result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["reel1/x.jpg", "reel2/x.jpg", "y.jpg"])
     assert result["status"] == "error" and "more than one local file" in result["message"]
     assert put_keys == []
+
+
+HEARTBEAT_CFG = {"aws.s3_bucket_raw": "rmi-360-raw", "project.slug": "RMI1"}
+
+
+def test_heartbeat_published_to_status_prefix(tmp_path, monkeypatch):
+    import json
+    result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg", "b.jpg"], extra=HEARTBEAT_CFG)
+    assert result["status"] == "completed" and sorted(put_keys) == ["RMI1/a.jpg", "RMI1/b.jpg"]
+    beats = _run_copy.heartbeats
+    assert beats, "no heartbeat written"
+    assert {b["Bucket"] for b in beats} == {"rmi-360-raw"}
+    assert {b["Key"] for b in beats} == {"status/RMI1/upload_progress.json"}
+    assert all(b["ServerSideEncryption"] == "AES256" for b in beats)
+    final = json.loads(beats[-1]["Body"].decode("utf-8"))
+    assert final["phase"] == "complete" and final["completed_at"]
+    assert final["totals"]["uploaded"] == 2 and final["meta"]["project"] == "RMI1"
+    assert (tmp_path / "aws_upload_status.json").exists()        # local copy too
+
+
+def test_heartbeat_failure_does_not_fail_upload(tmp_path, monkeypatch):
+    result, put_keys, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG, heartbeat_fails=True)
+    assert result["status"] == "completed" and put_keys == ["RMI1/a.jpg"]
+    warned = " ".join(str(c.args[0]) for c in _run_copy.logger.warning.call_args_list)
+    assert "heartbeat could not be written" in warned
+
+
+def test_no_heartbeat_without_raw_bucket_or_slug(tmp_path, monkeypatch):
+    result, _, _ = _run_copy(tmp_path, monkeypatch, ["a.jpg"])
+    assert result["status"] == "completed" and _run_copy.heartbeats == []

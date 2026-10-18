@@ -31,10 +31,11 @@ Oriented Imagery Dataset (OID) → S3 upload → hosted service. The toolboxes a
 
 - **Secured storage stays off** (`aws.secured_delivery.enabled: false`) until ArcGIS
   Enterprise 12.2+ (Esri case 04187998 concluded). Don't build secured-delivery features.
-- **The upload monitor is being redesigned as a heartbeat**, not a Lambda: `copy_to_aws`
-  writes status through `utils/shared/s3_status_tracker.StatusTracker` to
-  `rmi-360-raw/status/{slug}/`. Don't redeploy or extend `deploy_lambda_monitor` /
-  `aws_lambdas/`; they are to be removed.
+- **Upload progress is a heartbeat, not a Lambda monitor.** `copy_to_aws` writes its
+  status through `utils/shared/s3_status_tracker.StatusTracker` to
+  `rmi-360-raw/status/{slug}/upload_progress.json` (`docs/aws/upload-heartbeat.rst`).
+  The Lambda monitor was removed in schema 1.8.0; don't bring back anything that needs
+  Lambda, EventBridge or IAM.
 - Processing runs on a dedicated Windows machine, not in AWS.
 
 ## Config schema

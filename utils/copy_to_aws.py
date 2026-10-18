@@ -31,6 +31,10 @@
 #     check first skips known keys without sending the bytes. A repeat put of a
 #     panorama would re-run tiling. Two local files mapping to one key stop the run.
 #   - Credentials come from the named AWS profile (aws.profile); see utils/shared/aws_utils
+#   - Heartbeat: progress JSON goes to s3://{aws.s3_bucket_raw}/status/{slug}/upload_progress.json
+#     about once a minute and at the end (phase complete / cancelled / error), plus a
+#     local copy next to the upload log. It replaces the retired Lambda upload monitor.
+#     A failed heartbeat is reported once and never stops the upload.
 # =============================================================================
 
 __all__ = ["copy_to_aws"]
@@ -48,6 +52,7 @@ from pathlib import Path
 
 from utils.manager.config_manager import ConfigManager
 from utils.shared.aws_utils import get_boto3_session
+from utils.shared.s3_status_tracker import StatusTracker
 from utils.shared.oid_storage_paths import (
     is_secured_storage_enabled,
     build_oid_object_key,
@@ -219,6 +224,34 @@ def find_duplicate_keys(tasks):
     for file_path, s3_key in tasks:
         by_key.setdefault(s3_key, []).append(file_path)
     return {k: v for k, v in by_key.items() if len(v) > 1}
+
+
+HEARTBEAT_KEY = "status/{slug}/upload_progress.json"
+HEARTBEAT_INTERVAL_SEC = 60.0
+HEARTBEAT_GROUP = "panoramas"
+
+
+def make_heartbeat_publisher(session, cfg: ConfigManager):
+    """Return ``(publish, uri)``: ``publish(text)`` PUTs the status JSON to
+    ``s3://{aws.s3_bucket_raw}/status/{slug}/upload_progress.json``.
+
+    Returns ``(None, reason)`` when the raw bucket or project slug is not set. The
+    client has short timeouts so a slow heartbeat cannot hold up the uploads, and
+    every put is SSE-S3 encrypted (rmi-360-raw denies unencrypted puts).
+    """
+    raw_bucket = cfg.get("aws.s3_bucket_raw")
+    slug = cfg.get("project.slug")
+    if not raw_bucket or not slug:
+        return None, "aws.s3_bucket_raw or project.slug is not set"
+    key = HEARTBEAT_KEY.format(slug=slug)
+    client = session.client("s3", config=Config(
+        connect_timeout=5, read_timeout=10, retries={"max_attempts": 2, "mode": "standard"}))
+
+    def publish(text: str) -> None:
+        client.put_object(Bucket=raw_bucket, Key=key, Body=text.encode("utf-8"),
+                          ContentType="application/json", ServerSideEncryption="AES256")
+
+    return publish, f"s3://{raw_bucket}/{key}"
 
 
 def verify_s3_target_access(s3_client, bucket: str, bucket_folder: str, logger) -> None:
@@ -441,6 +474,24 @@ def copy_to_aws(
             "status": "completed"
         }
 
+    # Heartbeat (replaces the Lambda upload monitor): progress JSON to rmi-360-raw/status/{slug}/.
+    publish, heartbeat_target = make_heartbeat_publisher(session, cfg)
+    if publish:
+        logger.custom(f"Upload heartbeat: {heartbeat_target} (every {int(HEARTBEAT_INTERVAL_SEC)} s)",
+                      indent=2, emoji="💓")
+    else:
+        logger.warning(f"No upload heartbeat: {heartbeat_target}.", indent=2)
+    tracker = StatusTracker(
+        Path(log_file).with_name("aws_upload_status.json"),
+        interval_sec=5.0,
+        publish=publish,
+        publish_interval_sec=HEARTBEAT_INTERVAL_SEC,
+        meta={"project": cfg.get("project.slug"), "bucket": bucket, "prefix": bucket_folder,
+              "skipped_from_log": len(log_rows), "tool": "copy_to_aws"},
+    )
+    tracker.set_totals(total)
+    tracker.start_group(HEARTBEAT_GROUP, total)
+
     start_time = time.time()
     completed = {"processed": 0, "uploaded": 0, "failed": 0}
     lock = threading.Lock()
@@ -491,6 +542,8 @@ def copy_to_aws(
             with open(log_file, "a", newline="", encoding="utf-8") as csv_file:
                 csv_writer = csv.writer(csv_file)
                 csv_writer.writerow([timestamp_str, f_path, s3_tgt_key, status, error, file_size, duration])
+        # Outside the log lock: the tracker may publish the heartbeat (a network call).
+        tracker.file_done(HEARTBEAT_GROUP, status, file_size)
 
     with cfg.get_progressor(total=total, label="Uploading images to S3") as progressor:
         last = 0
@@ -545,6 +598,19 @@ def copy_to_aws(
                 progressor.update(current, label)
                 logger.custom(label, indent=3, emoji="☁️")
                 last = current
+
+    # Final heartbeat
+    tracker.complete_group(HEARTBEAT_GROUP)
+    if cancel_event.is_set():
+        final_phase = "cancelled"
+    elif completed["failed"] and not completed["uploaded"]:
+        final_phase = "error"
+    else:
+        final_phase = "complete"
+    tracker.finish(final_phase)
+    if tracker.publish_error:
+        logger.warning(f"The upload heartbeat could not be written to {heartbeat_target}: "
+                       f"{tracker.publish_error}. The upload itself was not affected.", indent=1)
 
     # Write Summary File (aws_upload_summary)
     summary_stats = calculate_summary(log_rows, total, start_time)

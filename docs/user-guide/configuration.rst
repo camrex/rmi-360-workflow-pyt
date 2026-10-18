@@ -106,7 +106,7 @@ Control output folder structure and file naming:
 AWS Configuration
 ^^^^^^^^^^^^^^^^^
 
-Configure AWS S3 uploads and Lambda monitoring:
+Configure AWS S3 uploads:
 
 .. code-block:: yaml
 

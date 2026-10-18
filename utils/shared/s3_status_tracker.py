@@ -31,7 +31,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 
 def now_ts() -> float:
@@ -60,9 +60,16 @@ class StatusTracker:
         file_progress_cb(group): Get progress callback for boto3
         file_done(group, outcome, size): Mark file complete
         note_skip(group): Note a skipped file
+        finish(phase): Record the final phase and publish one last time
+
+    With ``publish`` set, the same JSON is also handed to that callable (e.g. an S3
+    put: the upload heartbeat) at most every ``publish_interval_sec``, and always on
+    ``finish``. A failed publish is remembered in ``publish_error`` and never raised.
     """
 
-    def __init__(self, status_path: Optional[Path], interval_sec: float = 2.0, group_key: str = "groups"):
+    def __init__(self, status_path: Optional[Path], interval_sec: float = 2.0, group_key: str = "groups",
+                 publish: Optional[Callable[[str], None]] = None, publish_interval_sec: float = 60.0,
+                 meta: Optional[dict] = None):
         """
         Initialize status tracker.
 
@@ -70,12 +77,19 @@ class StatusTracker:
             status_path: Path to write JSON status (None to disable)
             interval_sec: Minimum seconds between JSON writes (throttling)
             group_key: JSON key for groups (e.g., "reels", "folder_types")
+            publish: Optional callable receiving the JSON text (the heartbeat)
+            publish_interval_sec: Minimum seconds between publishes
+            meta: Optional static fields stored under "meta" (project, bucket, ...)
         """
         self.status_path = status_path
         self.interval = max(0.2, float(interval_sec))
         self.group_key = group_key
         self.lock = threading.Lock()
         self.last_flush = 0.0
+        self.publish = publish
+        self.publish_interval = max(1.0, float(publish_interval_sec))
+        self.last_publish = 0.0
+        self.publish_error: Optional[str] = None
         self.data = {
             "started_at": now_ts(),
             "phase": "init",
@@ -86,7 +100,10 @@ class StatusTracker:
             "totals": {"files": 0, "uploaded": 0, "skipped": 0, "failed": 0, "bytes_uploaded": 0},
             group_key: {},
             "last_update": now_ts(),
+            "completed_at": None,
         }
+        if meta:
+            self.data["meta"] = dict(meta)
 
     def set_totals(self, total_files: int):
         """Set total number of files to process."""
@@ -198,18 +215,37 @@ class StatusTracker:
             self.data["totals"]["skipped"] += 1
             self._flush_if_due()
 
+    def finish(self, phase: str = "complete"):
+        """Record the final phase ("complete", "cancelled", "error") and publish it."""
+        with self.lock:
+            self.data["phase"] = phase
+            self.data["completed_at"] = now_ts()
+            self.data["current_file"] = None
+            self.data["current_file_bytes"] = 0
+            self.data["current_file_size"] = 0
+            self._flush(force=True)
+
     def _flush_if_due(self):
         """Flush JSON if enough time has passed since last flush."""
-        if not self.status_path:
+        if not self.status_path and not self.publish:
             return
         now = now_ts()
         if (now - self.last_flush) >= self.interval:
             self._flush()
 
     def _flush(self, force: bool = False):
-        """Write JSON status to disk."""
-        if not self.status_path:
+        """Write JSON status to disk, and publish it when due (always when forced)."""
+        if not self.status_path and not self.publish:
             return
         self.data["last_update"] = now_ts()
-        atomic_write_text(self.status_path, json.dumps(self.data, ensure_ascii=False, indent=2))
+        text = json.dumps(self.data, ensure_ascii=False, indent=2)
+        if self.status_path:
+            atomic_write_text(self.status_path, text)
         self.last_flush = now_ts()
+        if self.publish and (force or (self.last_flush - self.last_publish) >= self.publish_interval):
+            self.last_publish = self.last_flush
+            try:
+                self.publish(text)
+            except Exception as e:  # noqa: BLE001 — a heartbeat must never stop the work
+                if self.publish_error is None:
+                    self.publish_error = f"{type(e).__name__}: {e}"

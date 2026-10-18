@@ -45,7 +45,7 @@ def test_path_manager_resolution():
 
     attributes = [
     "script_base", "project_base",
-    "templates", "configs", "lambdas",
+    "templates", "configs",
     "primary_config_path", "fallback_config_path",
     "backups", "backup_gdb", "logs", "report",
     "panos", "original", "renamed",

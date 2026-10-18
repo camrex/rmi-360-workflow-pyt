@@ -60,7 +60,6 @@ from utils.validators import (
     apply_exif_metadata_validator,
     geocode_images_validator,
     build_oid_footprints_validator,
-    deploy_lambda_monitor_validator,
     delivery_subset_validator,
     copy_to_aws_validator,
     generate_oid_service_validator,
@@ -76,7 +75,9 @@ from utils.validators import (
 # heights, shifted to NAD83(2011) before GEOID18; POLARIS = ITRF2014).
 # 1.7.0 replaced aws.auth_mode / keyring_service_name / access_key / secret_key
 # with aws.profile: credentials come only from a named AWS profile (SSO).
-SUPPORTED_SCHEMA_VERSIONS = {"1.7.0"}
+# 1.8.0 removed aws.lambda_role_arn with the Lambda upload monitor (replaced by
+# the upload heartbeat in rmi-360-raw/status/<slug>/).
+SUPPORTED_SCHEMA_VERSIONS = {"1.8.0"}
 
 
 class ConfigManager:
@@ -408,7 +409,6 @@ class ConfigManager:
         "apply_exif_metadata": apply_exif_metadata_validator.validate,
         "geocode_images": geocode_images_validator.validate,
         "build_oid_footprints": build_oid_footprints_validator.validate,
-        "deploy_lambda_monitor": deploy_lambda_monitor_validator.validate,
         "delivery_subset": delivery_subset_validator.validate,
         "copy_to_aws": copy_to_aws_validator.validate,
         "generate_oid_service": generate_oid_service_validator.validate,

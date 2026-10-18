@@ -50,7 +50,6 @@ from utils.geocode_images import geocode_images
 from utils.geocode_geoareas import geocode_geoareas
 from utils.build_oid_footprints import build_oid_footprints
 from utils.prepare_delivery_subset import prepare_delivery_subset
-from utils.deploy_lambda_monitor import deploy_lambda_monitor
 from utils.copy_to_aws import copy_to_aws
 from utils.generate_oid_service import generate_oid_service
 from utils.shared.manifest_fields import resolve_manifest_path
@@ -133,9 +132,6 @@ def skip_if_exiftool_not_needed(params, cfg):
         return f"Skipped (method={method})"
     
     return None
-
-def skip_if_deploy_lambda_monitor_disabled(params):
-    return "Skipped (disabled by user)" if not params.get("enable_deploy_lambda_monitor", False) else None
 
 def skip_if_generate_service_disabled(params):
     return "Skipped (disabled by user)" if not params.get("enable_generate_service", False) else None
@@ -306,8 +302,6 @@ def build_step_funcs(p, cfg):
         StepSpec("prepare_delivery_subset", "Prepare Delivery Subset",
             lambda params, config: lambda **kwargs: prepare_delivery_subset(cfg=cfg, oid_fc=p["oid_fc"], params=p),
             lambda params: skip_if_delivery_subset_disabled(params, cfg)),
-        StepSpec("deploy_lambda_monitor", "Deploy Lambda AWS Monitor",
-            lambda params, config: lambda **kwargs: deploy_lambda_monitor(cfg=cfg), skip_if_deploy_lambda_monitor_disabled),
         StepSpec("copy_to_aws", "Upload to AWS S3",
             lambda params, config: lambda **kwargs: copy_to_aws(
                 cfg=cfg,
