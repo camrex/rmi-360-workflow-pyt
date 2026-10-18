@@ -74,7 +74,9 @@ from utils.validators import (
 # the geoid flags — the conversion changes the Z values written to the OID.
 # 1.6.0 added spatial_ref.geoid_correction.source_frame (frame of the camera
 # heights, shifted to NAD83(2011) before GEOID18; POLARIS = ITRF2014).
-SUPPORTED_SCHEMA_VERSIONS = {"1.6.0"}
+# 1.7.0 replaced aws.auth_mode / keyring_service_name / access_key / secret_key
+# with aws.profile: credentials come only from a named AWS profile (SSO).
+SUPPORTED_SCHEMA_VERSIONS = {"1.7.0"}
 
 
 class ConfigManager:

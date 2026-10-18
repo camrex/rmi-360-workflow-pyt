@@ -40,7 +40,6 @@
 #   - 🌐 GenerateOIDService
 #   - 🌍 GeocodeImagesTool
 #   - 📝 GenerateReportFromJSONTool
-#   - 🔐 SetAWSKeyringCredentialsTool
 #
 # Documentation:
 #   See: docs/TOOL_OVERVIEW.md and docs/toolbox_reference.md
@@ -168,7 +167,6 @@ CopyToAwsTool = _load_tool_class("copy_to_aws_tool.py", "CopyToAwsTool")
 GenerateOIDService = _load_tool_class("generate_oid_service_tool.py", "GenerateOIDService")
 GenerateReportFromJSONTool = _load_tool_class("generate_report_tool.py", "GenerateReportFromJSONTool")
 CreateOIDTemplateTool = _load_tool_class("create_oid_template_tool.py", "CreateOIDTemplateTool")
-SetAWSKeyringCredentialsTool = _load_tool_class("set_aws_keyring_tool.py", "SetAWSKeyringCredentialsTool")
 
 
 class Toolbox(object):
@@ -189,5 +187,4 @@ class Toolbox(object):
             GenerateOIDService,
             GenerateReportFromJSONTool,
             CreateOIDTemplateTool,
-            SetAWSKeyringCredentialsTool
         ]

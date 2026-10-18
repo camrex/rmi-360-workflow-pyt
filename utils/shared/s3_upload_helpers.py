@@ -38,7 +38,6 @@ except ImportError as err:
     raise ImportError("PyYAML is required. Install with: pip install pyyaml") from err
 
 try:
-    import boto3
     from botocore.exceptions import ClientError, BotoCoreError
 except ImportError as err:
     raise ImportError("boto3 is required. Install with: pip install boto3") from err
@@ -73,39 +72,15 @@ def resolve_project_base(project_base_arg: Optional[str], cfg: dict, cfg_path: P
     return cfg_path.parent
 
 
-def resolve_session(auth_mode: Optional[str], service_name: str = "rmi_s3"):
+def resolve_session(profile: Optional[str] = None, region: Optional[str] = None):
     """
-    Create boto3 session based on auth mode.
-
-    Modes:
-    - config (default): Use standard AWS credential chain
-    - instance: Use EC2/ECS instance role
-    - keyring: Use system keyring for credentials
+    Create a boto3 session for the named AWS profile (``aws.profile``, else
+    ``$AWS_PROFILE``). Refuses when neither is set or the profile is ``default``;
+    see utils.shared.aws_utils.resolve_profile_name.
     """
-    mode = (auth_mode or "config").lower()
+    from utils.shared.aws_utils import profile_session
 
-    if mode == "keyring":
-        try:
-            import keyring
-        except ImportError:
-            raise RuntimeError("auth_mode=keyring but \"keyring\" is not installed. pip install keyring") from None
-
-        # Item names must match the Set AWS Keyring tool / aws_utils (lowercase).
-        ak = keyring.get_password(service_name, "aws_access_key_id")
-        sk = keyring.get_password(service_name, "aws_secret_access_key")
-
-        if not ak or not sk:
-            raise RuntimeError(
-                f"Missing AWS credentials in keyring '{service_name}'. "
-                "Store them with the Set AWS Keyring tool (toolbox) or keyring.set_password."
-            )
-        return boto3.Session(aws_access_key_id=ak, aws_secret_access_key=sk)
-
-    elif mode == "instance":
-        return boto3.Session()
-
-    # Default: use standard AWS credential chain
-    return boto3.Session()
+    return profile_session(profile, region)
 
 
 def resolve_max_concurrency(val) -> int:

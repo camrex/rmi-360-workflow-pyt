@@ -82,13 +82,7 @@ function renderSection() {
     check.className = "btn-check-aws";
     check.textContent = "Check AWS auth";
     check.onclick = doCheckAws;
-    const setkr = document.createElement("button");
-    setkr.type = "button";
-    setkr.className = "btn-check-aws";
-    setkr.textContent = "Set keyring credentials…";
-    setkr.onclick = doSetKeyring;
     actions.appendChild(check);
-    actions.appendChild(setkr);
     header.appendChild(actions);
   }
 
@@ -448,29 +442,6 @@ async function doCheckAws() {
   const errs = res.checks.filter((c) => c.status === "error").length;
   const warns = res.checks.filter((c) => c.status === "warn").length;
   setStatus(res.summary, errs ? "err" : warns ? "warn" : "ok");
-}
-
-function doSetKeyring() {
-  const svc = getVal(state.values, "aws.keyring_service_name") || "rmi_s3";
-  document.getElementById("modal-body").innerHTML =
-    `<div class="kr-form">` +
-    `<label>Keyring service<input id="kr-svc" type="text" value="${escapeHtml(svc)}"></label>` +
-    `<label>Access Key ID<input id="kr-ak" type="text" autocomplete="off" spellcheck="false"></label>` +
-    `<label>Secret Access Key<input id="kr-sk" type="password" autocomplete="off"></label>` +
-    `<div class="kr-note">Stored in the OS keyring on this machine — never written to config.yaml.</div>` +
-    `</div>`;
-  openModal("Set AWS keyring credentials", { confirm: true, confirmText: "Save to keyring" });
-  document.getElementById("modal-confirm").onclick = async () => {
-    const svcv = document.getElementById("kr-svc").value.trim();
-    const ak = document.getElementById("kr-ak").value.trim();
-    const sk = document.getElementById("kr-sk").value;
-    if (!ak || !sk) { setStatus("Access Key ID and Secret are both required.", "err"); return; }
-    let res;
-    try { res = await api().set_keyring(svcv, ak, sk); }
-    catch (e) { setStatus("Set keyring failed: " + (e && e.message ? e.message : e), "err"); return; }
-    document.getElementById("modal").classList.add("hidden");
-    setStatus((res.status === "ok" ? "✓ " : "✗ ") + res.detail, res.status === "ok" ? "ok" : "err");
-  };
 }
 
 async function doUpgrade() {

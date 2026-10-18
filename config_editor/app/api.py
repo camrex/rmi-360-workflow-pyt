@@ -68,16 +68,11 @@ class ConfigEditorAPI:
         return [{"level": i.level, "path": i.path, "message": i.message} for i in issues]
 
     def check_aws(self, values: Dict[str, Any]) -> Dict[str, Any]:
-        """Verify AWS auth: keyring populated / keys set, then authenticate (STS)
-        and probe whether configured buckets exist. Makes live AWS calls."""
+        """Verify AWS auth: the named profile resolves (aws.profile / AWS_PROFILE), then
+        authenticate (STS) and probe whether configured buckets exist. Makes live AWS calls."""
         checks = aws_check.check_aws_auth(values)
         rows = [{"name": c.name, "status": c.status, "detail": c.detail} for c in checks]
         return {"summary": aws_check.summarize(checks), "checks": rows}
-
-    def set_keyring(self, service_name: str, access_key_id: str, secret_access_key: str) -> Dict[str, Any]:
-        """Store AWS credentials in the OS keyring (not in config.yaml)."""
-        c = aws_check.set_keyring_credentials(service_name, access_key_id, secret_access_key)
-        return {"status": c.status, "detail": c.detail}
 
     def upgrade(self, values: Dict[str, Any]) -> Dict[str, Any]:
         rules = migrations.rules_for(values.get("schema_version"))

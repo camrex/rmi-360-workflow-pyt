@@ -20,11 +20,6 @@ Setup Tools
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: tools.set_aws_keyring_tool
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Individual Processing Tools
 ---------------------------
 

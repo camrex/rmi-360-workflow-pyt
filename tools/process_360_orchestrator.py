@@ -592,16 +592,18 @@ class Process360Workflow(object):
         if staging_folder:
             staging_folder.enabled = mosaic_will_run
 
-        # Seed raw bucket from config (lightweight)
-        if is_aws and raw_s3_bucket and not raw_s3_bucket.valueAsText:
+        # Seed raw bucket and read the AWS profile from config (lightweight)
+        aws_profile = None
+        if is_aws:
             try:
                 cfg = ConfigManager.from_file(
                     path=config_file.valueAsText if config_file and config_file.valueAsText else None,
                     project_base=project_folder.valueAsText if project_folder and project_folder.valueAsText else None,
                     messages=None,
                 )
+                aws_profile = cfg.get("aws.profile") if cfg else None
                 default_raw = cfg.get("aws.s3_bucket_raw", cfg.get("aws.s3_bucket_panos_unsecured")) if cfg else None
-                if default_raw:
+                if default_raw and raw_s3_bucket and not raw_s3_bucket.valueAsText:
                     raw_s3_bucket.value = default_raw
             except Exception:
                 pass
@@ -610,7 +612,7 @@ class Process360Workflow(object):
         if is_aws and raw_s3_bucket and raw_s3_bucket.valueAsText and project_key:
             try:
                 if project_key.filter is not None:
-                    project_key.filter.list = list_projects(raw_s3_bucket.valueAsText.strip())
+                    project_key.filter.list = list_projects(raw_s3_bucket.valueAsText.strip(), profile=aws_profile)
             except Exception:
                 pass
 
@@ -643,7 +645,7 @@ class Process360Workflow(object):
                     proj = project_key.valueAsText.strip().strip("/") if project_key and project_key.valueAsText else ""
                     if bucket and proj:
                         if reels_param.filter is not None:
-                            reels_param.filter.list = list_reels(bucket, proj)
+                            reels_param.filter.list = list_reels(bucket, proj, profile=aws_profile)
                 except Exception:
                     if reels_param.filter is not None:
                         reels_param.filter.list = []
@@ -1020,6 +1022,7 @@ class Process360Workflow(object):
                     max_workers=16,
                     skip_if_exists=True,  # don't re-download existing files
                     logger=logger,  # Pass logger for progress tracking
+                    profile=cfg.get("aws.profile"),
                 )
 
                 # stage_reels returns <local_project_dir>/reels

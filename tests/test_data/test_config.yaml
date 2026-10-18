@@ -1,6 +1,6 @@
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.6.0
+schema_version: 1.7.0
 debug_messages: true
 
 # NEW RUNTIME CONFIG
@@ -621,16 +621,8 @@ image_output:
 #   - generate_oid_service.py   → For rewriting ImagePath with public URLs
 #
 # ─── Authentication Options ───────────────────────────────────────────────────
-# AWS credentials can be provided using any of the following methods:
-#   1. Environment variables      (recommended for automation)
-#   2. Plaintext access keys      (fallback for development only)
-#   3. Secure keyring             (selected via `auth_mode: keyring`)
-#
-# auth_mode              (str)    - Credential source: instance | keyring | config
-# keyring_service_name   (str)    - Keyring service name credentials are stored under
-#
-# access_key             (str)    - Fallback AWS Access Key (used if keyring is false)
-# secret_key             (str)    - Fallback AWS Secret Key (used if keyring is false)
+# profile                (str)    - Named AWS profile (SSO); blank = AWS_PROFILE env var.
+#                                  Static keys are not supported (schema 1.7.0).
 #
 # ─── Upload Settings ──────────────────────────────────────────────────────────
 # region                 (str)    - AWS region of your S3 buckets (e.g., "us-east-2")
@@ -657,7 +649,7 @@ image_output:
 
 aws:
   region: <YOUR_REGION>  # e.g., "us-east-2"
-  auth_mode: "keyring"   # Credential source: instance | keyring | config
+  profile: "test-profile"   # Named AWS profile (SSO)
   s3_bucket_folder: "config.project.slug"
   s3_bucket_raw: <YOUR_RAW_BUCKET_NAME>                  # Reels + raw video + artifact backups
   s3_bucket_panos_unsecured: <YOUR_BUCKET_NAME>          # e.g., "test-orient-img"
@@ -674,12 +666,6 @@ aws:
   retries: 3
   upload_batch_size: 25     # Enables cancellation checks between batch groups
   allow_cancel_file_trigger: true
-
-  keyring_service_name: aws_keyring
-
-  # Access credentials should only be included for development testing
-  access_key: "<ACCESS_KEY_ID>"
-  secret_key: "<SECRET_ACCESS_KEY>"
 
   lambda_role_arn: <YOUR_LAMBDA_ROLE_ARN>  # IAM Role ARN for Lambda progress monitor
 

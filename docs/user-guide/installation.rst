@@ -20,7 +20,6 @@ The following Python packages are required and should be available in your ArcGI
    pyyaml          # YAML parsing (used for config files)
    boto3           # AWS SDK for Python
    botocore        # Core dependency for boto3
-   keyring         # Secure credential storage
    numpy           # Numerical computing
    jinja2          # Templating for reports or config generation
    pytest          # Unit testing
@@ -43,14 +42,14 @@ Most dependencies are already included with ArcGIS Pro. For any missing packages
    .. code-block:: bash
 
       conda activate <your-arcgis-environment>
-      conda install pyyaml boto3 keyring matplotlib
+      conda install pyyaml boto3 matplotlib
 
 3. **Using pip:**
 
    .. code-block:: bash
 
       # Activate your ArcGIS Pro Python environment first
-      pip install pyyaml boto3 keyring matplotlib
+      pip install pyyaml boto3 matplotlib
 
 Environment Verification
 ------------------------

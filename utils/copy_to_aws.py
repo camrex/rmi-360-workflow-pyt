@@ -26,6 +26,9 @@
 # Notes:
 #   - Uses TransferManager with configurable concurrency and retry limits
 #   - Respects cancel_copy.txt trigger for manual interruption support
+#   - Never overwrites: each key is checked with HeadObject first and skipped if it
+#     already exists ("already in S3"), because a repeat put re-runs tiling
+#   - Credentials come from the named AWS profile (aws.profile); see utils/shared/aws_utils
 # =============================================================================
 
 __all__ = ["copy_to_aws"]
@@ -167,6 +170,22 @@ def should_cancel(messages, allow_cancel_file_trigger, cancel_txt):
     return False
 
 
+def object_exists(s3_client, bucket: str, key: str) -> bool:
+    """True if ``key`` is already in ``bucket`` (HeadObject), False on 404.
+
+    Any other error (e.g. 403) is raised, so the caller records a failure instead of
+    risking an overwrite. Needs s3:GetObject on the target keys.
+    """
+    try:
+        s3_client.head_object(Bucket=bucket, Key=key)
+        return True
+    except ClientError as e:
+        code = str(e.response.get("Error", {}).get("Code", ""))
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return False
+        raise
+
+
 def verify_s3_target_access(s3_client, bucket: str, bucket_folder: str, logger) -> None:
     """Verify that the target bucket is reachable before queueing uploads."""
     try:
@@ -223,6 +242,7 @@ def copy_to_aws(
         report_data:
         local_dir: Path to the local directory containing files to upload.
         skip_existing: If True, skips files already uploaded as recorded in the log.
+            Independently of this, a key already in S3 is always skipped (never overwritten).
         messages:
     """
     logger = cfg.get_logger()
@@ -287,9 +307,9 @@ def copy_to_aws(
         logger.warning("No matching files found to upload.", indent=2)
         return {}
 
-    # Load credentials from keyring or config and verify AWS credentials
+    # Session for the named AWS profile (aws.profile, else AWS_PROFILE)
     try:
-        logger.info("Retrieving AWS credentials...", indent=1)
+        logger.info("Opening AWS session...", indent=1)
         session = get_boto3_session(cfg)
     except Exception as e:
         # Error already logged upstream; return a consistent error payload.
@@ -384,11 +404,16 @@ def copy_to_aws(
         """
         upload_start = None
         try:
-            future = manager.upload(f_path, bucket, s3_tgt_key, extra_args={"ContentType": "image/jpeg"})
-            upload_start = time.perf_counter()
-            future.result()
-            upload_end = time.perf_counter()
-            status, error = "uploaded", ""
+            if object_exists(s3, bucket, s3_tgt_key):
+                # Never overwrite: a repeat put of a panorama re-runs tiling downstream.
+                upload_start = upload_end = time.perf_counter()
+                status, error = "skipped", "already in S3"
+            else:
+                future = manager.upload(f_path, bucket, s3_tgt_key, extra_args={"ContentType": "image/jpeg"})
+                upload_start = time.perf_counter()
+                future.result()
+                upload_end = time.perf_counter()
+                status, error = "uploaded", ""
         except Exception as exc:
             upload_end = time.perf_counter()
             if upload_start is None:

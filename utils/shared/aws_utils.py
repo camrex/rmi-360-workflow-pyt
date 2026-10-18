@@ -1,127 +1,99 @@
 # =============================================================================
-# ☁️ AWS Credential Access Logic (utils/aws_utils.py)
+# ☁️ AWS Session Logic (utils/shared/aws_utils.py)
 # -----------------------------------------------------------------------------
-# Purpose:             Retrieves AWS credentials from keyring or config for use in S3/Lambda clients
+# Purpose:             Builds boto3 sessions from a NAMED AWS profile, never the default chain
 # Project:             RMI 360 Imaging Workflow Python Toolbox
-# Version:             1.2.0
+# Version:             2.0.0
 # Author:              RMI Valuation, LLC
 # Created:             2025-05-14
-# Last Updated:        2025-10-30
+# Last Updated:        2026-10-18
 #
 # Description:
-#   Provides a utility function to retrieve AWS credentials required by boto3 clients.
-#   If configured, credentials are securely pulled from the system keyring. Fallback
-#   reads credentials from the config file. Raises explicit errors if credentials are missing.
+#   Every AWS call in the toolbox gets its session here. The profile comes from
+#   config `aws.profile`, else the AWS_PROFILE environment variable. With neither,
+#   or with the profile named "default", it refuses: falling through to boto3's
+#   default chain would silently use whatever key the machine holds.
 #
-# File Location:        /utils/aws_utils.py
-# Called By:            utils/copy_to_aws.py, utils/deploy_lambda_monitor.py
-# Int. Dependencies:    utils/manager/config_manager
-# Ext. Dependencies:    keyring, typing
+#   The profile is an IAM Identity Center (SSO) profile issued by rmi-aws-infra
+#   (change 0049: `rmi-360-workflow-pyt`). Sign in with
+#   `aws sso login --profile rmi-360-workflow-pyt` before a run. Static keys
+#   (keyring or plaintext in config.yaml) are no longer supported.
+#
+# File Location:        /utils/shared/aws_utils.py
+# Called By:            utils/copy_to_aws.py, utils/s3_utils.py, utils/shared/backup_to_s3.py,
+#                       utils/shared/oid_storage_migration.py, utils/shared/s3_upload_helpers.py,
+#                       utils/deploy_secured_test_set.py, utils/deploy_lambda_monitor.py
+# Ext. Dependencies:    boto3, botocore
 #
 # Documentation:
-#   See: docs_legacy/UTILITIES.md and docs_legacy/AWS_SETUP_GUIDE.md
-#   (Ensure these docs are current; update if needed.)
-#
-# Notes:
-#   - Compatible with AWS CLI–configured profiles or keyring service
-#   - Supports switching between secure and fallback credential modes
-#   - Raises explicit errors if credentials are missing or misconfigured
+#   See: docs/aws/setup-guide.rst
 # =============================================================================
 from __future__ import annotations
-import keyring
+
+import os
+from typing import Optional, TYPE_CHECKING
+
 from boto3.session import Session
-from botocore.exceptions import ClientError, NoCredentialsError
-from typing import Optional, Tuple, TYPE_CHECKING
+from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
 
 if TYPE_CHECKING:
     from utils.manager.config_manager import ConfigManager
 
+PROFILE_ENV_VAR = "AWS_PROFILE"
+DEFAULT_PROFILE = "rmi-360-workflow-pyt"
 
-def get_aws_credentials(cfg: "ConfigManager") -> Tuple[str, str]:
-    """
-    Retrieves AWS credentials from keyring or configuration.
 
-    If keyring usage is enabled in the config, credentials are fetched from the system keyring using the specified
-    service name. Otherwise, credentials are read directly from the config dictionary.
+def resolve_profile_name(profile: Optional[str] = None) -> str:
+    """Return the AWS profile to use: ``profile`` if given, else ``$AWS_PROFILE``.
 
-    Args:
-        cfg: Instance of ConfigManager to retrieve settings.
-    Returns:
-        (access_key, secret_key): Tuple of AWS credentials as strings.
     Raises:
-        RuntimeError: If required credentials are missing.
+        RuntimeError: if neither is set, or the profile is ``default``. The default
+            profile and boto3's default chain are refused on purpose, so a run can
+            never pick up an unrelated key by accident.
     """
-    logger = cfg.get_logger()
-    # auth_mode is the single source of truth for how credentials resolve.
-    auth_mode = str(cfg.get("aws.auth_mode", "config")).lower()
-    use_keyring = auth_mode == "keyring"
-    service_name = cfg.get("aws.keyring_service_name", "rmi_s3")
-    if use_keyring:
-        access_key = keyring.get_password(service_name, "aws_access_key_id")
-        secret_key = keyring.get_password(service_name, "aws_secret_access_key")
-        if not isinstance(access_key, str) or not access_key.strip() or not isinstance(secret_key, str) or not secret_key.strip():
-            logger.error(f"AWS credentials not found in keyring for service '{service_name}'.", indent=2,
-                         error_type=RuntimeError)
-            raise RuntimeError(f"AWS credentials not found in keyring for service '{service_name}'.")
-        logger.custom("Retrieved AWS credentials from keyring.", indent=2, emoji="🔑")
-        return access_key, secret_key
-    else:
-        access_key = cfg.get("aws.access_key")
-        secret_key = cfg.get("aws.secret_key")
-        if not isinstance(access_key, str) or not access_key.strip() or not isinstance(secret_key, str) or not secret_key.strip():
-            logger.error("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key "
-                         "settings.", indent=2, error_type=RuntimeError)
-            raise RuntimeError("AWS credentials not found in config. Please check your aws.access_key and aws.secret_key settings.")
-        logger.custom("Retrieved AWS credentials from config.", indent=2, emoji="🔑")
-        return access_key, secret_key
-
-
-def verify_aws_credentials(access_key, secret_key, region, logger):
-    """
-    Attempts to verify AWS credentials by calling sts.get_caller_identity().
-    Raises an exception if verification fails.
-
-    Args:
-        access_key (str): AWS access key ID.
-        secret_key (str): AWS secret access key.
-        region (str): AWS region.
-        logger: Logger object for output.
-
-    Returns:
-        Session: A boto3 Session object if verification succeeds.
-    """
-    try:
-        logger.info("Verifying AWS credentials...", indent=1)
-        session = Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            region_name=region
+    name = str(profile or "").strip() or os.environ.get(PROFILE_ENV_VAR, "").strip()
+    if not name:
+        raise RuntimeError(
+            f"No AWS profile set. Set aws.profile in config.yaml (normally '{DEFAULT_PROFILE}') "
+            f"or the {PROFILE_ENV_VAR} environment variable. The default credential chain is "
+            "never used."
         )
-        sts = session.client("sts")
-        sts.get_caller_identity()
-        logger.custom("AWS credentials verified.", emoji="🔑", indent=2)
-        return session
-    except (ClientError, NoCredentialsError, Exception) as e:
-        logger.error(f"AWS credentials verification failed: {e}", indent=2)
-        raise
+    if name.lower() == "default":
+        raise RuntimeError(
+            "The AWS profile 'default' is refused. Name the project's own profile "
+            f"(normally '{DEFAULT_PROFILE}') in aws.profile or {PROFILE_ENV_VAR}."
+        )
+    return name
 
 
-def get_boto3_session(cfg):
+def profile_session(profile: Optional[str] = None, region: Optional[str] = None) -> Session:
+    """Create a boto3 Session for the resolved named profile.
+
+    With an explicit profile name, botocore ignores AWS_ACCESS_KEY_ID-style
+    environment credentials, so the session uses only that profile.
     """
-    Returns a boto3 Session. If aws.auth_mode == 'instance', use default chain (instance profile).
-    Else, fall back to existing get_aws_credentials() + verify_aws_credentials().
-    """
-    mode = cfg.get("aws.auth_mode", "config")  # "instance" | "keyring" | "config"
-    region = cfg.get("aws.region")
+    name = resolve_profile_name(profile)
+    try:
+        return Session(profile_name=name, region_name=region or None)
+    except ProfileNotFound:
+        raise RuntimeError(
+            f"AWS profile '{name}' is not in ~/.aws/config on this machine. Add it (see "
+            "docs/aws/setup-guide.rst), then run `aws sso login --profile "
+            f"{name}`."
+        ) from None
+
+
+def get_boto3_session(cfg: "ConfigManager") -> Session:
+    """Session for the config's ``aws.profile`` (or ``$AWS_PROFILE``) and ``aws.region``."""
     logger = cfg.get_logger()
-
-    if mode == "instance":
-        logger.custom("Using EC2 instance profile credentials.", emoji="🔐", indent=2)
-        # Default session picks up IMDS/instance role automatically
-        return Session(region_name=region)
-    else:
-        access_key, secret_key = get_aws_credentials(cfg)
-        return verify_aws_credentials(access_key, secret_key, region, logger)
+    try:
+        name = resolve_profile_name(cfg.get("aws.profile"))
+        session = profile_session(name, cfg.get("aws.region"))
+    except RuntimeError as e:
+        logger.error(str(e), indent=2, error_type=RuntimeError)
+        raise
+    logger.custom(f"Using AWS profile '{name}'.", emoji="🔐", indent=2)
+    return session
 
 
 def validate_s3_bucket_access(cfg: "ConfigManager", bucket: Optional[str] = None) -> Session:
@@ -142,4 +114,3 @@ def validate_s3_bucket_access(cfg: "ConfigManager", bucket: Optional[str] = None
     except (ClientError, NoCredentialsError, Exception) as e:
         logger.error(f"AWS S3 preflight failed for bucket '{bucket}': {e}", indent=2, error_type=RuntimeError)
         raise
-

@@ -36,7 +36,6 @@ a = Analysis(
     datas=datas,
     hiddenimports=[
         "boto3",    # imported lazily in core/aws_check.py
-        "keyring",  # imported lazily in core/aws_check.py
     ],
     excludes=["pytest", "_pytest"],
     noarchive=False,

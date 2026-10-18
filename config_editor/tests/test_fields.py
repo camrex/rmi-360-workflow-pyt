@@ -64,8 +64,9 @@ def test_choices_tag_makes_strict_select():
 
 def test_secret_tag_and_inferred_types():
     flds = {f["path"]: f for f in fields.iter_fields(_schema())}
-    assert flds["aws.secret_key"]["widget"] == "secret"
-    assert flds["aws.access_key"]["widget"] == "secret"
+    # The sample has no @secret field since 1.7.0 (no static AWS keys); check the tag itself.
+    help_text, meta = fields._parse_inline_tags("API token @secret")
+    assert meta.get("secret") is True and "@secret" not in help_text
     assert flds["aws.secured_delivery.enabled"]["type"] == "bool"
     assert flds["aws.secured_delivery.enabled"]["widget"] == "checkbox"
 
@@ -132,12 +133,11 @@ def test_collection_paths():
 
 def test_when_condition_parsed():
     flds = {f["path"]: f for f in fields.iter_fields(_schema())}
-    assert flds["aws.access_key"]["when"] == {"path": "aws.auth_mode", "values": ["config"]}
-    assert flds["aws.secret_key"]["when"]["values"] == ["config"]
-    assert flds["aws.keyring_service_name"]["when"] == {"path": "aws.auth_mode", "values": ["keyring"]}
+    csn = flds["aws.secured_delivery.cloud_store_name"]
+    assert csn["when"] == {"path": "aws.secured_delivery.enabled", "values": ["true"]}
     assert flds["aws.region"]["when"] is None  # unconditional fields have no 'when'
     # @when is stripped from displayed help
-    assert "@when" not in flds["aws.access_key"]["help"]
+    assert "@when" not in csn["help"]
 
 
 def test_when_unit():

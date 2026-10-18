@@ -48,7 +48,7 @@ Before adding the main toolbox, verify your Python environment has all required 
       conda activate arcgispro-py3
 
       # Install packages
-      conda install pyyaml boto3 keyring matplotlib
+      conda install pyyaml boto3 matplotlib
 
 Adding the Main Toolbox
 ------------------------
@@ -67,8 +67,7 @@ Adding the Main Toolbox
 
       RMI 360 Workflow
       ├── Setup
-      │   ├── Create OID Template Tool
-      │   └── Set AWS Keyring Credentials
+      │   └── Create OID Template Tool
       ├── Individual Tools
       │   ├── Run Mosaic Processor Tool
       │   ├── Rename and Tag Images

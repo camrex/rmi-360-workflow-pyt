@@ -19,8 +19,6 @@ These tools help you prepare your environment and configure initial settings.
      - Purpose
    * - Create OID Template Tool
      - Creates geodatabase templates and schema for Oriented Imagery Datasets
-   * - Set AWS Keyring Credentials
-     - Securely stores AWS credentials for S3 upload operations
 
 Individual Processing Tools
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^

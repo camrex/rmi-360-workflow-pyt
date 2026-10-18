@@ -46,7 +46,7 @@ _BRIDGE_JS = """
   }
   var api = {};
   ["get_schema","list_profiles","new_config","open_config","validate",
-   "upgrade","preview","save","check_aws","set_keyring"].forEach(function (m) { api[m] = call(m); });
+   "upgrade","preview","save","check_aws"].forEach(function (m) { api[m] = call(m); });
   api.open_dialog = function () {
     return Promise.resolve(window.prompt("Path to an existing config.yaml to open:") || null);
   };

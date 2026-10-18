@@ -5,19 +5,19 @@
 # 🛠️ CONFIG EDITOR ANNOTATIONS (parsed by config_editor; ignored at runtime):
 #   - A field's inline comment is its help text in the editor.
 #   - @choices[a, b, c]  -> strict dropdown (value must be one of these).
-#   - @secret            -> password field; keep out of plaintext (prefer keyring).
+#   - @secret            -> password field; keep out of plaintext.
 #   - @widget[textarea|number|text|list] -> force a widget (type is otherwise inferred).
 #   - "# @section: Title | description" above a top-level key labels that section.
 #   - @repeatable @itemlabel[name]  -> on a map of records (e.g. custom_fields),
 #       lets the editor add/remove entries; itemlabel names the field shown per row.
 #   - @when[other.path=v1,v2]  -> field is editable only when other.path is one of
-#       those values; otherwise the editor disables it (e.g. access_key only when
-#       auth_mode=config). Does not affect the toolbox.
+#       those values; otherwise the editor disables it (e.g. cloud_store_name only
+#       when secured_delivery.enabled=true). Does not affect the toolbox.
 #   These are plain YAML comments — they do not affect how the toolbox loads config.
 #
 # schema_version (str): Defines which config format version this file conforms to.
 # Used for future validation and compatibility checks.
-schema_version: 1.6.0
+schema_version: 1.7.0
 debug_messages: false   # Verbose debug-level logging
 
 # ------------------------------------------------------------------------------
@@ -851,10 +851,13 @@ image_output:
 # secured bucket at view time via credentials on the registered cloud store.
 # That cross-account bridge is not handled by this toolbox.
 #
-# Authentication (auth_mode):
-#   - instance: EC2 instance role (production)
-#   - keyring: Pull keys from OS keyring (keyring_service_name)
-#   - config: Plaintext keys below (development only)
+# Authentication (profile):
+#   - Credentials come only from a NAMED AWS profile (IAM Identity Center / SSO):
+#     aws.profile, else the AWS_PROFILE environment variable. With neither, or
+#     with 'default', every AWS step refuses to run, so a machine's default key
+#     is never used. RMI's profile is rmi-360-workflow-pyt (rmi-aws-infra 0049);
+#     sign in first with: aws sso login --profile rmi-360-workflow-pyt
+#   - Static keys (OS keyring or plaintext here) are not supported (schema 1.7.0).
 #
 # Buckets (one key prefix, three buckets by role):
 #   - s3_bucket_raw: Reels + raw video + artifact backups
@@ -878,7 +881,7 @@ image_output:
 # @section: AWS Storage | AWS auth, S3 buckets, and secured-delivery mode for uploads and OID hosting.
 aws:
   region: "<YOUR_AWS_S3_REGION>"            # Default AWS region (STS, clients, and buckets unless overridden)
-  auth_mode: "instance"            # Credential source: instance profile, OS keyring, or the plaintext keys below. @choices[instance, keyring, config]
+  profile: ""                      # Named AWS profile (SSO); blank = AWS_PROFILE env var. Never "default".
 
   # Buckets — one key prefix; three buckets by role
   s3_bucket_folder: "config.project.slug"                  # Key prefix inside every bucket; aligns with the ImagePath model
@@ -894,8 +897,8 @@ aws:
   #   enabled: false -> legacy: images upload to s3_bucket_panos_unsecured; ImagePath is a public URL.
   #   enabled: true  -> secured: images upload to s3_bucket_panos_secured; ImagePath = $virtualCacheDirectory:<prefix>/<file>
   #                     (the registered cloud store resolves the bucket; needs ArcGIS Pro 3.7+ / Enterprise 12.0+).
-  # NOTE: secured serving on Enterprise 12.0 is unverified pending Esri Case 04187998 — keep enabled: false until resolved.
-  # Interim: run legacy against s3_bucket_panos_unsecured; keep the secured bucket private. Object keys are identical in
+  # NOTE: secured serving does not work before ArcGIS Enterprise 12.2 (Esri Case 04187998, concluded) — keep enabled: false.
+  # Run legacy against s3_bucket_panos_unsecured. Object keys are identical in
   # both modes ({prefix}/{filename}), so migrating later is a key-for-key bucket copy + ImagePath rewrite (reversible).
   # Use the OID Maintenance toolbox (rmi_360_oid_maintenance.pyt) for sync/rewrite/audit. See docs_legacy/tools/oid_maintenance.md.
   secured_delivery:
@@ -909,13 +912,6 @@ aws:
   retries: 3                                # Upload retry attempts per file
   upload_batch_size: 25                     # Files per upload batch
   allow_cancel_file_trigger: true           # Allow cancelling an upload by creating cancel_copy.txt in the project folder
-
-  # Keyring (used when auth_mode: keyring) — store creds via the "Set AWS Keyring" tool
-  keyring_service_name: aws_s3              # Keyring service name credentials are stored under. @when[aws.auth_mode=keyring]
-
-  # Plaintext keys (development only; used when auth_mode: config)
-  access_key: "<ACCESS_KEY_ID>"   # Prefer keyring (auth_mode: keyring); avoid plaintext. @secret @when[aws.auth_mode=config]
-  secret_key: "<SECRET_ACCESS_KEY>"   # Prefer keyring (auth_mode: keyring); avoid plaintext. @secret @when[aws.auth_mode=config]
 
   lambda_role_arn: "<YOUR_LAMBDA_IAM_ROLE_ARN>"  # IAM role ARN for the upload-monitor Lambda
 

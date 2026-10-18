@@ -299,3 +299,34 @@ def test_should_cancel(tmp_path):
     assert should_cancel(object(), True, cancel_file)
     # Neither
     assert not should_cancel(object(), False, cancel_file)
+
+
+def _client_error(code):
+    err = ClientError(code)
+    err.response = {"Error": {"Code": code}}
+    return err
+
+
+def test_object_exists_true_when_head_succeeds():
+    s3 = MagicMock()
+    assert copy_to_aws_mod.object_exists(s3, "rmi-360-prod", "RMI1/a.jpg") is True
+    s3.head_object.assert_called_once_with(Bucket="rmi-360-prod", Key="RMI1/a.jpg")
+
+
+def test_object_exists_false_on_404():
+    for code in ("404", "NoSuchKey", "NotFound"):
+        s3 = MagicMock()
+        s3.head_object.side_effect = _client_error(code)
+        assert copy_to_aws_mod.object_exists(s3, "b", "k") is False
+
+
+def test_object_exists_raises_on_other_errors():
+    # A 403 must not be read as "absent": that would risk an overwrite.
+    s3 = MagicMock()
+    s3.head_object.side_effect = _client_error("403")
+    try:
+        copy_to_aws_mod.object_exists(s3, "b", "k")
+    except ClientError:
+        pass
+    else:
+        raise AssertionError("expected ClientError")
