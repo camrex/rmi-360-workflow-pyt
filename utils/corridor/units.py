@@ -34,6 +34,8 @@ from typing import Callable, Optional, Tuple
 
 __all__ = [
     "DEFAULT_PANO_REGEX",
+    "DEFAULT_THIN_THRESHOLD",
+    "DEFAULT_THIN_TRIM",
     "compile_identity_regex",
     "parse_run_frame",
     "parse_reel_frame",
@@ -50,6 +52,13 @@ __all__ = [
 #   pano_reel_0023_20260619-160716_26-150_000037.jpg
 #     -> reel=0023, reel_start_ts=20260619-160716, frame=000037
 DEFAULT_PANO_REGEX = r"reel_(\d+)_(\d{8}-\d{6})_.*_(\d+)\.jpg$"
+
+# Thinning defaults shared by the Thin and Run Corridor Thinning tools (GPLinearUnit
+# strings). The trim is 1.5 FEET, as in the validated 26-150 scripts
+# (THRESHOLD_TRIM_FT=1.5): 16.4042 - 1.5 = 14.9042 ft ~= 4.54 m effective.
+# "1.5 Meters" would give 3.5 m.
+DEFAULT_THIN_THRESHOLD = "5 Meters"
+DEFAULT_THIN_TRIM = "1.5 Feet"
 
 # Linear-unit name -> meters per unit, for parsing GPLinearUnit strings ("5 Meters",
 # "16.4042 Feet") without arcpy. US survey foot is distinct from the international

@@ -93,11 +93,17 @@ provide:
 
 ## Threshold / unit math
 
-The Thin and QC Thinning tools take a **Linear Unit** threshold (default `5 Meters`)
-plus a **trim** (default `1.5 Meters` → ~4.5 m effective) and a **WKID**. Meters are
-converted to the data's planar units: `units = meters / metersPerUnit(wkid)`.
-26-150 used 4.5 m (trim 1.5): 51,110 kept, p95 ~5.88 m, no within-run gap past
-~6.1 m. 5.0 m gave 47,251 with p95 ~6.4 m.
+The Thin tool (and Run Corridor Thinning) takes a **Linear Unit** threshold (default
+`5 Meters`), a **trim** that pulls it in (default `1.5 Feet` → 16.4042 − 1.5 =
+14.90 ft ≈ **4.54 m** effective), and a **WKID**. Both are converted to the data's
+planar units: `units = meters / metersPerUnit(wkid)`. Mind the trim's unit:
+`1.5 Meters` would thin at 3.5 m. QC Thinning takes only a threshold.
+
+26-150 used the 1.5 ft trim (≈4.54 m): 51,110 kept, p95 ~5.88 m, no within-run gap
+past ~6.1 m. Without a trim, 5.0 m gave 47,251 with p95 ~6.4 m.
+
+> Before 2026-10-18 the toolbox defaulted the trim to `1.5 Meters`, so runs on the
+> defaults thinned at 3.5 m and kept more images than intended.
 
 ---
 

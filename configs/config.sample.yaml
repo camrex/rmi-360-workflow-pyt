@@ -662,12 +662,13 @@ distance_spacing:
 # --------------------------------------------------------------------
 # 🛤️ CORRIDOR THINNING (PRE-THIN PIPELINE)
 # --------------------------------------------------------------------
-# Defaults for the separate Corridor Thinning toolbox
-# (rmi_360_corridor_thinning.pyt). The stage tools also expose every value on
-# their dialogs, so this section is OPTIONAL convenience/defaults for scripted or
-# orchestrated runs. Only consulted in pre-thin mode.
+# Settings for the pre-thin corridor pipeline. The main workflow reads
+# `manifest.*` in pre-thin mode. The stage tools in the Corridor Thinning toolbox
+# (rmi_360_corridor_thinning.pyt) do NOT read the other keys here: they use the
+# defaults on their own dialogs. Those keys are validated and kept as a record of
+# the intended values, so editing them does not change a stage tool's run.
 #
-# Correctness rules (see docs/corridor_thinning.md and PIPELINE.md):
+# Correctness rules (see docs/corridor_thinning.md and docs/corridor_thinning_design.md):
 #   - wkid drives the threshold unit math: 6455 = US survey feet, so 5 m = 16.4042
 #     ft via metersPerUnit. Never hard-code feet.
 #   - reel identity = (reel, reel_start_ts) parsed from the filename, not the reel
@@ -691,7 +692,7 @@ corridor_thinning:
     flag: "flag_5m"               # Thinning keep/drop flag
   thin:
     threshold_meters: 5.0         # Target interval (meters)
-    trim_meters: 1.5              # Pull-in (1.5 -> ~4.5 m effective). 0 = none.
+    trim_meters: 0.4572           # Pull-in in meters (0.4572 = 1.5 ft -> ~4.54 m effective). 0 = none.
   reversals:
     min_backtrack_ft: 15.0        # Min backward displacement (data units) to flag
     oppose_deg: 120.0             # Bearing >= this off prevailing = opposing

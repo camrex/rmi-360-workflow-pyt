@@ -17,7 +17,7 @@
 #
 #   Threshold is WKID-aware: data are planar in the FC's linear unit (e.g. WKID
 #   6455 = US survey feet), so 5 m -> 16.4042 ft via metersPerUnit. THRESHOLD_TRIM
-#   pulls the interval in slightly (e.g. 1.5 m -> ~4.5 m) to avoid occasional >5 m
+#   pulls the interval in slightly (default 1.5 ft -> ~4.54 m) to avoid occasional >5 m
 #   gaps where a frame lands just short and the next is well past.
 #
 #   Non-destructive: writes a SHORT flag field (1=keep, 0=drop). include=0 points
@@ -64,7 +64,7 @@ def thin(
 
     Args:
         threshold_m: Target interval in METERS (converted to FC units via WKID).
-        trim_m: Pull-in in METERS (e.g. 1.5 -> ~4.5 m effective). 0 = none.
+        trim_m: Pull-in in METERS (0.4572 = 1.5 ft -> ~4.54 m effective). 0 = none.
         wkid: WKID of the data's projected CRS (for metersPerUnit conversion).
         meters_per_unit_override: Bypass WKID lookup (tests / explicit control).
 

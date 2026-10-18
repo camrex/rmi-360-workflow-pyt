@@ -23,6 +23,7 @@ from utils.corridor.detect_reversals import detect_reversals
 from utils.corridor.qc_sub_order import qc_sub_order
 from utils.corridor.find_gaps import find_gaps
 from utils.corridor.thin import thin
+from utils.corridor.units import DEFAULT_THIN_THRESHOLD, DEFAULT_THIN_TRIM
 from utils.corridor.qc_thin import qc_thin
 from utils.corridor.export_manifest import export_manifest
 
@@ -51,8 +52,8 @@ class CorridorOrchestratorTool(object):
         route_id = tp.field_param("route_id_field", "Route ID Field (on routes)", "routes_fc", default="mp_pre", required=True)
         radius = tp.linear_unit_param("search_radius", "Search Radius", default="200 Feet")
         eps = tp.number_param("eps_miles", "Tie/near-tie EPS (miles)", default=0.0003)
-        threshold = tp.linear_unit_param("threshold", "Thinning Threshold", default="5 Meters")
-        trim = tp.linear_unit_param("trim", "Threshold Trim (pull-in)", default="1.5 Meters")
+        threshold = tp.linear_unit_param("threshold", "Thinning Threshold", default=DEFAULT_THIN_THRESHOLD)
+        trim = tp.linear_unit_param("trim", "Threshold Trim (pull-in)", default=DEFAULT_THIN_TRIM)
         wkid = tp.number_param("wkid", "Data WKID", default=6455, datatype="GPLong")
         do_reversals = tp.bool_param("run_reversals", "Run Detect Reversals", default=True)
         do_qc = tp.bool_param("run_qc", "Run QC stages", default=True)
