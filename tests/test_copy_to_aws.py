@@ -575,3 +575,31 @@ def test_duplicate_stop_writes_local_error_status(tmp_path, monkeypatch):
     assert result["status"] == "error"
     status = json.loads((tmp_path / "aws_upload_status.json").read_text(encoding="utf-8"))
     assert status["phase"] == "error" and "more than one local file" in status["meta"]["message"]
+
+
+def test_live_heartbeat_phase_is_uploading(tmp_path, monkeypatch):
+    import json
+    _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG)
+    phases = [json.loads(b["Body"].decode("utf-8"))["phase"] for b in _run_copy.heartbeats]
+    assert phases[0] == "uploading" and phases[-1] == "complete"
+
+
+def test_unwritable_upload_log_records_error_status(tmp_path, monkeypatch):
+    import json
+    real_open = open
+
+    def locked_open(path, mode="r", *a, **k):
+        if str(path).endswith("aws_upload_log.csv") and "w" in mode:
+            raise PermissionError("locked by another program")
+        return real_open(path, mode, *a, **k)
+
+    monkeypatch.setattr("builtins.open", locked_open)
+    try:
+        _run_copy(tmp_path, monkeypatch, ["a.jpg"], extra=HEARTBEAT_CFG)
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("expected PermissionError")
+    monkeypatch.setattr("builtins.open", real_open)
+    status = json.loads((tmp_path / "aws_upload_status.json").read_text(encoding="utf-8"))
+    assert status["phase"] == "error"

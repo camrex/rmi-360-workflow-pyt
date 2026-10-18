@@ -524,10 +524,14 @@ def copy_to_aws(
     lock = threading.Lock()
     cancel_event = threading.Event()
 
-    # Write log header
-    with open(log_file, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["timestamp", "local_file", "s3_key", "status", "error", "size_bytes", "duration_sec"])
+    # Write log header (a status was already written above, so record the failure if this fails)
+    try:
+        with open(log_file, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["timestamp", "local_file", "s3_key", "status", "error", "size_bytes", "duration_sec"])
+    except Exception:
+        tracker.finish("error")
+        raise
 
     def upload_one(f_path, s3_tgt_key):
         """
@@ -572,6 +576,7 @@ def copy_to_aws(
         # Outside the log lock: the tracker may publish the heartbeat (a network call).
         tracker.file_done(HEARTBEAT_GROUP, status, file_size)
 
+    tracker.set_phase("uploading")
     tracker.start()  # heartbeat thread; always stopped by tracker.finish() below
     crashed = False
     try:

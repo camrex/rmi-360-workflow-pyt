@@ -234,6 +234,12 @@ class StatusTracker:
         self._publisher = threading.Thread(target=self._publish_loop, name="status-heartbeat", daemon=True)
         self._publisher.start()
 
+    def set_phase(self, phase: str):
+        """Set the current phase (e.g. "uploading") without touching the counters."""
+        with self.lock:
+            self.data["phase"] = phase
+            self._flush(force=True)
+
     def finish(self, phase: str = "complete", join_timeout_sec: float = 30.0):
         """Record the final phase ("complete", "cancelled", "error"), stop the publisher
         thread and publish the final state from the calling thread."""
