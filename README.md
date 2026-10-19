@@ -140,6 +140,7 @@ options. The report-image tool is a GUI with no options: run
 | Script | Purpose |
 | --- | --- |
 | `report_images/extract_milepost_gui.py` | GUI that cuts flat perspective views (default 90° HFOV, 4096×1743) from 360 panoramas for valuation reports; select by milepost in the filename, every Nth image, or all. ffmpeg backend (needs `ffmpeg` on PATH) or OpenCV backend (`report_images/generate_thumbnail_optimized.py`; needs `opencv-python` + `scipy`, not in the ArcGIS Pro env). |
+| `build_oid_manifest.py` | Build an OID manifest (oriented imagery table CSV) from panoramas' EXIF, read from disk or from the first 32 KB of each S3 object, and run a heading check (`heading_runs.csv`/`.kml`). Fill the `action` column and pass it back with `--corrections` to flip, recompute or exclude reversed runs. Process 360 Workflow's "OID Manifest CSV" option then rebuilds the OID without the images. |
 | `upload_to_s3.py` | Upload project folders (reels, config, gis_data, logs, report) to S3 with crash-safe resume. |
 | `download_project_files.py` | Download a project's config and/or gis_data from S3 (reels excluded by default). |
 | `standalone_mosaic_monitor.py` | Reopen the Mosaic Processor progress monitor for a running or finished job. |

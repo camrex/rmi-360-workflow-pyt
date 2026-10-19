@@ -81,6 +81,23 @@ def resolve_run_manifest(params, cfg):
 
 
 
+OID_MANIFEST_SKIP = "Skipped (OID built from a manifest; image files are not touched)"
+
+# Steps that read or write image files. When the OID is rebuilt from an OID manifest the images
+# are only in S3 (already published, renamed and tagged), so these never run.
+IMAGE_FILE_STEPS = ("run_mosaic_processor", "rename_images", "update_metadata",
+                    "exiftool_geocoding", "prepare_delivery_subset", "copy_to_aws")
+
+
+def _unless_oid_manifest(skip_fn):
+    """Wrap a step's skip rule so the step is also skipped in OID-manifest mode."""
+    def wrapped(params):
+        if params.get("oid_manifest_path"):
+            return OID_MANIFEST_SKIP
+        return skip_fn(params) if skip_fn else None
+    return wrapped
+
+
 def skip_if_copy_to_aws_disabled(params):
     # New logic: skip if 'enable_copy_to_aws' is not True
     """
@@ -273,7 +290,7 @@ def build_step_funcs(p, cfg):
         StepSpec("create_oid", "Create Oriented Imagery Dataset",
             lambda params, config: lambda **kwargs: create_oriented_imagery_dataset(output_fc_path=p["oid_fc"], cfg=cfg), None),
         StepSpec("add_images", "Add Images to OID",
-            lambda params, config: lambda **kwargs: add_images_to_oid(oid_fc_path=p["oid_fc"], cfg=cfg, manifest_path=p.get("corridor_manifest_path")), None),
+            lambda params, config: lambda **kwargs: add_images_to_oid(oid_fc_path=p["oid_fc"], cfg=cfg, manifest_path=p.get("corridor_manifest_path"), oid_manifest_path=p.get("oid_manifest_path")), None),
         StepSpec("assign_group_index", "Assign Group Index",
             lambda params, config: lambda **kwargs: assign_group_index(oid_fc_path=p["oid_fc"], cfg=cfg), None),
         StepSpec("enrich_oid", "Calculate OID Attributes",
@@ -320,8 +337,9 @@ def build_step_funcs(p, cfg):
     step_funcs = {}
     for spec in step_specs:
         entry = {"label": spec.label, "func": spec.func_builder(p, cfg)}
-        if spec.skip_fn:
-            entry["skip"] = spec.skip_fn
+        skip_fn = _unless_oid_manifest(spec.skip_fn) if spec.key in IMAGE_FILE_STEPS else spec.skip_fn
+        if skip_fn:
+            entry["skip"] = skip_fn
         step_funcs[spec.key] = entry
     return step_funcs
 

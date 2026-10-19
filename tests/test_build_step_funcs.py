@@ -106,3 +106,25 @@ def test_update_linear_step_receives_dialog_manifest():
     finally:
         mod.update_linear_and_custom = orig
     assert captured["manifest_path"] == "dlg.csv"
+
+
+# --- OID manifest mode: steps that touch image files are skipped ------------------------------
+
+def test_oid_manifest_mode_skips_image_file_steps():
+    from utils.build_step_funcs import IMAGE_FILE_STEPS, OID_MANIFEST_SKIP
+    assert "geoareas_enrichment" not in IMAGE_FILE_STEPS            # it joins onto the OID, not the files
+    funcs = build_step_funcs({"oid_fc": "oid", "oid_manifest_path": "m.csv", "enable_copy_to_aws": True,
+                              "enable_geocode": True}, _Cfg({"delivery_subset.enabled": True}))
+    for key in IMAGE_FILE_STEPS:
+        assert funcs[key]["skip"]({"oid_manifest_path": "m.csv", "enable_copy_to_aws": True}) == OID_MANIFEST_SKIP
+    for key in ("create_oid", "add_images", "enrich_oid", "update_linear_custom", "geoareas_enrichment", "build_footprints",
+                "generate_service"):
+        skip = funcs[key].get("skip")
+        assert skip is None or skip({"oid_manifest_path": "m.csv", "enable_generate_service": True}) != OID_MANIFEST_SKIP
+
+
+def test_without_oid_manifest_skip_rules_are_unchanged():
+    funcs = build_step_funcs({"oid_fc": "oid"}, _Cfg())
+    assert funcs["copy_to_aws"]["skip"]({"enable_copy_to_aws": True}) is None
+    assert funcs["copy_to_aws"]["skip"]({"enable_copy_to_aws": False}) == "Skipped (disabled by user)"
+    assert funcs["rename_images"]["skip"]({}) is None

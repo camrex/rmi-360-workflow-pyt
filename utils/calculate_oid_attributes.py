@@ -194,12 +194,13 @@ def extract_frame_from_filename(image_path: str) -> Optional[str]:
     """
     Extracts a 6-digit frame number from the image filename.
     
-    The function searches for a pattern like '_000234.jpg' at the end of the filename and returns the frame number if
-    found. Returns None if the pattern is not present or an error occurs.
+    The function searches for a pattern like '_000234.jpg' (original capture names) or
+    '_FR000234.jpg' (renamed finals) at the end of the filename and returns the frame number
+    if found. Returns None if the pattern is not present or an error occurs.
     """
 
     image_file = os.path.basename(image_path)
-    match = re.search(r"_(\d{6})\.jpg$", image_file, re.IGNORECASE)
+    match = re.search(r"_(?:FR)?(\d{6})\.jpe?g$", image_file, re.IGNORECASE)
     return match.group(1) if match else None
 
 
@@ -382,7 +383,7 @@ def enrich_oid_attributes(cfg: ConfigManager, oid_fc_path: str, adjust_z: bool =
     image_rotation = registry.get("ImageRotation", {}).get("oid_default", 0)
     orientation_accuracy = registry.get(
         "OrientationAccuracy", {}
-    ).get("oid_default", "15;0.2;0.5;0.5;0.5;0;0;1")
+    ).get("oid_default", "0.05;0.1;0.5;0.5;0.5;0;0;1")
 
     # Determine fields to fetch and update
     esri_cfg = cfg.get("oid_schema_template.esri_default", {})

@@ -57,6 +57,8 @@
 #   - Distance Filter Action {distance_filter_action} (String): Action for distance filter - "flag" or "remove".
 #   - Thinning Mode {thinning_mode} (String): "post" (filter after building OID) or "pre" (add only manifest-kept images).
 #   - Corridor Manifest CSV {corridor_manifest_path} (File): Pre-thin manifest; restricts Add Images to the kept set (filename-keyed)
+#   - OID Manifest CSV {oid_manifest_path} (File): Rebuild the OID from a manifest (scripts/build_oid_manifest.py)
+#     instead of image files; steps that touch images (Mosaic, rename, EXIF, geocode, delivery subset, upload) are skipped.
 #     and drives Track, MP_Pre/MP_Num and SequenceOrder. Blank = corridor_thinning.manifest.path from config when in pre mode.
 #   - Enable Linear Referencing {enable_linear_ref} (Boolean): Enables MP/Route ID computation per image.
 #   - Enable Geocode Images {enable_geocode} (Boolean): Enables image geolocation using GPS or address data.
@@ -426,6 +428,18 @@ class Process360Workflow(object):
             corridor_manifest_param.filter.list = ["csv"]
         params.append(corridor_manifest_param)
 
+        # 12d) OID Manifest CSV (rebuild an OID without the images)
+        oid_manifest_param = arcpy.Parameter(
+            displayName="OID Manifest CSV (rebuild without images)",
+            name="oid_manifest_path",
+            datatype="DEFile",
+            parameterType="Optional",
+            direction="Input",
+        )
+        if oid_manifest_param.filter is not None:
+            oid_manifest_param.filter.list = ["csv"]
+        params.append(oid_manifest_param)
+
         # 13) Enable Linear Referencing
         enable_linear_ref_param = arcpy.Parameter(
             displayName="Enable Linear Referencing",
@@ -555,7 +569,9 @@ class Process360Workflow(object):
         # default) until the user picks a later step.
         ss_label = start_step.valueAsText if start_step else None
         ss_name = self._step_label_to_name.get(ss_label, "") if ss_label and ss_label != "--SELECT STEP--" else ""
-        mosaic_will_run = (ss_name == "") or (ss_name == "run_mosaic_processor")
+        oid_manifest = pmap.get("oid_manifest_path")
+        mosaic_will_run = ((ss_name == "") or (ss_name == "run_mosaic_processor")) and not (
+            oid_manifest and oid_manifest.valueAsText)  # an OID-manifest rebuild never runs Mosaic
 
         # Always enable Project Folder (required in both modes)
         if project_folder:
@@ -769,7 +785,9 @@ class Process360Workflow(object):
         # runs. A pre-stitched run (start step after Mosaic) needs none of them, so skip
         # their warnings/errors entirely. An unselected start step is neutral (mosaic
         # assumed to run) until the user picks a later step.
-        mosaic_will_run = (step == "") or (step == "run_mosaic_processor")
+        oid_manifest = p.get("oid_manifest_path")
+        mosaic_will_run = ((step == "") or (step == "run_mosaic_processor")) and not (
+            oid_manifest and oid_manifest.valueAsText)  # an OID-manifest rebuild never runs Mosaic
 
         # Local nicety: warn if <project>\reels missing (only when Mosaic will run)
         if mosaic_will_run and project_folder and project_folder.valueAsText and not is_aws:
@@ -893,13 +911,15 @@ class Process360Workflow(object):
         # not, skip the entire reels machinery: no runtime.local_root requirement, no
         # staging cleanup, and no abort on a missing <project>/reels folder. This lets a
         # pre-stitched project start at "Create OID" or "Add Images to OID".
-        mosaic_will_run = early_start_step is None or early_start_step == "run_mosaic_processor"
+        mosaic_will_run = (early_start_step is None or early_start_step == "run_mosaic_processor") and not p.get(
+            "oid_manifest_path")
 
         if not mosaic_will_run:
             p["input_reels_folder"] = None
+            reason = ("the OID is rebuilt from an OID manifest" if p.get("oid_manifest_path")
+                      else f"starting from '{early_start_step}'; stitching handled externally")
             logger.info(
-                "Skipping reels staging/resolution — Mosaic Processor is not in this run "
-                f"(starting from '{early_start_step}'; stitching handled externally).",
+                f"Skipping reels staging/resolution — Mosaic Processor is not in this run ({reason}).",
                 indent=1,
             )
         else:
@@ -1048,6 +1068,13 @@ class Process360Workflow(object):
                 logger.info("A corridor manifest applies, so this run is treated as pre-thin "
                             "(Thinning Mode = pre).", indent=1)
             p["corridor_manifest_path"] = run_manifest
+            if p.get("oid_manifest_path") and manifest_steps_run:
+                logger.error(
+                    "A corridor manifest cannot be combined with an OID manifest yet: corridor joins use "
+                    "original capture names and a rebuild uses final names. Run the rebuild with Thinning "
+                    "Mode = post and no corridor manifest.",
+                    error_type=ValueError, indent=1,
+                )
             p["thinning_mode"] = "pre"
             if manifest_steps_run:
                 logger.info(f"Corridor manifest for this run (Add Images, Update Linear, "
@@ -1064,7 +1091,7 @@ class Process360Workflow(object):
                 error_type=ValueError, indent=1,
             )
 
-        if p.get("enable_copy_to_aws", False):
+        if p.get("enable_copy_to_aws", False) and not p.get("oid_manifest_path"):  # upload is skipped in OID-manifest mode
             copy_step_index = step_order.index("copy_to_aws") if "copy_to_aws" in step_order else None
             if copy_step_index is not None and copy_step_index >= start_index:
                 logger.custom("Running AWS upload preflight checks...", indent=1, emoji="🧪")
