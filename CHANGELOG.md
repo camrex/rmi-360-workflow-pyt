@@ -18,6 +18,31 @@ the Lambda upload monitor.)
 
 ### Added
 
+#### Rebuild an OID from a manifest, with a heading check
+
+- **`scripts/build_oid_manifest.py`** writes an OID manifest: a CSV in Esri's oriented
+  imagery table schema, built from the panoramas' EXIF. Esri's Add Images reads it without
+  opening any image. The tags and the 3-decimal rounding of Z and heading are the ones Esri
+  uses when it reads images itself, so a manifest build matches an image build (verified on
+  26-150 finals). Two sources:
+  - `--folder` reads panoramas on disk.
+  - `--s3` reads only the first 32 KB of each object (widened if needed), using ranged GETs
+    under the named profile. Headers are cached, so an interrupted run resumes. This is how
+    an OID is rebuilt for a project whose panoramas are only in S3 (25-320).
+  ImagePath is the published S3 URL by default.
+- **Heading check** (`utils/shared/heading_check.py`, ported from rmi-rail-vision). It finds
+  runs of frames whose recorded heading disagrees with the direction of travel and writes
+  them to `heading_runs.csv` and `.kml`. Nothing is changed until the operator fills the
+  `action` column (`keep`, `flip`, `from_track`, `exclude`) and passes the file with
+  `--corrections`. `from_track` uses the GPS travel bearing plus the rig's median offset.
+  A new `HeadingSource` column records each frame's source (`exif`, `flip`, `from_track`)
+  and is kept on the OID. The check matches rail-vision's 13 runs on 25-320.
+- **Process 360 Workflow: "OID Manifest CSV (rebuild without images)"**. When it is set,
+  Add Images builds from the manifest, and the steps that touch image files are skipped:
+  Mosaic, rename, geoareas, EXIF update, geocode, delivery subset and Copy To AWS. The AWS
+  preflight is skipped too. It cannot be combined with a corridor manifest yet, because
+  corridor joins use original capture names.
+
 #### Upload heartbeat (replaces the Lambda upload monitor)
 
 - **Copy To AWS writes an upload heartbeat**: its progress JSON (phase, totals, per-group
@@ -123,6 +148,9 @@ the Lambda upload monitor.)
 
 ### Fixed
 
+- **Calculate OID Attributes left Frame empty for renamed images**: the frame parser only
+  matched original capture names (`..._000587.jpg`), not final names (`..._FR000587.jpg`).
+  It now matches both.
 - **Corridor thinning ran at 3.5 m instead of ~4.5 m by default**: the Thin to
   Interval and Run Corridor Thinning tools defaulted the trim to `1.5 Meters`, but the
   validated 26-150 scripts trimmed 1.5 **feet** (16.4042 − 1.5 = 14.90 ft ≈ 4.54 m).
@@ -232,6 +260,11 @@ the Lambda upload monitor.)
 
 ### Changed
 
+- **OrientationAccuracy baseline is now `0.05;0.1;0.5;0.5;0.5;0;0;1`**: XY 5 cm, Z 10 cm,
+  heading, pitch and roll 0.5°, elevation 1 m. These are conservative values for the
+  Xsens Vision Navigator in RTK, based on Xsens's published specifications. The old value
+  was Esri's GoPro example. The field registry was checked against Esri's current oriented
+  imagery table fields (no new fields) and restamped 1.2.0.
 - **AWS / secured storage consolidated** into one `aws` block (schema **1.4.0**, clean
   break): three clearly-named buckets (`s3_bucket_raw`, `s3_bucket_panos_unsecured`,
   `s3_bucket_panos_secured`), a single `aws.region` with optional per-bucket overrides,

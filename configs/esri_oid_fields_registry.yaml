@@ -1,7 +1,7 @@
 # esri_oid_fields_registry.yaml
-# Version: 1.1.1
-# Esri Version: ArcGIS Pro 3.5
-# Last Updated: 2025-05-22
+# Version: 1.2.0
+# Esri Version: ArcGIS Pro 3.7 (field list verified against Esri's oriented imagery table page, 2026-10-19)
+# Last Updated: 2026-10-19
 # ------------------------------
 # Master field registry for ESRI Oriented Imagery Datasets (OIDs).
 # This file defines:
@@ -307,7 +307,17 @@ OrientationAccuracy:
   alias: "Orientation Accuracy"
   category: "standard"
   required: false
-  oid_default: "15;0.2;0.5;0.5;0.5;0;0;1"
+  # RMI baseline for the Mosaic 51 + Xsens Vision Navigator (XVN) RTK rig, one value for every image
+  # (no per-image accuracy is recorded: the reel GPX has fix/HDOP only, no standard deviations).
+  # Xsens's published XVN figures (https://www.xsens.com/sensor-modules/xsens-vision-navigator):
+  # RTK position 1 cm + 1 ppm; roll/pitch < 0.4 deg; heading 0.4 deg (1 m antenna baseline).
+  #   XY 0.05 m       - 1 cm + 1 ppm at typical RTK network distances, plus drift in short GNSS
+  #                     outages (bridges, trees) and frame-to-GPS time interpolation
+  #   Z 0.1 m         - the same RTK term, plus GEOID18 and the ITRF2014 -> NAD83(2011) shift
+  #   H/P/R 0.5 deg   - < 0.4 deg, plus camera-to-IMU mounting; pitch/roll are stored as 90/0
+  #   near/far 0;0, elevation 1 m - unchanged (Terrain3D quality varies from lidar to 10 m DEM)
+  # Was "15;0.2;0.5;0.5;0.5;0;0;1", Esri's example for a consumer 360 camera (GoPro/Insta360).
+  oid_default: "0.05;0.1;0.5;0.5;0.5;0;0;1"
   
 # Matrix
 # The row-wise sorted rotation matrix that defines the transformation from image space to map space, specified as nine

@@ -110,6 +110,32 @@ def populate_manifest_custom_fields(cfg: ConfigManager, oid_fc_path: str, manife
     )
 
 
+def _add_images_from_oid_manifest(cfg: ConfigManager, oid_fc_path: str, oid_manifest_path: str, logger) -> None:
+    """Add rows to the OID from an OID manifest CSV; no image is opened."""
+    if not arcpy.Exists(oid_fc_path):
+        logger.error(f"OID does not exist at path: {oid_fc_path}", error_type=FileNotFoundError, indent=1)
+        return
+    if not Path(oid_manifest_path).is_file():
+        logger.error(f"OID manifest not found: {oid_manifest_path}", error_type=FileNotFoundError, indent=1)
+        return
+    registry = load_field_registry(cfg) or {}
+    imagery_type = registry.get("OrientedImageryType", {}).get("oid_default", "360")
+    before = int(arcpy.management.GetCount(oid_fc_path)[0])
+    logger.info(f"Building the OID from manifest {oid_manifest_path} (no images are read).", indent=1)
+    try:
+        arcpy.oi.AddImagesToOrientedImageryDataset(
+            in_oriented_imagery_dataset=oid_fc_path,
+            imagery_category=imagery_type,
+            input_data=[str(oid_manifest_path)],
+            include_all_fields="INCLUDE_ALL_FIELDS",
+        )
+    except arcpy.ExecuteError as exc:
+        logger.error(f"Failed to add manifest rows to OID: {exc}", error_type=RuntimeError, indent=1)
+        return
+    added = int(arcpy.management.GetCount(oid_fc_path)[0]) - before
+    logger.success(f"{added:,} row(s) added from the OID manifest.", indent=1)
+
+
 def _write_image_listing(cfg: ConfigManager, files, manifest_path, logger) -> Path:
     """Write the kept image paths to a .txt (one absolute path per line) for the
     Esri Add Images tool, and return its path. Leaves an auditable artifact of
@@ -139,7 +165,8 @@ def warn_if_multiple_reel_info(image_folder, logger):
         )
 
 
-def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str, manifest_path: Optional[str] = None) -> None:
+def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str, manifest_path: Optional[str] = None,
+                      oid_manifest_path: Optional[str] = None) -> None:
     """
     Adds images from a project folder to an existing Oriented Imagery Dataset (OID).
 
@@ -159,9 +186,17 @@ def add_images_to_oid(cfg: ConfigManager, oid_fc_path: str, manifest_path: Optio
         manifest_path: Optional corridor manifest CSV; restricts the added images
             to the kept set. When None, the configured manifest is used if
             ``thinning_mode`` is "pre"; otherwise all images are added.
+        oid_manifest_path: Optional OID manifest CSV (oriented imagery table schema, from
+            scripts/build_oid_manifest.py). When given, the OID is built from it and no image is
+            read: Esri's Add Images takes the rows as they are (extra columns such as
+            HeadingSource are kept). Used to rebuild an OID whose images are only in S3.
     """
     logger = cfg.get_logger()
     cfg.validate(tool="add_images_to_oid")
+
+    if oid_manifest_path:
+        _add_images_from_oid_manifest(cfg, oid_fc_path, oid_manifest_path, logger)
+        return
 
     # Resolve manifest: explicit arg wins; else honor pre-thin config.
     if manifest_path is None and str(cfg.get("thinning_mode", "post")).lower() == "pre":
