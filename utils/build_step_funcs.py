@@ -85,7 +85,7 @@ OID_MANIFEST_SKIP = "Skipped (OID built from a manifest; image files are not tou
 
 # Steps that read or write image files. When the OID is rebuilt from an OID manifest the images
 # are only in S3 (already published, renamed and tagged), so these never run.
-IMAGE_FILE_STEPS = ("run_mosaic_processor", "rename_images", "geoareas_enrichment", "update_metadata",
+IMAGE_FILE_STEPS = ("run_mosaic_processor", "rename_images", "update_metadata",
                     "exiftool_geocoding", "prepare_delivery_subset", "copy_to_aws")
 
 

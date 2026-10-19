@@ -27,20 +27,27 @@ the Lambda upload monitor.)
   26-150 finals). Two sources:
   - `--folder` reads panoramas on disk.
   - `--s3` reads only the first 32 KB of each object (widened if needed), using ranged GETs
-    under the named profile. Headers are cached, so an interrupted run resumes. This is how
-    an OID is rebuilt for a project whose panoramas are only in S3 (25-320).
-  ImagePath is the published S3 URL by default.
+    under the named profile. Headers are cached (at each key's path), so an interrupted run
+    resumes. If any header cannot be fetched, no manifest is written unless
+    `--allow-partial` is given. This is how an OID is rebuilt for a project whose panoramas
+    are only in S3 (25-320).
+  ImagePath is the published S3 URL by default. A second image with the same name is
+  skipped and reported, not given the first one's row.
 - **Heading check** (`utils/shared/heading_check.py`, ported from rmi-rail-vision). It finds
   runs of frames whose recorded heading disagrees with the direction of travel and writes
   them to `heading_runs.csv` and `.kml`. Nothing is changed until the operator fills the
   `action` column (`keep`, `flip`, `from_track`, `exclude`) and passes the file with
-  `--corrections`. `from_track` uses the GPS travel bearing plus the rig's median offset.
+  `--corrections` (it may be `heading_runs.csv` itself, which is then not rewritten).
+  `from_track` uses the GPS travel bearing plus the rig's median offset, looked up only
+  within the same track segment; with no bearing there, or no measurable offset, the frame
+  keeps its recorded heading and is reported as unresolved.
   A new `HeadingSource` column records each frame's source (`exif`, `flip`, `from_track`)
   and is kept on the OID. The check matches rail-vision's 13 runs on 25-320.
 - **Process 360 Workflow: "OID Manifest CSV (rebuild without images)"**. When it is set,
   Add Images builds from the manifest, and the steps that touch image files are skipped:
-  Mosaic, rename, geoareas, EXIF update, geocode, delivery subset and Copy To AWS. The AWS
-  preflight is skipped too. It cannot be combined with a corridor manifest yet, because
+  Mosaic, rename, EXIF update, geocode, delivery subset and Copy To AWS. Reel staging and
+  the AWS preflight are skipped too, and the dialog disables the reel inputs. Geo-Areas
+  Enrichment still runs (it works on the OID). It cannot be combined with a corridor manifest yet, because
   corridor joins use original capture names.
 
 #### Upload heartbeat (replaces the Lambda upload monitor)
@@ -150,7 +157,7 @@ the Lambda upload monitor.)
 
 - **Calculate OID Attributes left Frame empty for renamed images**: the frame parser only
   matched original capture names (`..._000587.jpg`), not final names (`..._FR000587.jpg`).
-  It now matches both.
+  It now matches both, as `.jpg` or `.jpeg`.
 - **Corridor thinning ran at 3.5 m instead of ~4.5 m by default**: the Thin to
   Interval and Run Corridor Thinning tools defaulted the trim to `1.5 Meters`, but the
   validated 26-150 scripts trimmed 1.5 **feet** (16.4042 − 1.5 = 14.90 ft ≈ 4.54 m).

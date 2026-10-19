@@ -94,11 +94,47 @@ def test_corrections_flip_track_exclude(tmp_path):
     by = {(f.reel, f.frame): f for f in res.frames}
     assert by[("0003", 5)].heading == pytest.approx(0.0, abs=1e-6) and by[("0003", 5)].heading_source == "flip"
     t = by[("0003", 20)]
-    assert t.heading_source == "track" and t.heading == pytest.approx(2.0, abs=0.1)   # travel 0 + offset
+    assert t.heading_source == "from_track" and t.heading == pytest.approx(2.0, abs=0.1)  # travel 0 + offset
     edge = by[("0003", 11)]
-    assert edge.heading_source == "track"                                        # inherits a neighbour
+    assert edge.heading_source == "from_track"                                   # inherits a neighbour
     assert by[("0003", 33)].excluded and not by[("0003", 37)].excluded
     assert by[("0003", 37)].heading == pytest.approx(180.0) and by[("0003", 37)].heading_source == "exif"
+
+
+def _corr(reel, first, last, action="from_track", day="2025-10-20"):
+    return hc.Correction(day=day, reel=reel, frame_first=first, frame_last=last, action=action)
+
+
+def test_from_track_does_not_borrow_across_a_gap():
+    a = track(20, 0.0, reel="0003")
+    b = track(5, 90.0, reel="0003", start=21, step_m=0.2)       # stopped stretch 1 km away
+    for f in b:
+        f.lat += 1000.0 / M_PER_DEG_LAT
+    res = hc.detect(track(30, 0.0, reel="0001") + a + b)
+    counts = hc.apply_corrections(res, [_corr("0003", 21, 25)])
+    assert counts["from_track_unresolved"] == 5
+    assert all(f.heading == pytest.approx(90.0) and f.heading_source == "exif"
+               for f in res.frames if f.reel == "0003" and f.frame > 20)
+
+
+def test_from_track_needs_a_rig_offset():
+    res = hc.detect(track(20, 180.0))                           # nothing agrees: offset unknown
+    assert res.rig_offset_deg is None
+    counts = hc.apply_corrections(res, [_corr("0003", 1, 20)])
+    assert counts["from_track"] == 20 and counts["from_track_unresolved"] == 20
+    assert all(f.heading == pytest.approx(180.0) and f.heading_source == "exif" for f in res.frames)
+
+
+def test_fill_track_takes_the_nearest_moving_frame():
+    fs = track(9, 0.0)
+    for f in fs:
+        f.travel = None
+    fs[2].travel, fs[6].travel = 10.0, 20.0
+    got = hc._fill_track(fs)
+    assert [got[i] for i in range(9)] == [10.0, 10.0, 10.0, 10.0, 10.0, 20.0, 20.0, 20.0, 20.0]  # tie -> earlier
+    for f in fs:
+        f.travel = None
+    assert hc._fill_track(fs) == {}
 
 
 def test_bad_action_is_rejected(tmp_path):

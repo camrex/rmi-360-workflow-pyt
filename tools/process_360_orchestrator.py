@@ -569,7 +569,9 @@ class Process360Workflow(object):
         # default) until the user picks a later step.
         ss_label = start_step.valueAsText if start_step else None
         ss_name = self._step_label_to_name.get(ss_label, "") if ss_label and ss_label != "--SELECT STEP--" else ""
-        mosaic_will_run = (ss_name == "") or (ss_name == "run_mosaic_processor")
+        oid_manifest = pmap.get("oid_manifest_path")
+        mosaic_will_run = ((ss_name == "") or (ss_name == "run_mosaic_processor")) and not (
+            oid_manifest and oid_manifest.valueAsText)  # an OID-manifest rebuild never runs Mosaic
 
         # Always enable Project Folder (required in both modes)
         if project_folder:
@@ -783,7 +785,9 @@ class Process360Workflow(object):
         # runs. A pre-stitched run (start step after Mosaic) needs none of them, so skip
         # their warnings/errors entirely. An unselected start step is neutral (mosaic
         # assumed to run) until the user picks a later step.
-        mosaic_will_run = (step == "") or (step == "run_mosaic_processor")
+        oid_manifest = p.get("oid_manifest_path")
+        mosaic_will_run = ((step == "") or (step == "run_mosaic_processor")) and not (
+            oid_manifest and oid_manifest.valueAsText)  # an OID-manifest rebuild never runs Mosaic
 
         # Local nicety: warn if <project>\reels missing (only when Mosaic will run)
         if mosaic_will_run and project_folder and project_folder.valueAsText and not is_aws:
@@ -907,13 +911,15 @@ class Process360Workflow(object):
         # not, skip the entire reels machinery: no runtime.local_root requirement, no
         # staging cleanup, and no abort on a missing <project>/reels folder. This lets a
         # pre-stitched project start at "Create OID" or "Add Images to OID".
-        mosaic_will_run = early_start_step is None or early_start_step == "run_mosaic_processor"
+        mosaic_will_run = (early_start_step is None or early_start_step == "run_mosaic_processor") and not p.get(
+            "oid_manifest_path")
 
         if not mosaic_will_run:
             p["input_reels_folder"] = None
+            reason = ("the OID is rebuilt from an OID manifest" if p.get("oid_manifest_path")
+                      else f"starting from '{early_start_step}'; stitching handled externally")
             logger.info(
-                "Skipping reels staging/resolution — Mosaic Processor is not in this run "
-                f"(starting from '{early_start_step}'; stitching handled externally).",
+                f"Skipping reels staging/resolution — Mosaic Processor is not in this run ({reason}).",
                 indent=1,
             )
         else:

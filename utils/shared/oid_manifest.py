@@ -75,6 +75,7 @@ class ImageRecord:
     heading: float
     reel: str
     frame: int
+    source: str = ""        # the file exiftool read (local image or cached S3 header)
 
     def to_frame(self) -> Frame:
         return Frame(name=self.name, day=self.acquired.date().isoformat(), reel=self.reel, frame=self.frame,
@@ -126,18 +127,26 @@ def record_from_exif(e: dict) -> Tuple[Optional[ImageRecord], str]:
     except (KeyError, TypeError, ValueError):
         return None, "no GPSImgDirection"
     return ImageRecord(name=name, lon=lon, lat=lat, z=alt, acquired=acquired, heading=heading,
-                       reel=rf[0], frame=rf[1]), ""
+                       reel=rf[0], frame=rf[1], source=str(e.get("SourceFile", ""))), ""
 
 
 def records_from_exif(exif: Iterable[dict]) -> Tuple[List[ImageRecord], Dict[str, str]]:
-    """Records, plus {name: reason} for images that cannot go in the manifest."""
+    """Records, plus {name or source: reason} for images that cannot go in the manifest.
+
+    Name is the OID's key, so a second image with the same name is skipped (reported by its
+    full source path) rather than given the first one's row.
+    """
     recs: List[ImageRecord] = []
     skipped: Dict[str, str] = {}
+    first: Dict[str, str] = {}
     for e in exif:
         rec, why = record_from_exif(e)
         if rec is None:
             skipped[Path(e.get("SourceFile", "")).name] = why
+        elif rec.name in first:
+            skipped[rec.source] = f"duplicate name (also {first[rec.name]})"
         else:
+            first[rec.name] = rec.source
             recs.append(rec)
     return recs, skipped
 
@@ -190,6 +199,12 @@ def list_image_keys(s3, bucket: str, prefix: str) -> List[str]:
     return keys
 
 
+def header_cache_path(dest_dir: Path, key: str) -> Path:
+    """Where ``key``'s header is cached: the key's own path under ``dest_dir``, so two keys with
+    the same file name never share a file."""
+    return Path(dest_dir).joinpath(*[p for p in key.split("/") if p not in ("", ".", "..")])
+
+
 def _fetch_one(s3, bucket: str, key: str, dest: Path, nbytes: int) -> Tuple[str, Optional[str]]:
     """Write the first bytes of ``key`` (through the end of the metadata) to ``dest``."""
     if dest.exists() and JPEG_SOS in dest.read_bytes():
@@ -203,6 +218,7 @@ def _fetch_one(s3, bucket: str, key: str, dest: Path, nbytes: int) -> Tuple[str,
         if JPEG_SOS in body or len(body) < size or size >= HEADER_BYTES_MAX:
             if JPEG_SOS not in body:
                 return key, "metadata not found within the fetched bytes"
+            dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(body)
             return key, None
         size *= 4
@@ -211,7 +227,7 @@ def _fetch_one(s3, bucket: str, key: str, dest: Path, nbytes: int) -> Tuple[str,
 def fetch_headers(s3, bucket: str, keys: Sequence[str], dest_dir: Path, nbytes: int = HEADER_BYTES,
                   max_workers: int = 16, progress: Optional[Callable[[int, int], None]] = None
                   ) -> Tuple[List[Path], Dict[str, str]]:
-    """Fetch the metadata header of each key into ``dest_dir`` (same file names). Resumable.
+    """Fetch the metadata header of each key into ``dest_dir`` (at the key's path). Resumable.
 
     Returns (local header paths, {key: error}). Ranged GETs only: about 32 KB per image.
     """
@@ -220,13 +236,13 @@ def fetch_headers(s3, bucket: str, keys: Sequence[str], dest_dir: Path, nbytes: 
     paths: List[Path] = []
     errors: Dict[str, str] = {}
     with cf.ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futs = {ex.submit(_fetch_one, s3, bucket, k, dest_dir / Path(k).name, nbytes): k for k in keys}
+        futs = {ex.submit(_fetch_one, s3, bucket, k, header_cache_path(dest_dir, k), nbytes): k for k in keys}
         for n, fut in enumerate(cf.as_completed(futs), start=1):
             key, err = fut.result()
             if err:
                 errors[key] = err
             else:
-                paths.append(dest_dir / Path(key).name)
+                paths.append(header_cache_path(dest_dir, key))
             if progress:
                 progress(n, len(keys))
     return sorted(paths), errors

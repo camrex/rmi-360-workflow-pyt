@@ -200,7 +200,7 @@ def extract_frame_from_filename(image_path: str) -> Optional[str]:
     """
 
     image_file = os.path.basename(image_path)
-    match = re.search(r"_(?:FR)?(\d{6})\.jpg$", image_file, re.IGNORECASE)
+    match = re.search(r"_(?:FR)?(\d{6})\.jpe?g$", image_file, re.IGNORECASE)
     return match.group(1) if match else None
 
 

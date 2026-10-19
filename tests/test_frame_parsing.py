@@ -18,7 +18,7 @@ FINAL = r"Z:\x\RMI26150_UP_G0.109_20260625T155157Z_RL0002_FR000587.jpg"
 ORIGINAL = r"Z:\proj\panos\original\reel_0002\pano_reel_0002_20260625-150102_26-150_000587.jpg"
 
 
-@pytest.mark.parametrize("path", [FINAL, ORIGINAL, FINAL.replace(".jpg", ".JPG")])
+@pytest.mark.parametrize("path", [FINAL, ORIGINAL, FINAL.replace(".jpg", ".JPG"), FINAL.replace(".jpg", ".jpeg")])
 def test_frame_from_original_and_final_names(path):
     assert coa.extract_frame_from_filename(path) == "000587"
 

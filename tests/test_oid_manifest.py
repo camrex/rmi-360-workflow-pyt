@@ -69,6 +69,12 @@ def test_manifest_rows_round_like_esri_and_apply_corrections():
     assert r0["AcquisitionDate"] == "2026-06-25 15:51:57"
 
 
+def test_duplicate_names_keep_the_first_and_report_the_rest():
+    recs, skipped = om.records_from_exif([exif_rec(), {**exif_rec(), "SourceFile": f"I:/y/{FINAL}"}])
+    assert len(recs) == 1 and recs[0].source == f"I:/x/{FINAL}"
+    assert skipped == {f"I:/y/{FINAL}": f"duplicate name (also I:/x/{FINAL})"}
+
+
 def test_write_manifest_columns(tmp_path):
     recs, _ = om.records_from_exif([exif_rec()])
     p = om.write_manifest(om.manifest_rows(recs, [], image_path=str), tmp_path / "m" / "manifest.csv")
@@ -109,10 +115,18 @@ def test_fetch_headers_small_widen_error_and_resume(tmp_path):
     paths, errors = om.fetch_headers(s3, "bucket", sorted(objs), tmp_path)
     assert [p.name for p in paths] == ["a.jpg", "b.jpg"]
     assert errors == {"RMI1/c.jpg": "RuntimeError: AccessDenied"}
-    assert len((tmp_path / "a.jpg").read_bytes()) == om.HEADER_BYTES            # one 32 KB read
-    assert s3.calls["RMI1/b.jpg"] == 2 and om.JPEG_SOS in (tmp_path / "b.jpg").read_bytes()  # widened
+    assert len((tmp_path / "RMI1" / "a.jpg").read_bytes()) == om.HEADER_BYTES     # one 32 KB read
+    assert s3.calls["RMI1/b.jpg"] == 2 and om.JPEG_SOS in (tmp_path / "RMI1" / "b.jpg").read_bytes()  # widened
     om.fetch_headers(s3, "bucket", ["RMI1/a.jpg"], tmp_path)                    # resume: no new call
     assert s3.calls["RMI1/a.jpg"] == 1
+
+
+def test_same_file_name_under_two_keys_gets_two_cache_files(tmp_path):
+    objs = {"RMI1/a/x.jpg": jpeg_with_header(10) + b"A", "RMI1/b/x.jpg": jpeg_with_header(10) + b"B"}
+    paths, errors = om.fetch_headers(FakeS3(objs), "bucket", sorted(objs), tmp_path)
+    assert errors == {} and len(set(paths)) == 2
+    assert paths == [tmp_path / "RMI1" / "a" / "x.jpg", tmp_path / "RMI1" / "b" / "x.jpg"]
+    assert om.header_cache_path(tmp_path, "RMI1/../../evil.jpg") == tmp_path / "RMI1" / "evil.jpg"
 
 
 def test_list_image_keys_filters_jpegs():

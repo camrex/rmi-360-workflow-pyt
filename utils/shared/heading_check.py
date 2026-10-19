@@ -43,7 +43,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 ACTIONS = ("keep", "flip", "from_track", "exclude")
-SOURCE_EXIF, SOURCE_FLIP, SOURCE_TRACK = "exif", "flip", "track"
+SOURCE_EXIF, SOURCE_FLIP, SOURCE_TRACK = "exif", "flip", "from_track"
 
 
 @dataclass
@@ -90,6 +90,7 @@ class CheckResult:
     stopped: int
     segments: int
     rig_offset_deg: Optional[float]     # signed median heading - travel over agreeing frames
+    gap_m: float = 20.0                 # segment gap used by detect(); corrections reuse it
 
 
 def _enu(lon, lat, lon0, lat0):
@@ -183,7 +184,7 @@ def detect(frames: Iterable[Frame], gap_m: float = 20.0, min_move_m: float = 2.0
             i = last + 1
 
     offset = round(statistics.median(ok_diffs), 2) if ok_diffs else None
-    return CheckResult(ordered, runs, judged, agrees, stopped, len(segs), offset)
+    return CheckResult(ordered, runs, judged, agrees, stopped, len(segs), offset, gap_m)
 
 
 # --- reports ----------------------------------------------------------------------------------
@@ -260,14 +261,27 @@ def load_corrections(path: Path) -> List[Correction]:
 
 def _fill_track(frames: List[Frame]) -> Dict[int, float]:
     """Travel bearing for every frame of one segment: its own where moving, else the nearest
-    moving frame's (stopped and edge frames inherit)."""
-    known = [(i, f.travel) for i, f in enumerate(frames) if f.travel is not None]
+    moving frame's (stopped and edge frames inherit; on a tie, the earlier one)."""
+    n = len(frames)
+    prev: List[Optional[int]] = [None] * n
+    nxt: List[Optional[int]] = [None] * n
+    last = None
+    for i in range(n):
+        if frames[i].travel is not None:
+            last = i
+        prev[i] = last
+    last = None
+    for i in range(n - 1, -1, -1):
+        if frames[i].travel is not None:
+            last = i
+        nxt[i] = last
     out: Dict[int, float] = {}
-    if not known:
-        return out
-    for i in range(len(frames)):
-        nearest = min(known, key=lambda kv: abs(kv[0] - i))
-        out[i] = nearest[1]
+    for i in range(n):
+        a, b = prev[i], nxt[i]
+        if a is None and b is None:
+            continue
+        j = a if b is None or (a is not None and i - a <= b - i) else b
+        out[i] = frames[j].travel
     return out
 
 
@@ -275,13 +289,15 @@ def apply_corrections(result: CheckResult, corrections: Sequence[Correction]) ->
     """Apply the operator's decisions to ``result.frames`` in place. Returns counts per action.
 
     ``from_track`` uses the travel bearing plus ``result.rig_offset_deg`` (the signed median
-    heading-vs-travel difference over agreeing frames). A frame with no travel bearing anywhere in
-    its segment keeps its recorded heading and is reported under ``from_track_unresolved``.
+    heading-vs-travel difference over agreeing frames). Bearings are looked up within the segments
+    detect() used, never across a gap. A frame with no travel bearing in its segment, or any
+    frame when the rig offset is unknown (no agreeing frames), keeps its recorded heading and is
+    reported under ``from_track_unresolved``.
     """
     counts = {a: 0 for a in ACTIONS}
     counts["from_track_unresolved"] = 0
-    offset = result.rig_offset_deg or 0.0
-    by_segment = segments(result.frames, gap_m=float("inf"))  # same day + reel; positions irrelevant here
+    offset = result.rig_offset_deg
+    by_segment = segments(result.frames, gap_m=result.gap_m)
     for seg in by_segment:
         track = None
         for i, f in enumerate(seg):
@@ -295,7 +311,7 @@ def apply_corrections(result: CheckResult, corrections: Sequence[Correction]) ->
             elif c.action == "from_track":
                 if track is None:
                     track = _fill_track(seg)
-                if i in track:
+                if offset is not None and i in track:
                     f.heading = round((track[i] + offset) % 360.0, 3)
                     f.heading_source = SOURCE_TRACK
                 else:
